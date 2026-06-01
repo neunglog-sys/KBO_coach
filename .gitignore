@@ -58,6 +58,8 @@ app/release/
 data/raw/
 data/processed/
 data/tmp/
+# 크롤 일별 덤프 (원본은 MongoDB) — 폴더 구조(.gitkeep)는 유지
+data/crawling/*/
 models/
 embeddings/
 *.sqlite
