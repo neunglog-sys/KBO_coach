@@ -1,0 +1,77 @@
+# -*- coding: utf-8 -*-
+"""정적 야구정보 조회 (PostgreSQL): 구단·페르소나·용어·구장. (데이터 적재 전엔 빈 배열)"""
+from fastapi import APIRouter, HTTPException
+from db_pg import get_conn
+
+router = APIRouter(tags=["info"])
+
+
+@router.get("/teams")
+def teams():
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT team_code, name, city, home_stadium, founded_year, championships "
+                        "FROM teams ORDER BY team_code")
+            rows = cur.fetchall()
+        return {"count": len(rows), "teams": rows}
+    finally:
+        conn.close()
+
+
+@router.get("/teams/{team_code}")
+def team_detail(team_code: str):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM teams WHERE team_code = %s", (team_code,))
+            team = cur.fetchone()
+            if not team:
+                raise HTTPException(status_code=404, detail="구단 없음")
+            cur.execute("SELECT name, position, era, note FROM legends WHERE team_code = %s", (team_code,))
+            legends = cur.fetchall()
+        return {"team": team, "legends": legends}
+    finally:
+        conn.close()
+
+
+@router.get("/teams/{team_code}/persona")
+def team_persona(team_code: str):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM team_personas WHERE team_code = %s", (team_code,))
+            persona = cur.fetchone()
+        if not persona:
+            raise HTTPException(status_code=404, detail="페르소나 없음(데이터 적재 전)")
+        return persona
+    finally:
+        conn.close()
+
+
+@router.get("/glossary")
+def glossary(q: str | None = None):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            if q:
+                cur.execute("SELECT * FROM glossary WHERE term ILIKE %s OR abbr ILIKE %s ORDER BY term",
+                            (f"%{q}%", f"%{q}%"))
+            else:
+                cur.execute("SELECT * FROM glossary ORDER BY term")
+            rows = cur.fetchall()
+        return {"count": len(rows), "terms": rows}
+    finally:
+        conn.close()
+
+
+@router.get("/stadiums/{team_code}")
+def stadium(team_code: str):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM stadiums WHERE team_code = %s", (team_code,))
+            rows = cur.fetchall()
+        return {"team_code": team_code, "stadiums": rows}
+    finally:
+        conn.close()
