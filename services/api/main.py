@@ -11,9 +11,10 @@ from info import router as info_router
 from visits import router as visits_router
 from chat import router as chat_router
 from weather import router as weather_router
+from board import router as board_router
 
 app = FastAPI(title="KBO Baseball Helper API", version="0.1.0")
-for r in (auth_router, info_router, visits_router, chat_router, weather_router):
+for r in (auth_router, info_router, visits_router, chat_router, weather_router, board_router):
     app.include_router(r)
 
 
