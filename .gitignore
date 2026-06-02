@@ -1,0 +1,72 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node / web
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.vite/
+coverage/
+
+# Python / AI / data tooling
+__pycache__/
+*.py[cod]
+*.pyo
+.python-version
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Android / Kotlin
+.gradle/
+**/build/
+local.properties
+*.iml
+.cxx/
+.externalNativeBuild/
+captures/
+app/release/
+
+# Generated data and model artifacts
+data/raw/
+data/processed/
+data/tmp/
+# 크롤 일별 덤프 (원본은 MongoDB) — 폴더 구조(.gitkeep)는 유지
+data/crawling/*/
+models/
+embeddings/
+*.sqlite
+*.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
