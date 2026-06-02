@@ -2,10 +2,12 @@ import { FormEvent, useState } from "react";
 
 interface LoginViewProps {
   error: string;
+  notice: string;
   onLogin: (id: string, password: string) => Promise<void>;
+  onShowRegister: () => void;
 }
 
-export function LoginView({ error, onLogin }: LoginViewProps) {
+export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,8 +53,14 @@ export function LoginView({ error, onLogin }: LoginViewProps) {
         <p id="loginError" className="error-text" role="alert">
           {error}
         </p>
+        <p className="notice-text" aria-live="polite">
+          {notice}
+        </p>
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "확인 중" : "입장하기"}
+        </button>
+        <button className="text-button" type="button" onClick={onShowRegister}>
+          회원가입
         </button>
       </form>
     </section>

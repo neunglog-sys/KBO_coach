@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { basics, fallbackAnswers } from "../data/baseballBasics";
+import { fallbackAnswers } from "../data/baseballBasics";
 import { kboTeams } from "../data/kboTeams";
 
 type MessageType = "bot" | "user";
@@ -11,9 +11,53 @@ interface Message {
   type: MessageType;
 }
 
+interface StandingRow {
+  순위?: number | string;
+  팀명?: string;
+  승?: number | string;
+  패?: number | string;
+  무?: number | string;
+  승률?: number | string;
+  게임차?: number | string;
+}
+
+interface GameRow {
+  시간?: string;
+  원정팀?: string;
+  홈팀?: string;
+  구장?: string;
+  상태?: string;
+}
+
+interface DailySchedule {
+  date: string;
+  label: string;
+  games: GameRow[];
+}
+
 interface MainViewProps {
   authToken: string;
   onLogout: () => void;
+}
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getScheduleDates() {
+  const labels = ["오늘", "내일", "모레"];
+  const today = new Date();
+
+  return labels.map((label, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+
+    return { date: formatDate(date), label };
+  });
 }
 
 export function MainView({ authToken, onLogout }: MainViewProps) {
@@ -33,6 +77,10 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [messageId, setMessageId] = useState(2);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [standingsDate, setStandingsDate] = useState("");
+  const [schedules, setSchedules] = useState<DailySchedule[]>([]);
+  const [recordsStatus, setRecordsStatus] = useState("야구 기록을 불러오는 중입니다.");
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -46,6 +94,60 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
   useEffect(() => {
     chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight });
   }, [messages]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadBaseballRecords() {
+      setRecordsStatus("야구 기록을 불러오는 중입니다.");
+
+      try {
+        const scheduleDates = getScheduleDates();
+        const [standingsResponse, ...gameResponses] = await Promise.all([
+          fetch("/standings"),
+          ...scheduleDates.map((item) => fetch(`/schedule?date=${item.date}`)),
+        ]);
+
+        if (!standingsResponse.ok) {
+          throw new Error("Standings API unavailable");
+        }
+
+        const standingsData = await standingsResponse.json();
+        const scheduleData = await Promise.all(
+          gameResponses.map(async (response, index) => {
+            if (!response.ok) {
+              return { ...scheduleDates[index], games: [] };
+            }
+
+            const data = await response.json();
+            return {
+              ...scheduleDates[index],
+              games: Array.isArray(data.schedule) ? data.schedule : [],
+            };
+          }),
+        );
+
+        if (isCurrent) {
+          setStandings(Array.isArray(standingsData.standings) ? standingsData.standings : []);
+          setStandingsDate(standingsData.date || "");
+          setSchedules(scheduleData);
+          setRecordsStatus("");
+        }
+      } catch {
+        if (isCurrent) {
+          setStandings([]);
+          setSchedules(getScheduleDates().map((item) => ({ ...item, games: [] })));
+          setRecordsStatus("백엔드 야구 기록 API에 연결할 수 없습니다.");
+        }
+      }
+    }
+
+    void loadBaseballRecords();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -299,20 +401,109 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
         </div>
       </section>
 
-      <section className="basics-section" aria-labelledby="basicsTitle">
-        <div className="section-title">
-          <p className="eyebrow">Basics</p>
-          <h2 id="basicsTitle">야구 기초</h2>
-        </div>
-        <div className="basics-scroll" tabIndex={0} aria-label="야구 기초 이미지 목록">
-          <div id="basicsGrid" className="basics-grid">
-            {basics.map((item) => (
-              <article className="basic-card" key={item.title}>
-                <img src={item.src} alt={`${item.title} 설명 이미지`} loading="lazy" />
-                <h3>{item.title}</h3>
-              </article>
-            ))}
+      <section className="records-section" aria-labelledby="recordsTitle">
+        <div className="section-title records-title">
+          <div>
+            <p className="eyebrow">KBO Records</p>
+            <h2 id="recordsTitle">순위와 예정 대진표</h2>
           </div>
+          {standingsDate ? <p>{standingsDate} 기준</p> : null}
+        </div>
+
+        {recordsStatus ? (
+          <p className="records-status" role="status">
+            {recordsStatus}
+          </p>
+        ) : null}
+
+        <div className="records-layout">
+          <section className="standings-panel" aria-labelledby="standingsTitle">
+            <div className="table-heading">
+              <h3 id="standingsTitle">팀 순위</h3>
+              <span>{standings.length}개 팀</span>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table standings-table">
+                <thead>
+                  <tr>
+                    <th>순위</th>
+                    <th>팀</th>
+                    <th>승</th>
+                    <th>패</th>
+                    <th>무</th>
+                    <th>승률</th>
+                    <th>게임차</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {standings.length ? (
+                    standings.map((team, index) => (
+                      <tr key={`${team.팀명 || "team"}-${team.순위 || index}`}>
+                        <td>
+                          <span className="rank-badge">{team.순위 || index + 1}</span>
+                        </td>
+                        <td className="team-cell">{team.팀명 || "-"}</td>
+                        <td>{team.승 ?? "-"}</td>
+                        <td>{team.패 ?? "-"}</td>
+                        <td>{team.무 ?? "-"}</td>
+                        <td>{team.승률 ?? "-"}</td>
+                        <td>{team.게임차 ?? "-"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7}>순위 데이터가 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="schedule-panel" aria-labelledby="scheduleTitle">
+            <div className="table-heading">
+              <h3 id="scheduleTitle">3일 대진표</h3>
+              <span>오늘 · 내일 · 모레</span>
+            </div>
+            <div className="schedule-days">
+              {schedules.map((schedule) => (
+                <article className="schedule-day" key={schedule.date}>
+                  <div className="schedule-day-title">
+                    <strong>{schedule.label}</strong>
+                    <span>{schedule.date}</span>
+                  </div>
+                  <div className="table-scroll">
+                    <table className="data-table schedule-table">
+                      <thead>
+                        <tr>
+                          <th>홈 팀</th>
+                          <th>어웨이 팀</th>
+                          <th>시간</th>
+                          <th>홈구장</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedule.games.length ? (
+                          schedule.games.map((game, index) => (
+                            <tr key={`${schedule.date}-${game.홈팀 || "home"}-${game.원정팀 || "away"}-${index}`}>
+                              <td className="team-cell">{game.홈팀 || "-"}</td>
+                              <td>{game.원정팀 || "-"}</td>
+                              <td>{game.시간 || game.상태 || "-"}</td>
+                              <td>{game.구장 || "-"}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4}>예정된 경기 데이터가 없습니다.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
       </section>
     </section>
