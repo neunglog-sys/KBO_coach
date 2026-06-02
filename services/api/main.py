@@ -75,6 +75,13 @@ def get_games(date: str | None = None):
     return {"date": d, "count": len(rows), "games": rows}
 
 
+@app.get("/schedule")
+def get_schedule(date: str | None = None):
+    d = date or latest_date("schedule")
+    rows = list(db.schedule.find({"date": d}, {"_id": 0}))
+    return {"date": d, "count": len(rows), "schedule": rows}
+
+
 @app.get("/games/{game_id}/boxscore")
 def get_boxscore(game_id: str):
     """경기별 선수 박스스코어 (타자·투수)."""

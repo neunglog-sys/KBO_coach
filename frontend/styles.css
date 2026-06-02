@@ -132,11 +132,27 @@ select:focus {
   width: 100%;
 }
 
+.login-panel .text-button {
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  color: var(--navy);
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .error-text {
   min-height: 20px;
   color: var(--danger);
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.notice-text {
+  min-height: 20px;
+  margin: -8px 0 12px;
+  color: var(--field);
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .main-view {
@@ -332,53 +348,161 @@ select:focus {
   line-height: 1.42;
 }
 
-.basics-section {
-  width: min(1180px, 100%);
-  margin: 0 auto;
-  padding: 18px 0 28px;
-}
-
 .section-title {
   margin-bottom: 12px;
 }
 
-.basics-scroll {
-  max-height: 360px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(12px);
+.records-section {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 8px 0 34px;
 }
 
-.basics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.records-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
   gap: 16px;
 }
 
-.basic-card {
-  overflow: hidden;
+.records-title p:last-child {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.records-status {
+  min-height: 22px;
+  margin: 0 0 12px;
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.28);
+}
+
+.records-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.35fr);
+  gap: 18px;
+}
+
+.standings-panel,
+.schedule-panel {
+  min-width: 0;
   border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.table-heading h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.table-heading span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--muted);
+  background: rgba(22, 121, 75, 0.08);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.team-cell {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.rank-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--field);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.schedule-days {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.schedule-day {
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.1);
   border-radius: 8px;
   background: #fff;
 }
 
-.basic-card img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  background: #e5e7eb;
+.schedule-day-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px;
+  color: #fff;
+  background: linear-gradient(90deg, var(--navy), #1f5d45);
 }
 
-.basic-card h3 {
-  margin: 0;
-  padding: 13px 14px 15px;
-  font-size: 1rem;
+.schedule-day-title strong,
+.schedule-day-title span {
+  overflow-wrap: anywhere;
+}
+
+.schedule-day-title span {
+  font-size: 0.86rem;
+  font-weight: 800;
+  opacity: 0.86;
+}
+
+.schedule-table {
+  min-width: 460px;
 }
 
 @keyframes idle-breath {
@@ -427,6 +551,10 @@ select:focus {
   .chat-panel {
     min-height: 420px;
   }
+
+  .records-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -461,7 +589,13 @@ select:focus {
     min-height: 390px;
   }
 
-  .basics-scroll {
-    max-height: 320px;
+  .records-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 11px 12px;
   }
 }
