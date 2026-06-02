@@ -65,6 +65,9 @@ embeddings/
 *.sqlite
 *.db
 
+# 호스트 전용 실행 스크립트 (각자 python 경로·경로 하드코딩)
+run_daily.bat
+
 # Temporary files
 tmp/
 temp/
