@@ -75,3 +75,47 @@ def stadium(team_code: str):
         return {"team_code": team_code, "stadiums": rows}
     finally:
         conn.close()
+
+
+@router.get("/rules")
+def rules(category: str | None = None):
+    """야구 규칙 (category로 필터 가능)."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            if category:
+                cur.execute("SELECT * FROM rules WHERE category = %s ORDER BY rule_id", (category,))
+            else:
+                cur.execute("SELECT * FROM rules ORDER BY rule_id")
+            rows = cur.fetchall()
+        return {"count": len(rows), "rules": rows}
+    finally:
+        conn.close()
+
+
+@router.get("/cheering/{team_code}")
+def cheering(team_code: str):
+    """구단 응원 문화."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cheering WHERE team_code = %s ORDER BY cheering_id", (team_code,))
+            rows = cur.fetchall()
+        return {"team_code": team_code, "count": len(rows), "cheering": rows}
+    finally:
+        conn.close()
+
+
+@router.get("/teams/{team_code}/culture")
+def team_culture(team_code: str):
+    """구단 문화 프로필 (팬덤·응원 스타일·초보 팁 등)."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM team_culture_profiles WHERE team_code = %s", (team_code,))
+            profile = cur.fetchone()
+        if not profile:
+            raise HTTPException(status_code=404, detail="문화 프로필 없음")
+        return profile
+    finally:
+        conn.close()
