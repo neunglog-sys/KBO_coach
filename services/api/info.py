@@ -119,3 +119,16 @@ def team_culture(team_code: str):
         return profile
     finally:
         conn.close()
+
+
+@router.get("/umpire_signals")
+def umpire_signals():
+    """심판 수신호 (스트라이크·아웃·세이프 등)."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM umpire_signals ORDER BY signal_id")
+            rows = cur.fetchall()
+        return {"count": len(rows), "signals": rows}
+    finally:
+        conn.close()
