@@ -24,11 +24,13 @@ from psycopg2.extras import RealDictCursor
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services" / "api"))      # fcm 모듈 사용
-for _line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
-    _line = _line.strip()
-    if _line and not _line.startswith("#") and "=" in _line:
-        _k, _v = _line.split("=", 1)
-        os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+_envfile = ROOT / ".env"                                 # 로컬용. 컨테이너엔 없음(env var 사용)
+if _envfile.exists():
+    for _line in _envfile.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 from kbo_crawler import make_session, strip_html, BASE, SCHEDULE_API  # noqa: E402
 import fcm  # noqa: E402

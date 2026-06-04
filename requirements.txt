@@ -1,0 +1,12 @@
+# Cloud Run 루트 배포용 — API + 크롤러 의존성 통합 (서버리스 크론 포함)
+fastapi
+uvicorn[standard]
+pymongo[srv]
+psycopg2-binary
+bcrypt
+python-jose[cryptography]
+email-validator
+requests
+firebase-admin
+pandas
+lxml

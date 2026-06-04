@@ -16,8 +16,12 @@ def _load_dotenv(path: pathlib.Path):
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-_ROOT = pathlib.Path(__file__).resolve().parents[2]   # services/api/ → repo root
-_load_dotenv(_ROOT / ".env")
+# .env는 로컬 개발용(컨테이너/배포 환경엔 없음 → os.environ 사용).
+# 위로 올라가며 .env를 찾되, 없으면 조용히 넘어감(IndexError 방지).
+for _parent in pathlib.Path(__file__).resolve().parents:
+    if (_parent / ".env").exists():
+        _load_dotenv(_parent / ".env")
+        break
 
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("MONGO_DB", "kbo")

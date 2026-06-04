@@ -4,7 +4,9 @@ KBO 야구 챗봇 백엔드 (FastAPI).
 실행:  uvicorn main:app --reload --app-dir services/api
 문서:  http://127.0.0.1:8000/docs
 """
+import os
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from db import db, latest_date
 from auth import router as auth_router
 from info import router as info_router
@@ -14,10 +16,23 @@ from weather import router as weather_router
 from board import router as board_router
 from my_records import router as my_records_router
 from push import router as push_router
+from internal import router as internal_router
 
 app = FastAPI(title="KBO Baseball Helper API", version="0.1.0")
+
+# CORS — 프론트(다른 도메인)에서 호출 허용. Bearer 토큰 방식이라 쿠키(credentials) 미사용.
+# 기본은 전체 허용(데모). 운영 시 CORS_ORIGINS="https://a.com,https://b.com"로 제한 가능.
+_origins = os.environ.get("CORS_ORIGINS", "*")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _origins.split(",")] if _origins != "*" else ["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 for r in (auth_router, info_router, visits_router, chat_router, weather_router,
-          board_router, my_records_router, push_router):
+          board_router, my_records_router, push_router, internal_router):
     app.include_router(r)
 
 

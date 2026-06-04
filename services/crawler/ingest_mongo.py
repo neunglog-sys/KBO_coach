@@ -35,7 +35,7 @@ _load_dotenv(_REPO_ROOT / ".env")
 
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("MONGO_DB", "kbo")
-CRAWL_DIR = _REPO_ROOT / "data" / "crawling"
+CRAWL_DIR = pathlib.Path(os.environ.get("CRAWL_DIR") or (_REPO_ROOT / "data" / "crawling"))
 
 # 컬렉션별 고유키 (이 키가 같으면 덮어씀)
 # 선수 누적은 playerId로 — 동명이인(같은 팀 같은 이름) 안전하게 구분됨

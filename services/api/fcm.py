@@ -31,7 +31,11 @@ def _ensure_init():
     try:
         firebase_admin.get_app()           # 이미 초기화돼 있으면 재사용
     except ValueError:
-        firebase_admin.initialize_app(credentials.Certificate(_cred_path()))
+        try:
+            firebase_admin.initialize_app(credentials.Certificate(_cred_path()))
+        except RuntimeError:
+            # 키 파일 없으면 ADC 사용 (Cloud Run 서비스계정 = firebase-adminsdk SA)
+            firebase_admin.initialize_app()
     _initialized = True
 
 

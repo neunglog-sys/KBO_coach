@@ -16,6 +16,11 @@ desktop.ini
 # Firebase 서비스 계정 키 (FCM 발송용 — 절대 커밋 금지)
 *firebase-adminsdk*.json
 serviceAccountKey.json
+# Cloud Run 배포용 환경변수 파일 (시크릿 포함)
+env.yaml
+env*.yaml
+# Firebase Hosting 배포 캐시
+.firebase/
 
 # Logs
 *.log
