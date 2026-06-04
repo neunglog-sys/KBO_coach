@@ -154,10 +154,9 @@ def main():
                       f"오늘 {vs} 경기가 우천취소됐어요.",
                       {"type": "canceled", "away": g["away"], "home": g["home"]}, dry)
         elif g["status"] == "종료":
-            if prev and prev["status"] == "예정":     # 예정 → 종료
-                sc = (f"{g['away']} {g['away_score']} : {g['home_score']} {g['home']}"
-                      if g["away_score"] and g["home_score"] else vs)
-                _send(cur, tokens, "🎉 경기 종료", f"{sc} — 경기가 끝났어요.",
+            if prev and prev["status"] == "예정":     # 예정 → 종료 (점수는 스포라 노출 X)
+                _send(cur, tokens, "🎉 경기 종료",
+                      f"오늘 {vs} 경기가 끝났어요! 앱에서 결과를 확인해보세요.",
                       {"type": "finished", "away": g["away"], "home": g["home"]}, dry)
         elif g["status"] == "예정":
             # 시작시각 변경(지연)
