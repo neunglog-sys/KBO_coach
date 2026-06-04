@@ -36,6 +36,14 @@ def _build_system_prompt(persona: dict | None) -> str:
     base_rules = (
         "\n[공통 규칙]\n"
         "- 야구를 처음 보는 사람도 이해하도록 쉽고 친근하게 설명한다.\n"
+        "- 답변은 기본적으로 3~6문장 안에서 끝낸다.\n"
+        "- 꼭 필요한 경우가 아니면 번호 목록을 쓰지 않는다.\n"
+        "- 긴 설명보다 짧은 문단형 설명을 우선한다.\n"
+        "- **굵은 강조 표시**를 남발하지 않는다. 원칙적으로 사용하지 않는다.\n"
+        "- 같은 마무리 문장을 반복하지 않는다.\n"
+        "- '환영해요', '쉽게 설명해드릴게요', '궁금한 점 있으면 물어보세요' 같은 상투적 문장을 반복하지 않는다.\n"
+        "- 자주 쓰는 말은 한 답변에 최대 1번만 사용한다.\n"
+        "- 팀 캐릭터성은 말투와 관점에 자연스럽게 녹이고, 억지 유행어나 응원구호 반복은 피한다.\n"
         "- 모르는 것은 모른다고 말하고, 사실을 지어내지 않는다.\n"
         "- 야구와 무관한 질문은 정중히 거절한다.\n"
         "- 아래 [참고자료]가 주어지면 그 내용을 우선해서 답한다.\n"
@@ -54,7 +62,9 @@ def _build_system_prompt(persona: dict | None) -> str:
         f"[성격 키워드] {p.get('personality_keywords')}\n"
         f"[성격] {p.get('personality_core')}\n"
         f"[말투] {p.get('speaking_features')}\n"
-        f"[자주 쓰는 말] {p.get('common_phrases')}\n"
+        f"[자주 쓰는 말 후보] {p.get('common_phrases')}\n"
+        f"- 위 표현은 캐릭터 참고용이며, 매 답변마다 반복하지 않는다.\n"
+        f"- 같은 표현을 여러 번 쓰지 말고, 상황에 맞을 때만 아주 가볍게 사용한다.\n"
         f"[답변 방식] {p.get('response_style')}\n"
         f"[금지 사항] {prohibited}\n"
         + base_rules
@@ -131,7 +141,7 @@ def chat(body: ChatIn):
             json={
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800},
+                "generationConfig": {"temperature": 0.65, "maxOutputTokens": 450},
             }, timeout=30)
         resp.raise_for_status()
         data = resp.json()
