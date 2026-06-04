@@ -77,3 +77,7 @@ temp/
 test/
 *.tmp
 
+# 대용량 3D 모델 파일 - git 용량이슈로 따로 공유하겠습니다(배치경로는 model/README.md 참고)
+*.glb
+*.gltf
+*.fbx
