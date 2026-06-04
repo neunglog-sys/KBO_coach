@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiUrl } from "./api";
+import { registerPush } from "./push";
 import { LoginView } from "./components/LoginView";
 import { MainView } from "./components/MainView";
 import { RegisterView } from "./components/RegisterView";
@@ -41,6 +42,11 @@ export function App() {
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
+
+  // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
+  useEffect(() => {
+    if (isLoggedIn && authToken) registerPush(authToken);
+  }, [isLoggedIn, authToken]);
 
   async function handleLogin(id: string, password: string) {
     setLoginError("");
