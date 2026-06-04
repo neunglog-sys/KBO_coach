@@ -1,7 +1,12 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { TextToSpeech } from "@capacitor-community/text-to-speech";
+import { apiUrl } from "../api";
 import { fallbackAnswers } from "../data/baseballBasics";
 import { kboTeams } from "../data/kboTeams";
-import Character3D from "./Character3D";
+// import Character3D from "./Character3D";
+// Live2D 캐릭터 사용 중. 3D로 되돌리려면 위 줄 주석 해제 + 아래 줄 주석 + JSX 교체.
+import CharacterLive2D from "./CharacterLive2D";
 
 type MessageType = "bot" | "user";
 
@@ -348,7 +353,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
 
   async function buildGlossaryAnswer(userQuestion: string) {
     try {
-      const response = await fetch("/glossary");
+      const response = await fetch(apiUrl("/glossary"));
       if (!response.ok) return null;
 
       const data = await response.json();
@@ -400,8 +405,8 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
       try {
         const scheduleDates = getScheduleDates();
         const [standingsResponse, ...gameResponses] = await Promise.all([
-          fetch("/standings"),
-          ...scheduleDates.map((item) => fetch(`/schedule?date=${item.date}`)),
+          fetch(apiUrl("/standings")),
+          ...scheduleDates.map((item) => fetch(apiUrl(`/schedule?date=${item.date}`))),
         ]);
 
         if (!standingsResponse.ok) {
@@ -454,7 +459,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
         const guides = await Promise.all(
           kboTeams.map(async (team) => {
             const code = teamCodes[team.id];
-            const response = await fetch(`/stadiums/${code}`);
+            const response = await fetch(apiUrl(`/stadiums/${code}`));
             if (!response.ok) return null;
 
             const data = await response.json();
@@ -569,7 +574,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
         headers.Authorization = `Bearer ${authToken}`;
       }
 
-      const response = await fetch("/chat", {
+      const response = await fetch(apiUrl("/chat"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -594,7 +599,38 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
     return buildDemoAnswer(userQuestion);
   }
 
-  function speakAnswer(text: string) {
+  async function speakAnswer(text: string) {
+    setSpeechBubble(text);
+
+    // 네이티브(안드로이드/iOS): WebView의 speechSynthesis가 동작하지 않으므로 Capacitor TTS 사용.
+    // 입 애니메이션은 isSpeaking에 묶여 있으므로, 발화 동안 isSpeaking을 켜둔다.
+    if (Capacitor.isNativePlatform()) {
+      // 소리가 안 나오더라도 입은 최소 시간 동안 움직이도록 추정 시간(글자수 기반) 병행.
+      const estMs = Math.min(12000, Math.max(1200, text.length * 55));
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      try {
+        await TextToSpeech.stop();
+      } catch {
+        /* 진행 중 발화 없음 */
+      }
+      setIsSpeaking(true);
+      const speakPromise = TextToSpeech.speak({
+        text,
+        lang: "ko-KR",
+        rate: 1.1,
+        pitch: 1.4,
+        volume: 1.0,
+        category: "playback",
+      }).catch((err) => console.error("[TTS] native speak 실패", err));
+      try {
+        await Promise.all([speakPromise, sleep(estMs)]);
+      } finally {
+        setIsSpeaking(false);
+      }
+      return;
+    }
+
+    // 웹: 기존 Web Speech API
     if (!("speechSynthesis" in window)) return;
 
     window.speechSynthesis.cancel();
@@ -658,6 +694,10 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
     if (!recognition) return;
 
     window.speechSynthesis?.cancel();
+    if (Capacitor.isNativePlatform()) {
+      void TextToSpeech.stop();
+      setIsSpeaking(false);
+    }
     setIsListening(true);
     setVoiceStatus("듣고 있어요. 질문을 말해주세요.");
     recognition.start();
@@ -736,10 +776,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
 
         <div className="character-stage" aria-label="Live2D 캐릭터 영역">
           <div className="stadium-light"></div>
-          <Character3D isSpeaking={isSpeaking} className="character" />
-          <div id="speechBubble" className="speech-bubble">
-            {speechBubble}
-          </div>
+          <CharacterLive2D isSpeaking={isSpeaking} className="character" />
         </div>
       </section>
 

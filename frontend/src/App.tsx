@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiUrl } from "./api";
 import { LoginView } from "./components/LoginView";
 import { MainView } from "./components/MainView";
 import { RegisterView } from "./components/RegisterView";
@@ -46,7 +47,7 @@ export function App() {
     setLoginNotice("");
 
     try {
-      const response = await fetch("/auth/login", {
+      const response = await fetch(apiUrl("/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: id, password }),
@@ -85,7 +86,7 @@ export function App() {
     setRegisterError("");
 
     try {
-      const response = await fetch("/auth/register", {
+      const response = await fetch(apiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
