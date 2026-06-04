@@ -66,9 +66,12 @@ def fetch_today_games(session, today):
         if not m:
             continue
         away, a_sc, h_sc, home = m.group(1), m.group(2), m.group(3), m.group(4)
+        # 취소 사유 텍스트 그대로 캡처 (우천취소/미세먼지취소/폭염취소 등)
+        cancel_reason = next((strip_html(c.get("Text", "")) for c in cells
+                              if "취소" in strip_html(c.get("Text", ""))), "")
         games.append({"time": time_c, "away": away, "home": home,
                       "away_score": a_sc, "home_score": h_sc,
-                      "canceled": "취소" in alltxt})
+                      "canceled": bool(cancel_reason), "cancel_reason": cancel_reason})
     return games
 
 
@@ -150,9 +153,11 @@ def main():
         # ----- 상태 변화 감지 -----
         if g["status"] == "취소":
             if prev and prev["status"] == "예정":     # 예정 → 취소 (지켜본 변화)
-                _send(cur, tokens, "☔ 경기 취소",
-                      f"오늘 {vs} 경기가 우천취소됐어요.",
-                      {"type": "canceled", "away": g["away"], "home": g["home"]}, dry)
+                reason = g.get("cancel_reason") or "경기 취소"   # 실제 사유 그대로
+                _send(cur, tokens, "⚠️ 경기 취소",
+                      f"오늘 {vs} 경기가 {reason}됐어요.",
+                      {"type": "canceled", "reason": reason,
+                       "away": g["away"], "home": g["home"]}, dry)
         elif g["status"] == "종료":
             if prev and prev["status"] == "예정":     # 예정 → 종료 (점수는 스포라 노출 X)
                 _send(cur, tokens, "🎉 경기 종료",
