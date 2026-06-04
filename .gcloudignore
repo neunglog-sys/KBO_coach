@@ -1,0 +1,33 @@
+# Cloud Run 소스 배포 업로드 제외 목록.
+# 주의: 이 파일이 있으면 gcloud는 .gitignore를 안 보므로, 시크릿도 여기 다 적어야 함.
+
+# --- 시크릿 (절대 업로드 금지) ---
+.env
+.env.*
+!.env.example
+env.yaml
+env*.yaml
+*firebase-adminsdk*.json
+serviceAccountKey.json
+*.pem
+*.key
+
+# --- 백엔드 배포에 불필요 (용량/무관) ---
+frontend/
+data/
+logs/
+test/
+model/
+docs/
+
+# --- VCS / 캐시 ---
+.git/
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# --- 호스트 전용 스크립트 ---
+run_*.bat
