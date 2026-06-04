@@ -8,9 +8,34 @@ const DEMO_AUTH = {
   pw: "admin1234",
 };
 
+const AUTH_SESSION_KEY = "baseballCoachAuth";
+
+function loadAuthSession() {
+  const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
+  if (!saved) {
+    return { isLoggedIn: false, authToken: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(saved) as { authToken?: string; isLoggedIn?: boolean };
+    return {
+      isLoggedIn: Boolean(parsed.isLoggedIn),
+      authToken: parsed.authToken || "",
+    };
+  } catch {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+    return { isLoggedIn: false, authToken: "" };
+  }
+}
+
+function saveAuthSession(authToken: string) {
+  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ isLoggedIn: true, authToken }));
+}
+
 export function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authToken, setAuthToken] = useState("");
+  const [authSession] = useState(loadAuthSession);
+  const [isLoggedIn, setIsLoggedIn] = useState(authSession.isLoggedIn);
+  const [authToken, setAuthToken] = useState(authSession.authToken);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
@@ -29,8 +54,10 @@ export function App() {
 
       if (response.ok) {
         const data = await response.json();
-        setAuthToken(data.access_token || data.token || "");
+        const token = data.access_token || data.token || "";
+        setAuthToken(token);
         setIsLoggedIn(true);
+        saveAuthSession(token);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
@@ -41,6 +68,7 @@ export function App() {
     if (id === DEMO_AUTH.id && password === DEMO_AUTH.pw) {
       setAuthToken("");
       setIsLoggedIn(true);
+      saveAuthSession("");
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
@@ -86,6 +114,7 @@ export function App() {
 
   function handleLogout() {
     window.speechSynthesis?.cancel();
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
     setAuthToken("");
     setIsLoggedIn(false);
     setLoginError("");

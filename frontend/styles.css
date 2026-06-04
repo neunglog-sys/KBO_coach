@@ -202,7 +202,8 @@ select:focus {
 .chat-panel {
   display: grid;
   grid-template-rows: auto auto 1fr auto auto;
-  min-height: 520px;
+  height: 620px;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 8px;
   padding: 18px;
@@ -383,11 +384,14 @@ select:focus {
 .records-layout {
   display: grid;
   grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.35fr);
+  align-items: start;
   gap: 18px;
 }
 
 .standings-panel,
 .schedule-panel {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   border: 1px solid rgba(17, 24, 39, 0.12);
   border-radius: 8px;
@@ -420,11 +424,20 @@ select:focus {
   overflow-x: auto;
 }
 
+.standings-panel > .table-scroll {
+  flex: 1;
+}
+
 .data-table {
   width: 100%;
   min-width: 520px;
   border-collapse: collapse;
   font-size: 0.9rem;
+}
+
+.standings-table {
+  min-width: 0;
+  table-layout: fixed;
 }
 
 .data-table th,
@@ -440,6 +453,34 @@ select:focus {
   background: rgba(22, 121, 75, 0.08);
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.standings-table th,
+.standings-table td {
+  padding-right: 8px;
+  padding-left: 8px;
+  text-align: center;
+}
+
+.standings-table th:nth-child(1),
+.standings-table td:nth-child(1) {
+  width: 68px;
+}
+
+.standings-table th:nth-child(2),
+.standings-table td:nth-child(2),
+.standings-table th:nth-child(3),
+.standings-table td:nth-child(3),
+.standings-table th:nth-child(4),
+.standings-table td:nth-child(4),
+.standings-table th:nth-child(5),
+.standings-table td:nth-child(5) {
+  width: calc((100% - 154px) / 4);
+}
+
+.standings-table th:nth-child(6),
+.standings-table td:nth-child(6) {
+  width: 86px;
 }
 
 .data-table tbody tr:nth-child(even) {
@@ -474,6 +515,8 @@ select:focus {
 }
 
 .schedule-day {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(17, 24, 39, 0.1);
   border-radius: 8px;
@@ -503,6 +546,309 @@ select:focus {
 
 .schedule-table {
   min-width: 460px;
+}
+
+.schedule-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.schedule-tabs button {
+  min-width: 50px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.74);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.schedule-tabs button:hover,
+.schedule-tabs button:focus-visible {
+  border-color: rgba(22, 121, 75, 0.42);
+  color: var(--field);
+}
+
+.schedule-tabs button.is-active {
+  border-color: transparent;
+  color: #fff;
+  background: var(--field);
+}
+
+.stadium-guide-panel {
+  margin-top: 18px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.stadium-guide-heading {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.stadium-guide-heading h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.stadium-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 82px;
+  gap: 8px;
+  align-items: center;
+}
+
+.stadium-search input {
+  min-height: 44px;
+}
+
+.stadium-search button {
+  min-height: 44px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--field);
+  font-weight: 900;
+}
+
+.stadium-search .text-button {
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  color: var(--navy);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.stadium-status {
+  margin: 14px 18px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.stadium-guide-content {
+  padding: 16px 18px 18px;
+}
+
+.stadium-overview {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stadium-overview h4 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.stadium-overview dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.stadium-overview dl div {
+  min-width: 0;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.stadium-overview dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.stadium-overview dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.stadium-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stadium-info-block {
+  min-width: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.stadium-info-block h4 {
+  position: sticky;
+  top: -14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -14px -14px 10px;
+  padding: 12px 14px;
+  color: #fff;
+  background: linear-gradient(90deg, var(--navy), #1f5d45);
+  font-size: 0.98rem;
+}
+
+.stadium-info-block h4 button {
+  min-height: auto;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.food-info-block h4 button:first-child::after {
+  content: "  크게 보기";
+  margin-left: 8px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.74rem;
+}
+
+.food-info-block.is-expanded h4 button:first-child::after {
+  content: "";
+}
+
+.stadium-expand-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  border: 0;
+  background: rgba(2, 8, 28, 0.44);
+  backdrop-filter: blur(3px);
+  animation: stadium-backdrop-in 0.18s ease-out;
+}
+
+.stadium-info-block.is-expanded {
+  position: fixed;
+  z-index: 90;
+  inset: 7vh 6vw;
+  max-height: none;
+  padding: 18px;
+  box-shadow: 0 28px 80px rgba(2, 8, 28, 0.34);
+  animation: stadium-panel-expand 0.24s ease-out;
+}
+
+.stadium-info-block.is-expanded h4 {
+  top: -18px;
+  margin: -18px -18px 14px;
+  padding: 16px 18px;
+  font-size: 1.16rem;
+}
+
+.stadium-expand-close {
+  border: 1px solid rgba(255, 255, 255, 0.46) !important;
+  border-radius: 999px !important;
+  padding: 5px 10px !important;
+  font-size: 0.76rem !important;
+}
+
+.stadium-info-block p {
+  margin: 0 0 9px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.stadium-info-block p:last-child {
+  margin-bottom: 0;
+}
+
+.food-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.food-table-wrap {
+  overflow-x: auto;
+}
+
+.food-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.is-expanded .food-table {
+  font-size: 0.94rem;
+}
+
+.is-expanded .food-pairing-table th {
+  width: 190px;
+}
+
+.is-expanded .food-pairing-table th,
+.is-expanded .food-pairing-table td {
+  white-space: nowrap;
+}
+
+.food-table caption {
+  margin-bottom: 6px;
+  color: var(--navy);
+  font-weight: 900;
+  text-align: left;
+}
+
+.food-table th,
+.food-table td {
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  padding: 8px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.food-table th {
+  width: 74px;
+  color: var(--field);
+  background: rgba(22, 121, 75, 0.08);
+  font-weight: 900;
+}
+
+.food-table td {
+  background: rgba(248, 250, 252, 0.7);
+  line-height: 1.45;
+}
+
+@keyframes stadium-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes stadium-panel-expand {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes idle-breath {
@@ -549,10 +895,16 @@ select:focus {
   }
 
   .chat-panel {
-    min-height: 420px;
+    height: 620px;
   }
 
   .records-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stadium-guide-heading,
+  .stadium-overview dl,
+  .stadium-info-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -597,5 +949,13 @@ select:focus {
   .data-table th,
   .data-table td {
     padding: 11px 12px;
+  }
+
+  .stadium-search {
+    grid-template-columns: 1fr;
+  }
+
+  .stadium-info-block {
+    max-height: 320px;
   }
 }
