@@ -29,6 +29,23 @@ CREATE TABLE IF NOT EXISTS favorites (
 
 CREATE INDEX IF NOT EXISTS idx_visits_user ON visits(user_id);
 
+CREATE TABLE IF NOT EXISTS my_baseball_records (
+    record_id   SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    record_date DATE    NOT NULL,
+    game_id     VARCHAR(20),
+    team_code   VARCHAR(4),
+    stadium     VARCHAR(50),
+    mood        VARCHAR(16) NOT NULL CHECK (mood IN ('win_happy', 'draw_calm', 'loss_sad')),
+    memo        TEXT,
+    created_at  TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_my_baseball_records_user
+    ON my_baseball_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_my_baseball_records_user_date
+    ON my_baseball_records(user_id, record_date DESC);
+
 
 -- ===== 정적 야구정보 (데이터는 수집 후 적재; 지금은 테이블만) =====
 
