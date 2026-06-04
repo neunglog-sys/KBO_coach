@@ -4,6 +4,7 @@ name: Deploy to GCP
 on:
   push:
     branches: [dev]
+  workflow_dispatch:   # Actions 탭에서 수동 실행(테스트·강제배포용)
 
 jobs:
   changes:
@@ -27,7 +28,7 @@ jobs:
 
   deploy-backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +61,7 @@ jobs:
 
   deploy-frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
