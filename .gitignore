@@ -19,6 +19,8 @@ serviceAccountKey.json
 # Cloud Run 배포용 환경변수 파일 (시크릿 포함)
 env.yaml
 env*.yaml
+# Firebase Hosting 배포 캐시
+.firebase/
 
 # Logs
 *.log

@@ -30,7 +30,7 @@ KBO 데일리 크롤러
          숫자는 숫자 타입, 빈값(&nbsp; 등)은 null.
 """
 from __future__ import annotations
-import sys, time, json, re, math, datetime, pathlib
+import os, sys, time, json, re, math, datetime, pathlib
 import html as htmllib
 from io import StringIO
 import requests
@@ -353,8 +353,9 @@ def main() -> int:
         cached = None
     data_date, games_df = find_last_games(session, yday, cached)
     ddir = data_date.isoformat()
-    # 출력은 프로젝트 표준 위치 data/crawling/<기준일>/ 로 (services/crawler/ 기준 루트는 parents[2])
-    outdir = pathlib.Path(__file__).resolve().parents[2] / "data" / "crawling" / ddir
+    # 출력 위치: 기본 data/crawling/, 컨테이너(읽기전용 FS)에선 CRAWL_DIR=/tmp/crawling 등으로 지정
+    _base = os.environ.get("CRAWL_DIR") or str(pathlib.Path(__file__).resolve().parents[2] / "data" / "crawling")
+    outdir = pathlib.Path(_base) / ddir
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"  데이터 기준일: {ddir}  → {outdir}")
 

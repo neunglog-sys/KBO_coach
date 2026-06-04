@@ -1,0 +1,30 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/auth{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/chat{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/weather{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/standings{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/hitters{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/pitchers{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/players{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/games{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/schedule{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/teams{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/glossary{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/stadiums{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/rules{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/cheering{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/umpire_signals{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/visits{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/favorites{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/recommendations{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/board{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/my-records{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/push{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}
