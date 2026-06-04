@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { fallbackAnswers } from "../data/baseballBasics";
 import { kboTeams } from "../data/kboTeams";
 import Character3D from "./Character3D";
+import AttendanceCheckIn from "./AttendanceCheckIn";
 
 type MessageType = "bot" | "user";
 
@@ -147,6 +148,8 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
   const [speechBubble, setSpeechBubble] = useState("팀을 고르고 질문을 말해보세요.");
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [attendanceCheckedToday, setAttendanceCheckedToday] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [messageId, setMessageId] = useState(2);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -174,6 +177,30 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
     () => parseFoodInfo(selectedStadiumGuide?.food || selectedStadiumGuide?.restaurants),
     [selectedStadiumGuide],
   );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadAttendanceStatus() {
+      try {
+        const response = await fetch("/attendance/status", {
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { checked_today?: boolean };
+        if (!ignore) {
+          setAttendanceCheckedToday(Boolean(data.checked_today));
+        }
+      } catch {
+        setAttendanceCheckedToday(false);
+      }
+    }
+
+    loadAttendanceStatus();
+    return () => {
+      ignore = true;
+    };
+  }, [authToken]);
 
   function findStadiumGuide(query: string) {
     const normalizedQuery = normalizeText(query);
@@ -676,6 +703,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
       </header>
 
       <section className="hero-layout" aria-label="질문 답변">
+        <div className="left-column">
         <aside className="chat-panel">
           <div className="panel-heading">
             <p className="eyebrow">Voice Question</p>
@@ -734,6 +762,18 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
           </p>
         </aside>
 
+        <button
+          className={`attendance-entry-tile attendance-entry-standalone ${isAttendanceOpen ? "is-active" : ""}`}
+          type="button"
+          onClick={() => setIsAttendanceOpen((open) => !open)}
+          aria-pressed={isAttendanceOpen}
+        >
+          <span>{attendanceCheckedToday ? "\ucd9c\uc11d\uc644\ub8cc" : "\ucd9c\uc11d"}</span>
+          <strong>{attendanceCheckedToday ? "\uc624\ub298 \uc644\ub8cc" : "\uc624\ub298 +20 XP"}</strong>
+        </button>
+
+        </div>
+
         <div className="character-stage" aria-label="Live2D 캐릭터 영역">
           <div className="stadium-light"></div>
           <Character3D isSpeaking={isSpeaking} className="character" />
@@ -742,6 +782,32 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
           </div>
         </div>
       </section>
+
+      {isAttendanceOpen ? (
+        <div
+          className="attendance-window-backdrop"
+          role="presentation"
+          onClick={() => setIsAttendanceOpen(false)}
+        >
+          <section
+            className="attendance-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="\ucd9c\uc11d \uccb4\ud06c"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="attendance-window-close"
+              type="button"
+              aria-label="\ucd9c\uc11d \ucc3d \ub2eb\uae30"
+              onClick={() => setIsAttendanceOpen(false)}
+            >
+              {"\ub2eb\uae30"}
+            </button>
+            <AttendanceCheckIn authToken={authToken} onCheckedTodayChange={setAttendanceCheckedToday} />
+          </section>
+        </div>
+      ) : null}
 
       <section className="records-section" aria-labelledby="recordsTitle">
         <div className="section-title records-title">

@@ -17,6 +17,8 @@ from board import router as board_router
 from my_records import router as my_records_router
 from push import router as push_router
 from internal import router as internal_router
+from attendance import router as attendance_router
+from quiz import router as quiz_router
 
 app = FastAPI(title="KBO Baseball Helper API", version="0.1.0")
 
@@ -32,7 +34,8 @@ app.add_middleware(
 )
 
 for r in (auth_router, info_router, visits_router, chat_router, weather_router,
-          board_router, my_records_router, push_router, internal_router):
+          board_router, my_records_router, push_router, internal_router, attendance_router,
+          quiz_router):
     app.include_router(r)
 
 
