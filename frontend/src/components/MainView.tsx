@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { fallbackAnswers } from "../data/baseballBasics";
 import { kboTeams } from "../data/kboTeams";
+import Character3D from "./Character3D";
 
 type MessageType = "bot" | "user";
 
@@ -735,11 +736,7 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
 
         <div className="character-stage" aria-label="Live2D 캐릭터 영역">
           <div className="stadium-light"></div>
-          <img
-            src="img/character.png"
-            alt="야구 초보자를 안내하는 야구공 캐릭터"
-            className={`character ${isSpeaking ? "is-speaking" : ""}`}
-          />
+          <Character3D isSpeaking={isSpeaking} className="character" />
           <div id="speechBubble" className="speech-bubble">
             {speechBubble}
           </div>

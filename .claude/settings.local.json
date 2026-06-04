@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"html:%{http_code}\\\\n\" http://127.0.0.1:8123/test/index.html)",
+      "Bash(curl -s -o /dev/null -w \"glb:%{http_code} size:%{size_download}\\\\n\" -r 0-1024 \"http://127.0.0.1:8123/model/model_bcakup_2.glb\")",
+      "Bash(npm install *)",
+      "Bash([ -d \"node_modules/$p\" ])",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python -c \"import psycopg; print\\('psycopg', psycopg.__version__\\)\")",
+      "Bash(python -c \"import psycopg2; print\\('psycopg2 ok'\\)\")"
+    ]
+  }
+}
