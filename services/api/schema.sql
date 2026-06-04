@@ -127,3 +127,12 @@ CREATE TABLE IF NOT EXISTS stadiums ( -- 구장 안내
     subway VARCHAR(100),
     food TEXT
 );
+
+CREATE TABLE IF NOT EXISTS quiz ( -- 다마고치 OX 퀴즈
+    quiz_id SERIAL PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer BOOLEAN NOT NULL,          -- O=true, X=false
+    explanation TEXT,
+    difficulty VARCHAR(10),           -- 왕초보/초보/중급/고급
+    category VARCHAR(30)              -- 규칙/용어/기록/관람/역사
+);

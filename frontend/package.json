@@ -7,10 +7,19 @@
     "dev": "vite --host 127.0.0.1 --port 5000",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
+    "build:android": "vite build --mode android",
+    "android:sync": "npm run build:android && cap sync android",
+    "android:open": "npm run android:sync && cap open android",
     "preview": "vite preview --host 127.0.0.1 --port 5000"
   },
   "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.0",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.160.0"
