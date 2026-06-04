@@ -13,6 +13,9 @@ desktop.ini
 !.env.example
 *.pem
 *.key
+# Firebase 서비스 계정 키 (FCM 발송용 — 절대 커밋 금지)
+*firebase-adminsdk*.json
+serviceAccountKey.json
 
 # Logs
 *.log
@@ -66,7 +69,7 @@ embeddings/
 *.db
 
 # 호스트 전용 실행 스크립트 (각자 python 경로·경로 하드코딩)
-run_daily.bat
+run_*.bat
 
 # Temporary files
 tmp/
