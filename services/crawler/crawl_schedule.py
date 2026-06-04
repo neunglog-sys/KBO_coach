@@ -101,6 +101,15 @@ def main() -> int:
     if ops:
         db.schedule.bulk_write(ops, ordered=False)
 
+    # gameId 부여되며 생긴 None 쌍둥이 제거 (같은 date+원정+홈에 gameId 문서가 있으면 None 문서 삭제)
+    gid_keys = {(d["date"], d["원정팀"], d["홈팀"])
+                for d in db.schedule.find({"gameId": {"$ne": None}}, {"date": 1, "원정팀": 1, "홈팀": 1})}
+    stale = [d["_id"] for d in db.schedule.find({"gameId": None}, {"date": 1, "원정팀": 1, "홈팀": 1})
+             if (d["date"], d["원정팀"], d["홈팀"]) in gid_keys]
+    if stale:
+        db.schedule.delete_many({"_id": {"$in": stale}})
+        print(f"중복 정리: gameId 쌍둥이 None 잔재 {len(stale)}건 삭제")
+
     done = sum(1 for g in all_games if g["상태"] == "종료")
     print(f"완료: {len(all_games)}경기 (종료 {done} / 예정 {len(all_games)-done}) → schedule 컬렉션 총 {db.schedule.count_documents({})}")
     return 0
