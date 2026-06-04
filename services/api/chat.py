@@ -16,8 +16,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from db_pg import get_conn
+from embeddings import embed_text, to_pgvector
 
 router = APIRouter(tags=["chat"])
+
+CHUNK_MIN_SCORE = 0.45   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -58,24 +61,43 @@ def _build_system_prompt(persona: dict | None) -> str:
     )
 
 
-def _retrieve(cur, question: str):
-    """질문에 등장하는 용어·규칙을 끌어와 참고자료로 사용 (간단 키워드 매칭)."""
+def _retrieve(cur, question: str, team_code: str | None):
+    """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색)."""
     cur.execute("SELECT term, definition FROM glossary "
                 "WHERE %s ILIKE '%%' || term || '%%' ORDER BY length(term) DESC LIMIT 5", (question,))
     terms = cur.fetchall()
     cur.execute("SELECT topic, content FROM rules "
                 "WHERE %s ILIKE '%%' || topic || '%%' LIMIT 3", (question,))
     rules = cur.fetchall()
-    return terms, rules
+
+    # knowledge_chunks 벡터 유사도 검색 (질문 임베딩 → 코사인 거리 정렬)
+    chunks = []
+    try:
+        qvec = to_pgvector(embed_text(question, task_type="RETRIEVAL_QUERY"))
+        if team_code:   # 페르소나 팀 + 공통(team_code NULL) 청크로 한정
+            cur.execute("""SELECT title, content, 1 - (embedding <=> %s::vector) AS score
+                           FROM knowledge_chunks
+                           WHERE embedding IS NOT NULL AND (team_code = %s OR team_code IS NULL)
+                           ORDER BY embedding <=> %s::vector LIMIT 3""", (qvec, team_code, qvec))
+        else:
+            cur.execute("""SELECT title, content, 1 - (embedding <=> %s::vector) AS score
+                           FROM knowledge_chunks WHERE embedding IS NOT NULL
+                           ORDER BY embedding <=> %s::vector LIMIT 3""", (qvec, qvec))
+        chunks = [r for r in cur.fetchall() if r["score"] >= CHUNK_MIN_SCORE]
+    except Exception:
+        chunks = []   # 임베딩 호출 실패해도 용어·규칙만으로 동작
+    return terms, rules, chunks
 
 
-def _format_context(terms, rules) -> str:
+def _format_context(terms, rules, chunks) -> str:
     lines = []
     for t in terms:
         lines.append(f"- 용어 '{t['term']}': {t['definition']}")
     for r in rules:
         lines.append(f"- 규칙 '{r['topic']}': {r['content']}")
-    return "\n".join(lines) if lines else "(관련 용어·규칙 없음)"
+    for ch in chunks:
+        lines.append(f"- 구단정보 '{ch['title']}': {ch['content']}")
+    return "\n".join(lines) if lines else "(관련 자료 없음)"
 
 
 @router.post("/chat")
@@ -87,13 +109,14 @@ def chat(body: ChatIn):
             if body.team_code:
                 cur.execute("SELECT * FROM team_personas WHERE team_code = %s", (body.team_code,))
                 persona = cur.fetchone()
-            terms, rules = _retrieve(cur, body.question)
+            terms, rules, chunks = _retrieve(cur, body.question, body.team_code)
     finally:
         conn.close()
 
-    context_text = _format_context(terms, rules)
+    context_text = _format_context(terms, rules, chunks)
     used = {"persona": persona.get("team_name") if persona else None,
-            "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules]}
+            "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules],
+            "culture": [ch["title"] for ch in chunks]}
 
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
