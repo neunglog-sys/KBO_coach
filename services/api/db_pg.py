@@ -17,8 +17,11 @@ def _load_dotenv(path: pathlib.Path):
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-_ROOT = pathlib.Path(__file__).resolve().parents[2]
-_load_dotenv(_ROOT / ".env")
+# .env는 로컬 개발용(컨테이너/배포 환경엔 없음 → os.environ 사용).
+for _parent in pathlib.Path(__file__).resolve().parents:
+    if (_parent / ".env").exists():
+        _load_dotenv(_parent / ".env")
+        break
 
 # URL을 파싱해 keyword 인자로 연결 (비번 특수문자 안전)
 _u = urlparse(os.environ["DATABASE_URL"])
