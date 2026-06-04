@@ -101,7 +101,14 @@ def _tokens_for(cur, away, home):
     return [r["token"] for r in cur.fetchall()]
 
 
-def _send(cur, tokens, title, body, data, dry):
+def _send(cur, conn, event_key, tokens, title, body, data, dry):
+    # 원자적 중복방지: event_key를 처음 INSERT한 실행만 발송(동시 실행·재시도 레이스 방어).
+    if event_key and not dry:
+        cur.execute("INSERT INTO notified_events (event_key) VALUES (%s) ON CONFLICT DO NOTHING", (event_key,))
+        claimed = cur.rowcount == 1
+        conn.commit()
+        if not claimed:
+            return   # 이미 다른 실행이 발송함
     print(f"  → 발송: {title} | {body} (토큰 {len(tokens)}개)")
     if dry or not tokens:
         return
@@ -109,6 +116,7 @@ def _send(cur, tokens, title, body, data, dry):
     print("    결과:", res)
     if res["invalid_tokens"]:
         cur.execute("DELETE FROM push_tokens WHERE token = ANY(%s)", (res["invalid_tokens"],))
+        conn.commit()
 
 
 def main():
@@ -134,6 +142,8 @@ def main():
         game_time        VARCHAR(8),
         started_notified BOOLEAN NOT NULL DEFAULT FALSE,
         updated_at       TIMESTAMP NOT NULL DEFAULT now())""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS notified_events (
+        event_key VARCHAR(80) PRIMARY KEY, sent_at TIMESTAMP NOT NULL DEFAULT now())""")
     conn.commit()
 
     for g in games:
@@ -146,7 +156,7 @@ def main():
 
         # ----- 점검용: 시간·상태 무시하고 강제 발송 -----
         if test:
-            _send(cur, tokens, "⚾ 곧 경기 시작!", f"{vs} 경기가 {g['time']}에 시작돼요!",
+            _send(cur, conn, None, tokens, "⚾ 곧 경기 시작!", f"{vs} 경기가 {g['time']}에 시작돼요!",
                   {"type": "game_soon", "away": g["away"], "home": g["home"]}, dry)
             continue
 
@@ -154,20 +164,20 @@ def main():
         if g["status"] == "취소":
             if prev and prev["status"] == "예정":     # 예정 → 취소 (지켜본 변화)
                 reason = g.get("cancel_reason") or "경기 취소"   # 실제 사유 그대로
-                _send(cur, tokens, "⚠️ 경기 취소",
+                _send(cur, conn, f"{key}_cancel", tokens, "⚠️ 경기 취소",
                       f"오늘 {vs} 경기가 {reason}됐어요.",
                       {"type": "canceled", "reason": reason,
                        "away": g["away"], "home": g["home"]}, dry)
         elif g["status"] == "종료":
             if prev and prev["status"] == "예정":     # 예정 → 종료 (점수는 스포라 노출 X)
-                _send(cur, tokens, "🎉 경기 종료",
+                _send(cur, conn, f"{key}_finish", tokens, "🎉 경기 종료",
                       f"오늘 {vs} 경기가 끝났어요! 앱에서 결과를 확인해보세요.",
                       {"type": "finished", "away": g["away"], "home": g["home"]}, dry)
         elif g["status"] == "예정":
             # 시작시각 변경(지연)
             if prev and prev["status"] == "예정" and prev["game_time"] and g["time"] \
                     and prev["game_time"] != g["time"]:
-                _send(cur, tokens, "⏰ 경기 시간 변경",
+                _send(cur, conn, f"{key}_time_{g['time']}", tokens, "⏰ 경기 시간 변경",
                       f"{vs} 시작이 {prev['game_time']} → {g['time']}로 변경됐어요.",
                       {"type": "time_change", "away": g["away"], "home": g["home"]}, dry)
             # 곧 시작 (10분 전, 1회)
@@ -175,7 +185,8 @@ def main():
                 hh, mm = map(int, g["time"].split(":"))
                 minutes = (datetime.datetime.combine(today, datetime.time(hh, mm)) - now).total_seconds() / 60
                 if 0 < minutes <= ALERT_MIN:
-                    _send(cur, tokens, "⚾ 곧 경기 시작!", f"{vs} 경기가 {g['time']}에 시작돼요!",
+                    _send(cur, conn, f"{key}_start", tokens, "⚾ 곧 경기 시작!",
+                          f"{vs} 경기가 {g['time']}에 시작돼요!",
                           {"type": "game_soon", "away": g["away"], "home": g["home"]}, dry)
                     started = True
 
