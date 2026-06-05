@@ -115,7 +115,7 @@ export async function getRecordByDate(date: string): Promise<any | null> {
 /** 현재 로컬 DB를 .sqlite 파일로 다운로드 → 'DB Browser for SQLite' 등으로 열어 확인. */
 export async function exportDb(filename = "kbo_local.sqlite"): Promise<void> {
   const c = await conn();
-  const blob = new Blob([c.export()], { type: "application/x-sqlite3" });
+  const blob = new Blob([c.export() as BlobPart], { type: "application/x-sqlite3" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
