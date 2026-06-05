@@ -4,9 +4,10 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import { fallbackAnswers } from "../data/baseballBasics";
 import { kboTeams } from "../data/kboTeams";
-// import Character3D from "./Character3D";
-// Live2D 캐릭터 사용 중. 3D로 되돌리려면 위 줄 주석 해제 + 아래 줄 주석 + JSX 교체.
-import CharacterLive2D from "./CharacterLive2D";
+import Character3D from "./Character3D";
+import { setActiveViseme, clearMouth } from "../lipSync";
+// 3D(glb) 캐릭터 사용 중. Live2D로 되돌리려면 위 줄 주석 + 아래 줄 주석 해제 + JSX 교체.
+// import CharacterLive2D from "./CharacterLive2D";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 
 type MessageType = "bot" | "user";
@@ -168,6 +169,9 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
   const [isFoodExpanded, setIsFoodExpanded] = useState(false);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // Azure TTS 재생용 오디오 + viseme(입모양 타이밍) 보관 (추후 3D 입모양 립싱크에 사용)
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const visemeRef = useRef<Array<{ offset: number; id: number }>>([]);
 
   const supportsSpeechRecognition = useMemo(
     () => Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
@@ -626,8 +630,72 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
     return buildDemoAnswer(userQuestion);
   }
 
+  /** Azure TTS(/tts)로 음성+viseme를 받아 재생. 성공 시 true. */
+  async function speakWithAzure(text: string): Promise<boolean> {
+    try {
+      // 이전 재생 중지
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current = null;
+      }
+      const resp = await fetch(apiUrl("/tts"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!resp.ok) return false; // 503(미설정)/502 등 → 기기 TTS로 폴백
+      const data = await resp.json();
+      if (!data.audio) return false;
+
+      const visemes = Array.isArray(data.visemes) ? data.visemes : [];
+      visemeRef.current = visemes;
+      const audio = new Audio(`data:${data.mime || "audio/mpeg"};base64,${data.audio}`);
+      ttsAudioRef.current = audio;
+
+      return await new Promise<boolean>((resolve) => {
+        let settled = false;
+        let lipRaf = 0;
+
+        // 오디오 재생 시간 ↔ viseme 타임라인 매칭 → 현재 입모양 설정
+        const driveLipSync = () => {
+          const tMs = audio.currentTime * 1000;
+          let activeId = 0;
+          for (let i = 0; i < visemes.length; i++) {
+            if (visemes[i].offset <= tMs) activeId = visemes[i].id;
+            else break;
+          }
+          setActiveViseme(activeId);
+          lipRaf = requestAnimationFrame(driveLipSync);
+        };
+
+        const done = (ok: boolean) => {
+          if (settled) return;
+          settled = true;
+          cancelAnimationFrame(lipRaf);
+          clearMouth();
+          setIsSpeaking(false);
+          if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+          resolve(ok);
+        };
+        audio.onplay = () => {
+          setIsSpeaking(true);
+          lipRaf = requestAnimationFrame(driveLipSync);
+        };
+        audio.onended = () => done(true);
+        audio.onerror = () => done(false);
+        audio.play().catch(() => done(false));
+      });
+    } catch (err) {
+      console.warn("[TTS] Azure 호출 실패 → 기기 TTS로 폴백", err);
+      return false;
+    }
+  }
+
   async function speakAnswer(text: string) {
     setSpeechBubble(text);
+
+    // 1순위: Azure Neural TTS (서버 /tts). 성공하면 여기서 끝.
+    if (await speakWithAzure(text)) return;
 
     // 네이티브(안드로이드/iOS): WebView의 speechSynthesis가 동작하지 않으므로 Capacitor TTS 사용.
     // 입 애니메이션은 isSpeaking에 묶여 있으므로, 발화 동안 isSpeaking을 켜둔다.
@@ -721,10 +789,15 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
     if (!recognition) return;
 
     window.speechSynthesis?.cancel();
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+    clearMouth();
     if (Capacitor.isNativePlatform()) {
       void TextToSpeech.stop();
-      setIsSpeaking(false);
     }
+    setIsSpeaking(false);
     setIsListening(true);
     setVoiceStatus("듣고 있어요. 질문을 말해주세요.");
     recognition.start();
@@ -814,9 +887,9 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
 
         </div>
 
-        <div className="character-stage" aria-label="Live2D 캐릭터 영역">
+        <div className="character-stage" aria-label="3D 캐릭터 영역">
           <div className="stadium-light"></div>
-          <CharacterLive2D isSpeaking={isSpeaking} className="character" />
+          <Character3D isSpeaking={isSpeaking} className="character" />
         </div>
       </section>
 

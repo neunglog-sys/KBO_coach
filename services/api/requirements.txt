@@ -7,3 +7,4 @@ python-jose[cryptography]
 email-validator
 requests
 firebase-admin
+azure-cognitiveservices-speech
