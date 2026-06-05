@@ -47,7 +47,8 @@
       "Bash(grep -vE \"android/app/build|frontend/dist|frontend/android/app/src/main/assets|node_modules|\\\\.glb$\")",
       "Bash(gcloud --version)",
       "Bash(gcloud config *)",
-      "Bash(firebase --version)"
+      "Bash(firebase --version)",
+      "Bash(npm run *)"
     ]
   }
 }
