@@ -8,6 +8,10 @@ export default defineConfig({
     port: 5000,
     strictPort: true,
     proxy: {
+      "/tts": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
       "/auth": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
