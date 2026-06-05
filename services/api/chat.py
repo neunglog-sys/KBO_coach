@@ -36,9 +36,6 @@ def _build_system_prompt(persona: dict | None) -> str:
     base_rules = (
         "\n[공통 규칙]\n"
         "- 야구를 처음 보는 사람도 이해하도록 쉽고 친근하게 설명한다.\n"
-        "- 답변은 기본적으로 3~6문장 안에서 끝낸다.\n"
-        "- 꼭 필요한 경우가 아니면 번호 목록을 쓰지 않는다.\n"
-        "- 긴 설명보다 짧은 문단형 설명을 우선한다.\n"
         "- **굵은 강조 표시**를 남발하지 않는다. 원칙적으로 사용하지 않는다.\n"
         "- 같은 마무리 문장을 반복하지 않는다.\n"
         "- '환영해요', '쉽게 설명해드릴게요', '궁금한 점 있으면 물어보세요' 같은 상투적 문장을 반복하지 않는다.\n"
@@ -62,9 +59,6 @@ def _build_system_prompt(persona: dict | None) -> str:
         f"[성격 키워드] {p.get('personality_keywords')}\n"
         f"[성격] {p.get('personality_core')}\n"
         f"[말투] {p.get('speaking_features')}\n"
-        f"[자주 쓰는 말 후보] {p.get('common_phrases')}\n"
-        f"- 위 표현은 캐릭터 참고용이며, 매 답변마다 반복하지 않는다.\n"
-        f"- 같은 표현을 여러 번 쓰지 말고, 상황에 맞을 때만 아주 가볍게 사용한다.\n"
         f"[답변 방식] {p.get('response_style')}\n"
         f"[금지 사항] {prohibited}\n"
         + base_rules
@@ -134,14 +128,25 @@ def chat(body: ChatIn):
                 "context": used}
 
     system = _build_system_prompt(persona)
-    user = f"[참고자료]\n{context_text}\n\n[질문]\n{body.question}"
+    user = f"""[참고자료]
+    {context_text}
+
+    [질문]
+    {body.question}
+
+    [출력 조건]
+    질문이 단순 개념 질문이면 1~2문장, 120자 이내로 답한다.
+    규칙 비교, 상황 설명, 예외 설명이 필요할 때만 250자 이내로 답한다.
+    상투적인 마무리 격려 문장은 쓰지 않는다.
+    DB의 글자 수 제한을 반드시 따른다.
+    """
     try:
         resp = requests.post(
             GEMINI_URL, params={"key": key},
             json={
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
-                "generationConfig": {"temperature": 0.65, "maxOutputTokens": 450},
+                "generationConfig": {"temperature": 0.65, "maxOutputTokens": 250},
             }, timeout=30)
         resp.raise_for_status()
         data = resp.json()
