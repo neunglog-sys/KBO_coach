@@ -79,13 +79,7 @@ CREATE TABLE IF NOT EXISTS team_personas (
     personality_keywords text,
     personality_core text,
     speaking_features text,
-    response_style text,
-    prohibited_user_response text,
-    prohibited_information text,
-    prohibited_team_fandom text,
-    prohibited_expression text,
-    prohibited_character_maintenance text,
-    prohibited_safety_ethics text
+    response_style text
 );
 
 CREATE TABLE IF NOT EXISTS rules ( -- 야구 규칙
