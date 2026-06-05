@@ -1,81 +1,93 @@
-// 로컬 SQLite (Capacitor) — 개인데이터를 폰/브라우저 안에만 저장 (서버 X).
-// 채팅 이력 + 나만의 기록(직관일기). 개인질문 답할 때 여기서 꺼내 /chat에 personal_context로 넘김.
-import { Capacitor } from "@capacitor/core";
-import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from "@capacitor-community/sqlite";
-import { defineCustomElements as jeepSqlite } from "jeep-sqlite/loader";
+// 로컬 SQLite (sql.js wasm) — 웹·Capacitor WebView 어디서나 동일하게 동작.
+// 개인데이터(채팅이력·직관기록)를 브라우저/기기 안에만 저장(서버 X). 영속은 IndexedDB.
+import initSqlJs, { Database } from "sql.js";
+import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";   // Vite가 wasm을 올바른 URL로 서빙
 
-const DB_NAME = "kbo_local";
-const sqlite = new SQLiteConnection(CapacitorSQLite);
-let db: SQLiteDBConnection | null = null;
+let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS chat_history (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id TEXT,
-  role       TEXT,           -- 'user' | 'bot'
-  content    TEXT,
-  team_code  TEXT,
-  created_at TEXT
+  session_id TEXT, role TEXT, content TEXT, team_code TEXT, created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS my_records (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  record_date TEXT,          -- YYYY-MM-DD
-  game_id     TEXT,
-  team_code   TEXT,
-  stadium     TEXT,
-  mood        TEXT,
-  memo        TEXT,
-  created_at  TEXT
+  record_date TEXT, game_id TEXT, team_code TEXT, stadium TEXT, mood TEXT, memo TEXT, created_at TEXT
 );
 `;
 
-const isWeb = () => Capacitor.getPlatform() === "web";
+// ---------- IndexedDB로 DB 바이트 영속 ----------
+const IDB_DB = "kbo_sqlite", IDB_STORE = "store", IDB_KEY = "db";
 
+function openIdb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbLoad(): Promise<Uint8Array | null> {
+  const d = await openIdb();
+  return new Promise((resolve, reject) => {
+    const r = d.transaction(IDB_STORE, "readonly").objectStore(IDB_STORE).get(IDB_KEY);
+    r.onsuccess = () => resolve((r.result as Uint8Array) ?? null);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbSave(bytes: Uint8Array): Promise<void> {
+  const d = await openIdb();
+  return new Promise((resolve, reject) => {
+    const r = d.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).put(bytes, IDB_KEY);
+    r.onsuccess = () => resolve();
+    r.onerror = () => reject(r.error);
+  });
+}
 async function persist() {
-  if (isWeb()) await sqlite.saveToStore(DB_NAME);   // 웹은 명시적으로 IndexedDB에 저장해야 영속됨
+  if (db) await idbSave(db.export());
 }
 
-/** 최초 1회: 웹 스토어 초기화 + 연결 + 테이블 생성. 여러 번 불러도 안전. */
+// ---------- 초기화 ----------
 export function initDb(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    if (isWeb()) {
-      jeepSqlite(window);
-      if (!document.querySelector("jeep-sqlite")) {
-        document.body.appendChild(document.createElement("jeep-sqlite"));
-      }
-      await customElements.whenDefined("jeep-sqlite");
-      await sqlite.initWebStore();
-    }
-    db = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
-    await db.open();
-    await db.execute(SCHEMA);
+    const SQL = await initSqlJs({ locateFile: () => sqlWasmUrl });
+    const saved = await idbLoad();
+    db = saved ? new SQL.Database(saved) : new SQL.Database();
+    db.run(SCHEMA);
     await persist();
   })();
   return initPromise;
 }
 
-async function conn(): Promise<SQLiteDBConnection> {
+async function conn(): Promise<Database> {
   if (!db) await initDb();
   return db!;
+}
+
+/** SELECT → 행 객체 배열 (파라미터 바인딩). */
+function select(c: Database, sql: string, params: any[] = []): any[] {
+  const stmt = c.prepare(sql);
+  stmt.bind(params);
+  const out: any[] = [];
+  while (stmt.step()) out.push(stmt.getAsObject());
+  stmt.free();
+  return out;
 }
 
 // ---------- 채팅 이력 ----------
 export async function saveChat(sessionId: string, role: "user" | "bot", content: string, teamCode: string) {
   const c = await conn();
-  await c.run(
-    "INSERT INTO chat_history (session_id, role, content, team_code, created_at) VALUES (?,?,?,?,?)",
+  c.run("INSERT INTO chat_history (session_id, role, content, team_code, created_at) VALUES (?,?,?,?,?)",
     [sessionId, role, content, teamCode, new Date().toISOString()]);
   await persist();
 }
-
 export async function getChatHistory(sessionId?: string): Promise<any[]> {
   const c = await conn();
-  const res = sessionId
-    ? await c.query("SELECT * FROM chat_history WHERE session_id=? ORDER BY id", [sessionId])
-    : await c.query("SELECT * FROM chat_history ORDER BY id DESC LIMIT 100");
-  return res.values ?? [];
+  return sessionId
+    ? select(c, "SELECT * FROM chat_history WHERE session_id=? ORDER BY id", [sessionId])
+    : select(c, "SELECT * FROM chat_history ORDER BY id DESC LIMIT 100");
 }
 
 // ---------- 나만의 기록 (직관일기) ----------
@@ -83,25 +95,19 @@ export interface MyRecord {
   record_date: string; game_id?: string; team_code?: string;
   stadium?: string; mood?: string; memo?: string;
 }
-
 export async function saveRecord(r: MyRecord) {
   const c = await conn();
-  await c.run(
-    "INSERT INTO my_records (record_date, game_id, team_code, stadium, mood, memo, created_at) VALUES (?,?,?,?,?,?,?)",
+  c.run("INSERT INTO my_records (record_date, game_id, team_code, stadium, mood, memo, created_at) VALUES (?,?,?,?,?,?,?)",
     [r.record_date, r.game_id ?? null, r.team_code ?? null, r.stadium ?? null,
      r.mood ?? null, r.memo ?? null, new Date().toISOString()]);
   await persist();
 }
-
 export async function getRecords(): Promise<any[]> {
   const c = await conn();
-  const res = await c.query("SELECT * FROM my_records ORDER BY record_date DESC");
-  return res.values ?? [];
+  return select(c, "SELECT * FROM my_records ORDER BY record_date DESC");
 }
-
 /** 특정 날짜의 직관 기록 ("어제 간 경기장?" 같은 질문용). */
 export async function getRecordByDate(date: string): Promise<any | null> {
   const c = await conn();
-  const res = await c.query("SELECT * FROM my_records WHERE record_date=? LIMIT 1", [date]);
-  return res.values?.[0] ?? null;
+  return select(c, "SELECT * FROM my_records WHERE record_date=? LIMIT 1", [date])[0] ?? null;
 }
