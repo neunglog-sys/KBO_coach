@@ -111,3 +111,20 @@ export async function getRecordByDate(date: string): Promise<any | null> {
   const c = await conn();
   return select(c, "SELECT * FROM my_records WHERE record_date=? LIMIT 1", [date])[0] ?? null;
 }
+
+/** 현재 로컬 DB를 .sqlite 파일로 다운로드 → 'DB Browser for SQLite' 등으로 열어 확인. */
+export async function exportDb(filename = "kbo_local.sqlite"): Promise<void> {
+  const c = await conn();
+  const blob = new Blob([c.export()], { type: "application/x-sqlite3" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 개발 중 브라우저 콘솔에서 바로 사용 (dev 전용): kboDb.exportDb(), kboDb.getRecords() ...
+if (import.meta.env.DEV) {
+  (window as any).kboDb = { exportDb, getRecords, getChatHistory, saveRecord, saveChat };
+}
