@@ -30,6 +30,7 @@ class ChatIn(BaseModel):
     question: str
     team_code: str | None = None      # 어떤 구단 페르소나로 답할지
     session_id: str | None = None
+    personal_context: str | None = None   # 앱이 로컬 SQLite에서 꺼낸 개인기록(서버 미저장, 답변 생성에만 일시 사용)
 
 
 def _build_system_prompt(persona: dict | None) -> str:
@@ -118,9 +119,12 @@ def chat(body: ChatIn):
         conn.close()
 
     context_text = _format_context(terms, rules, chunks)
+    if body.personal_context:   # 앱이 로컬에서 가져온 개인기록 → 참고자료에 합류 (저장 안 함)
+        context_text += f"\n- 사용자 개인기록: {body.personal_context}"
     used = {"persona": persona.get("team_name") if persona else None,
             "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules],
-            "culture": [ch["title"] for ch in chunks]}
+            "culture": [ch["title"] for ch in chunks],
+            "personal": bool(body.personal_context)}
 
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
