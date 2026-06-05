@@ -247,10 +247,10 @@ def chat(body: ChatIn):
     {body.question}
 
     [출력 조건]
-    질문이 단순 개념 질문이면 1~2문장, 120자 이내로 답한다.
-    규칙 비교, 상황 설명, 예외 설명이 필요할 때만 250자 이내로 답한다.
+    먼저 질문의 핵심을 간결하고 정확하게 설명한다(보통 2~3문장).
+    그 뒤 우리 팀의 색(상징물·팬문화·역사)이 드러나는 내용을 한 스푼 자연스럽게 녹인다.
+    전체 200자 안팎으로, 과하게 길거나 장황하지 않게 쓴다.
     상투적인 마무리 격려 문장은 쓰지 않는다.
-    DB의 글자 수 제한을 반드시 따른다.
     """
     try:
         resp = requests.post(
@@ -258,7 +258,7 @@ def chat(body: ChatIn):
             json={
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
-                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 250},
+                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 320},
             }, timeout=30)
         resp.raise_for_status()
         data = resp.json()
