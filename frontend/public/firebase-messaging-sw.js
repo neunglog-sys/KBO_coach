@@ -13,7 +13,10 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
-  self.registration.showNotification(payload.notification?.title || "알림", {
-    body: payload.notification?.body || "",
-  });
+  // notification payload가 있으면 브라우저가 자동으로 알림을 띄운다.
+  // 여기서 또 showNotification 하면 알림이 2개로 중복되므로, 자동표시에 맡기고 종료한다.
+  // 데이터 전용 메시지(notification 없음)일 때만 직접 표시한다.
+  if (payload.notification) return;
+  const d = payload.data || {};
+  self.registration.showNotification(d.title || "알림", { body: d.body || "" });
 });
