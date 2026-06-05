@@ -81,12 +81,13 @@ def login(body: LoginIn):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id, email, nickname, password_hash FROM users WHERE email = %s",
-                        (body.email,))
+            cur.execute("SELECT user_id, email, nickname, fav_team_code, password_hash "
+                        "FROM users WHERE email = %s", (body.email,))
             user = cur.fetchone()
         if not user or not verify_pw(body.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
-        return {"user": {"user_id": user["user_id"], "email": user["email"], "nickname": user["nickname"]},
+        return {"user": {"user_id": user["user_id"], "email": user["email"],
+                         "nickname": user["nickname"], "fav_team_code": user["fav_team_code"]},
                 "token": make_token(user["user_id"], user["email"])}
     finally:
         conn.close()
