@@ -112,11 +112,19 @@ await kboDb.getChatHistory()      // 채팅이력
 await kboDb.saveRecord({ record_date:"2026-06-05", stadium:"고척", team_code:"WO" })
 ```
 
-### 시각적으로 — .sqlite 파일로 내보내 GUI로 열기 ⭐
-```js
-await kboDb.exportDb()   // → kbo_local.sqlite 다운로드
-```
-→ 받은 `kbo_local.sqlite` 를 **DB Browser for SQLite**(무료, https://sqlitebrowser.org )로 열면 테이블·행을 일반 DB처럼 다 봄.
+### 시각적으로 — .sqlite 파일로 내보내 DBeaver로 열기 ⭐
+로컬 DB는 디스크 파일이 아니라 **브라우저 IndexedDB 안에 직렬화**돼 있어서, 먼저 파일로 빼내야 한다.
+
+1. 앱 실행 → 로그인 → **F12 콘솔**에서:
+   ```js
+   await kboDb.exportDb()   // → kbo_local.sqlite 다운로드
+   ```
+2. **DBeaver**에서 열기:
+   - 새 연결(Database → New Connection) → **SQLite** 선택
+   - Path에 방금 받은 `kbo_local.sqlite` 지정 (드라이버 없으면 DBeaver가 자동 설치)
+   - 연결하면 `chat_history`·`my_records` 테이블·행을 일반 DB처럼 다 봄
+
+> ⚠️ 이건 **그 시점의 스냅샷 복사본**. DBeaver에서 값을 고쳐도 **앱(브라우저)엔 반영 안 됨**(파일→앱은 단방향 X). 조회·확인용으로만.
 
 ### 초기화(테스트 데이터 지우기)
 DevTools → Application → IndexedDB → `kbo_sqlite` 삭제 → 새로고침
@@ -127,5 +135,5 @@ DevTools → Application → IndexedDB → `kbo_sqlite` 삭제 → 새로고침
 - **테이블 추가** = SCHEMA에 `CREATE TABLE IF NOT EXISTS`
 - **저장** = `c.run(INSERT, [params])` + `await persist()`
 - **조회** = `select(c, SELECT, [params])`
-- **확인** = 콘솔 `kboDb.*` 또는 `exportDb()` → DB Browser
+- **확인** = 콘솔 `kboDb.*` 또는 `exportDb()` → DBeaver(SQLite)
 - 개인데이터는 폰/브라우저 로컬에만, 챗봇 답변 시 `personal_context`로만 일시 전달
