@@ -88,3 +88,5 @@ test/
 *.glb
 *.gltf
 *.fbx
+# 예외: 현재 사용 캐릭터 모델(16MB, GitHub 100MB 제한 이하)은 배포 빌드에 포함되도록 git에 포함
+!frontend/public/model/3d/mouth_test2.glb
