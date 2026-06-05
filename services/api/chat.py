@@ -33,7 +33,7 @@ class ChatIn(BaseModel):
     personal_context: str | None = None   # 앱이 로컬 SQLite에서 꺼낸 개인기록(서버 미저장, 답변 생성에만 일시 사용)
 
 
-def _build_system_prompt(persona: dict | None, culture: dict | None = None, history: str | None = None) -> str:
+def _build_system_prompt(persona: dict | None) -> str:
     base_rules = (
         "\n[공통 규칙]\n"
         "- 먼저 핵심 답변을 말한다.\n"
@@ -131,37 +131,13 @@ def _build_system_prompt(persona: dict | None, culture: dict | None = None, hist
         return "너는 KBO 야구 초보 관람객을 돕는 친절한 야구 도우미야." + base_rules
 
     p = persona
-
-    # 구단 고유의 '색'(상징·문화·역사) 주입 — team_culture_profiles + teams.history.
-    # 성격 형용사만으론 팀이 다 비슷해져서, 실제 상징물/팬문화/역사로 캐릭터를 구체화한다.
-    color = ""
-    if culture:
-        parts = []
-        if culture.get("signature_items"):
-            parts.append(f"상징물: {culture['signature_items']}")
-        if culture.get("culture_summary"):
-            parts.append(f"팬덤문화: {culture['culture_summary']}")
-        if culture.get("cheer_style"):
-            parts.append(f"응원문화: {culture['cheer_style']}")
-        if parts:
-            color += "[우리 팀의 색] " + " / ".join(parts) + "\n"
-    if history:
-        color += f"[우리 역사] {history}\n"
-    if color:
-        color += (
-            "위 '우리 팀의 색·역사'를 답변에 자연스럽게 녹여서 이 팀만의 정체성이 드러나게 한다. "
-            "상징물·역사·팬문화를 자랑스럽게 언급하되, 승부에 대한 가치판단(성적은 둘째라는 식)이나 "
-            "타 팀 비하는 하지 않는다.\n"
-        )
-
     return (
         f"너는 '{p.get('team_name')}'의 캐릭터야.\n"
         f"[정체성] {p.get('definition')}\n"
         f"[성격 키워드] {p.get('personality_keywords')}\n"
         f"[성격] {p.get('personality_core')}\n"
         f"[말투] {p.get('speaking_features')}\n"
-        + color
-        + f"[답변 방식] {p.get('response_style')}\n"
+        f"[답변 방식] {p.get('response_style')}\n"
         + base_rules
     )
 
@@ -211,16 +187,9 @@ def chat(body: ChatIn):
     try:
         with conn.cursor() as cur:
             persona = None
-            culture = None
-            history = None
             if body.team_code:
                 cur.execute("SELECT * FROM team_personas WHERE team_code = %s", (body.team_code,))
                 persona = cur.fetchone()
-                cur.execute("SELECT * FROM team_culture_profiles WHERE team_code = %s", (body.team_code,))
-                culture = cur.fetchone()
-                cur.execute("SELECT history FROM teams WHERE team_code = %s", (body.team_code,))
-                _t = cur.fetchone()
-                history = _t.get("history") if _t else None
             terms, rules, chunks = _retrieve(cur, body.question, body.team_code)
     finally:
         conn.close()
@@ -231,7 +200,6 @@ def chat(body: ChatIn):
     used = {"persona": persona.get("team_name") if persona else None,
             "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules],
             "culture": [ch["title"] for ch in chunks],
-            "team_color": bool(culture or history),
             "personal": bool(body.personal_context)}
 
     key = os.environ.get("GEMINI_API_KEY")
@@ -239,7 +207,7 @@ def chat(body: ChatIn):
         return {"answer": "(아직 LLM 미연결) GEMINI_API_KEY를 .env에 넣으면 동작합니다.",
                 "context": used}
 
-    system = _build_system_prompt(persona, culture, history)
+    system = _build_system_prompt(persona)
     user = f"""[참고자료]
     {context_text}
 
@@ -247,10 +215,10 @@ def chat(body: ChatIn):
     {body.question}
 
     [출력 조건]
-    먼저 질문의 핵심을 간결하고 정확하게 설명한다(보통 2~3문장).
-    그 뒤 우리 팀의 색(상징물·팬문화·역사)이 드러나는 내용을 한 스푼 자연스럽게 녹인다.
-    전체 200자 안팎으로, 과하게 길거나 장황하지 않게 쓴다.
+    질문이 단순 개념 질문이면 1~2문장, 120자 이내로 답한다.
+    규칙 비교, 상황 설명, 예외 설명이 필요할 때만 250자 이내로 답한다.
     상투적인 마무리 격려 문장은 쓰지 않는다.
+    DB의 글자 수 제한을 반드시 따른다.
     """
     try:
         resp = requests.post(
@@ -258,7 +226,7 @@ def chat(body: ChatIn):
             json={
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
-                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 320},
+                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 250},
             }, timeout=30)
         resp.raise_for_status()
         data = resp.json()
