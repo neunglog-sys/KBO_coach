@@ -79,7 +79,6 @@ CREATE TABLE IF NOT EXISTS team_personas (
     personality_keywords text,
     personality_core text,
     speaking_features text,
-    common_phrases text,
     response_style text,
     prohibited_user_response text,
     prohibited_information text,
