@@ -1,16 +1,21 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { getTargetWeights, type MouthShape } from "../lipSync";
 
 interface Character3DProps {
-  /** 말하는 중이면 입을 뻐금뻐금 움직인다. */
+  /** 말하는 중이면 입을 움직인다. */
   isSpeaking: boolean;
   className?: string;
 }
 
-const MODEL_URL = "/model/model_backup_2.glb";
-const FRONT_ROTATION_DEG = -90; // 모델이 오른쪽을 보고 있어 정면으로 돌려준다.
-const MOUTH_INTERVAL_MS = 200; // 입 여닫는 주기
+const MODEL_URL = "/model/3d/mouth_test2.glb";
+const FRONT_ROTATION_DEG = 0; // mouth_test2는 정면(+Z) 제작 → 보정 불필요. 옆으로 보이면 조정.
+const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
+const MOTION_NAME = "hi"; // 재생할 애니메이션(모션) 클립 이름
+const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
+const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
+const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
 
 export default function Character3D({ isSpeaking, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -52,6 +57,10 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
 
     let mouseBasic: THREE.Object3D | null = null;
     let mouseHalf: THREE.Object3D | null = null;
+    let mixer: THREE.AnimationMixer | null = null;
+    // 입모양 shape key(morph target)를 가진 메시들.
+    // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
+    const mouthMeshes: THREE.Mesh[] = [];
 
     const loader = new GLTFLoader();
     loader.load(
@@ -62,6 +71,12 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
         model.traverse((obj) => {
           if (obj.name === "mouse_basic") mouseBasic = obj;
           if (obj.name === "mouse_half") mouseHalf = obj;
+          // A/E/I/O/W/smile morph target을 가진 메시 전부 수집
+          const mesh = obj as THREE.Mesh;
+          if (mesh.isMesh && mesh.morphTargetDictionary) {
+            const dict = mesh.morphTargetDictionary;
+            if ("A" in dict || "smile" in dict) mouthMeshes.push(mesh);
+          }
         });
 
         // 중앙 정렬 + 크기 정규화
@@ -74,6 +89,15 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
         model.position.sub(center.multiplyScalar(scale));
 
         root.add(model);
+
+        // "hi" 모션 재생 (없으면 첫 번째 클립으로 폴백)
+        if (gltf.animations.length > 0) {
+          mixer = new THREE.AnimationMixer(model);
+          const clip =
+            THREE.AnimationClip.findByName(gltf.animations, MOTION_NAME) ??
+            gltf.animations[0];
+          mixer.clipAction(clip).play();
+        }
       },
       undefined,
       (err) => console.error("[Character3D] 모델 로드 실패", err)
@@ -89,6 +113,27 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       const now = performance.now();
       const dt = now - last;
       last = now;
+
+      if (mixer) mixer.update(dt / 1000); // 모션 클립 진행
+
+      // 입모양 립싱크: 공유 스토어의 목표값(Azure viseme 기반)으로 morph 보간.
+      // body가 여러 primitive로 쪼개져 있으므로 morph를 가진 메시 전부에 동일하게 적용.
+      if (mouthMeshes.length > 0) {
+        const target = getTargetWeights();
+        for (const mesh of mouthMeshes) {
+          const dict = mesh.morphTargetDictionary;
+          const infl = mesh.morphTargetInfluences;
+          if (!dict || !infl) continue;
+          for (const name of MOUTH_SHAPES) {
+            const idx = dict[name];
+            if (idx === undefined) continue;
+            // 말 안 할 때: 모음은 0, smile만 IDLE_SMILE로
+            let t = target[name];
+            if (!speakingRef.current) t = name === "smile" ? IDLE_SMILE : 0;
+            infl[idx] += (t - infl[idx]) * MOUTH_LERP;
+          }
+        }
+      }
 
       if (mouseBasic && mouseHalf) {
         if (speakingRef.current) {

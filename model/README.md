@@ -1,88 +1,82 @@
-# 모델 테스트 사용법
+# 캐릭터 모델 안내
 
-3D 캐릭터 모델(`model_backup_2.glb`)을 웹에서 띄워 보고, 입 애니메이션(뻐금뻐금)을 확인하는 방법을 정리한 문서입니다.
-
----
-
-## 1. 모델 정보
-
-- **파일**: `model/model_backup_2.glb` (약 73MB)
-- **구성 노드** (최상위 3개, 베이크된 애니메이션 없음)
-
-  | 노드명 | 역할 |
-  |--------|------|
-  | `body` | 몸통. 가만히 있음 |
-  | `mouse_basic` | 다문 입 |
-  | `mouse_half` | 벌린 입 |
-
-- 입 애니메이션은 `mouse_basic` ↔ `mouse_half`의 **표시 여부(visibility)를 번갈아 토글**해서 만듭니다.
-- 모델이 원래 **오른쪽**을 보고 있어서, 렌더링할 때 **Y축 -90°** 회전을 줘서 정면을 보게 합니다.
+메인 화면 캐릭터로 쓰이는 모델 파일들의 **보관 위치 / 런타임 위치 / 코드 참조 경로**를 정리한 문서입니다.
 
 ---
 
-## 2. 단독 테스트 페이지로 확인하기 (`test/index.html`)
+## 1. 폴더 구조
 
-모델만 빠르게 띄워서 회전/입 애니메이션을 점검하는 독립 실행형 페이지입니다.
-
-### 실행 방법
-
-73MB 모델을 `../model/`에서 불러오므로, **반드시 프로젝트 루트에서** 로컬 서버를 켜야 합니다.
-
-```powershell
-# 프로젝트 루트(project/)에서 실행
-python -m http.server 8124 --bind 127.0.0.1
-```
-
-→ 브라우저에서 접속:
+캐릭터 모델은 종류(3D glb / Live2D)별로 묶어 둡니다.
 
 ```
-http://127.0.0.1:8124/test/index.html
+model/                              # 원본 보관소 (git 미추적, 수동 공유용)
+└── 3d/
+    ├── test1.glb                   # 현재 사용 중인 3D 모델 (약 101MB)
+    └── model_backup_2.glb          # 이전 야구공 모델 (약 73MB, 백업)
+
+frontend/public/model/              # 앱이 실제로 로드하는 위치 (Vite가 /model/... 로 서빙)
+├── 3d/
+│   ├── test1.glb
+│   └── model_backup_2.glb
+└── live2d/
+    └── ball/                       # Live2D 모델 (moc3 + 텍스처, 내부 상대경로)
+        ├── ball.model3.json
+        ├── ball.moc3
+        ├── ball.cdi3.json
+        └── ball.2048/texture_00.png
 ```
 
-> ⚠️ `test/` 폴더 안에서 서버를 켜면 `../model/`을 못 찾습니다. 꼭 루트에서 켜세요.
-> ⚠️ three.js를 CDN(unpkg)에서 받으므로 **인터넷 연결**이 필요합니다.
-> ⚠️ 모델이 커서 첫 로딩에 몇 초 걸립니다.
+> `frontend/dist/model/...` 와 `frontend/android/app/src/main/assets/public/model/...` 에도 같은 파일이 보이는데,
+> 이 둘은 **빌드 자동 생성물**입니다. 직접 건드리지 마세요. `npm run android:sync` 시 새 구조로 다시 채워집니다.
 
-### 화면 컨트롤
-
-| 컨트롤 | 기능 |
-|--------|------|
-| `-90° / 90° / 180°` 버튼, Y회전 슬라이더 | 정면 회전 각도 조절 |
-| `애니메이션 ON/OFF` 버튼 | 입 뻐금뻐금 켜기/끄기 |
-| 속도 슬라이더 (80~600ms) | 입 여닫는 주기 조절 |
-| 마우스 드래그 | 모델 360° 회전 (OrbitControls) |
-| 좌측 상태창 | 로드 결과 및 `body / mouse_basic / mouse_half` 인식 여부 표시 |
+> ⚠️ `*.glb` 는 `.gitignore` 로 git에서 제외되어 있습니다 (용량 이슈). 특히 `test1.glb`(101MB)는
+> GitHub 파일 100MB 제한을 넘으므로 **절대 커밋하면 안 됩니다.** 모델은 별도 경로로 공유하세요.
 
 ---
 
-## 3. 프론트엔드 화면에 적용된 형태
+## 2. 현재 사용 중인 모델 (test1.glb)
 
-이 모델은 프론트엔드 메인 화면의 캐릭터(`character.png` 자리)로 들어가 있습니다.
+- **파일**: `frontend/public/model/3d/test1.glb`
+- **모션**: 베이크된 애니메이션 클립 `hi` 를 `AnimationMixer` 로 재생합니다.
+  - 포함 클립: `hi`, `CubeAction`, `CubeAction.002` → 코드는 이름으로 `hi` 를 골라 루프 재생.
+- **정면 회전**: `test1.glb` 는 이미 정면(+Z)을 향해 제작되어 **회전 보정이 0** 입니다 (`FRONT_ROTATION_DEG = 0`).
+- 크기는 자동 정규화(`2.4 / maxDim`) 후 중앙 정렬됩니다.
 
-- **컴포넌트**: `frontend/src/components/Character3D.tsx`
-- **사용 위치**: `frontend/src/components/MainView.tsx` — `<Character3D isSpeaking={isSpeaking} className="character" />`
-- **모델 경로**: 프론트는 `frontend/public/model/model_backup_2.glb` (Vite가 `/model/...`로 서빙) **복사본**을 사용합니다.
-- **동작**: 평소엔 입을 다물고(`mouse_basic`), 음성 답변 중(`isSpeaking === true`)일 때만 입을 뻐금뻐금 움직입니다.
+---
 
-### 프론트엔드 실행
+## 3. 코드 참조 경로
+
+| 컴포넌트 | 모델 URL | 비고 |
+|----------|----------|------|
+| `frontend/src/components/Character3D.tsx` | `/model/3d/test1.glb` | **현재 메인 화면에서 사용** |
+| `frontend/src/components/CharacterLive2D.tsx` | `/model/live2d/ball/ball.model3.json` | Live2D (현재 미사용, 전환용) |
+
+- 메인 화면은 `frontend/src/components/MainView.tsx` 에서
+  `<Character3D isSpeaking={isSpeaking} className="character" />` 로 3D 캐릭터를 렌더링합니다.
+- Live2D 로 되돌리려면 `MainView.tsx` 의 import / JSX 를 `CharacterLive2D` 로 교체하면 됩니다.
+
+---
+
+## 4. 모델을 바꾸거나 이름/위치를 변경할 때
+
+1. 원본을 `model/3d/`(또는 `live2d/`)에 보관하고,
+2. **런타임 사본**을 `frontend/public/model/3d/` 로 복사하고,
+3. 해당 컴포넌트의 `MODEL_URL` 을 새 경로로 수정한 뒤,
+4. `cd frontend && npm run android:sync` (→ `dist/`, android assets 자동 갱신).
+
+> Live2D 모델은 `ball.model3.json` 이 텍스처·moc3 를 **상대경로**로 참조하므로,
+> `ball/` 폴더는 항상 **통째로** 옮겨야 내부 연결이 유지됩니다.
+
+---
+
+## 5. 실행
 
 ```powershell
 cd frontend
-npm run dev
+npm run dev          # http://127.0.0.1:5000 (웹 미리보기)
+# 또는
+npm run android:sync # 안드로이드 빌드 + 동기화
 ```
 
-→ `http://127.0.0.1:5000` (로그인 후 메인 화면에 3D 캐릭터 표시)
-
-> 질문·음성답변 기능까지 쓰려면 백엔드(8000 포트)도 함께 띄워야 합니다. 캐릭터 자체는 백엔드 없이도 보입니다.
-
----
-
-## 4. 주의사항
-
-- **모델을 수정한 경우**: 이 `model/` 폴더의 원본을 바꿔도 프론트에는 반영되지 않습니다. `frontend/public/model/model_backup_2.glb`로 **다시 복사**해야 합니다.
-- **파일 이름을 바꾼 경우**: 아래 3곳의 경로를 함께 수정해야 합니다.
-  - `frontend/public/model/<새이름>.glb` (복사본 파일명)
-  - `frontend/src/components/Character3D.tsx` 의 `MODEL_URL`
-  - `test/index.html` 의 `loader.load('../model/<새이름>.glb', ...)`
-- **용량(73MB)**: 웹 첫 로딩이 느립니다. 운영용이면 Draco 압축 등 용량 최적화를 권장합니다.
-- 회전 각도·입 속도 등 기본값은 `Character3D.tsx` 상단 상수(`FRONT_ROTATION_DEG`, `MOUTH_INTERVAL_MS`)에서 조절합니다.
+> ⚠️ `test1.glb`(101MB) 는 첫 로딩에 몇 초 걸립니다. 운영용이면 Draco 압축 등 용량 최적화를 권장합니다.
+> 회전 각도 등 기본값은 `Character3D.tsx` 상단 상수(`FRONT_ROTATION_DEG`, `MOTION_NAME`, `MOUTH_INTERVAL_MS`)에서 조절합니다.
