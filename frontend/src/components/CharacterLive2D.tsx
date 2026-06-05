@@ -12,7 +12,7 @@ interface CharacterLive2DProps {
   className?: string;
 }
 
-const MODEL_URL = "/model/ball/ball.model3.json";
+const MODEL_URL = "/model/live2d/ball/ball.model3.json";
 
 export default function CharacterLive2D({ isSpeaking, className }: CharacterLive2DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
