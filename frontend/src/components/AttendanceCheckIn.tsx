@@ -23,14 +23,56 @@ interface QuizResult {
   explanation: string;
 }
 
+// 'man' = 남자, 'girl' = 여자. 아직 안 고르면 null.
+type Gender = "man" | "girl" | null;
+
 interface AttendanceCheckInProps {
   authToken: string;
   onCheckedTodayChange?: (checkedToday: boolean) => void;
+  // 사용자가 응원하는 팀 코드(SS, LG ...). 없으면 무소속(default).
+  // 지금은 안 넘겨도 동작하며, 나중에 팀 선택 기능에서 넘겨주면 됩니다.
+  favTeamCode?: string | null;
 }
 
 const STORAGE_KEY = "baseballCoachAttendance";
+const GENDER_STORAGE_KEY = "baseballCoachGender"; // 성별 임시 저장(브라우저)
 const CHECKIN_XP = 20;
 const XP_PER_LEVEL = 100;
+
+// =====================================================================
+// 캐릭터 이미지 경로 만들기
+//  규칙: /character/{팀}_{단계}_{성별}.png
+//   - 1레벨(무소속): default_{성별}.png   ← 예외(팀·단계 없음)
+//   - 2~9레벨: {팀}_child_{성별}.png  (팀 없으면 default_child_{성별}.png)
+//   - 10레벨↑: {팀}_adult_{성별}.png  (팀 없으면 default_adult_{성별}.png)
+//  ※ 파일이 아직 없으면 <img onError>에서 default로 대체합니다.
+// =====================================================================
+function getCharacterImage(level: number, teamCode: string | null | undefined, gender: Gender): string {
+  const g = gender === "girl" ? "girl" : "man";
+  if (level <= 1) {
+    return `/character/default_${g}.png`; // 1레벨 예외 처리
+  }
+  const stage = level >= 10 ? "adult" : "child";
+  const team = teamCode && teamCode.trim() !== "" ? teamCode.trim() : "default";
+  return `/character/${team}_${stage}_${g}.png`;
+}
+
+// =====================================================================
+// 성별 저장/불러오기 — ★ 나중에 "서버 DB 저장"으로 바꿀 부분은 여기뿐 ★
+//  지금은 브라우저(localStorage)에 저장합니다.
+//  서버로 바꿀 때:
+//   - loadGender: fetch("/me/gender") 로 서버에서 읽기
+//   - saveGender: fetch("/me/gender", {method:"POST"...}) 로 서버에 쓰기
+//  화면/선택/캐릭터 코드는 그대로 두고 이 두 함수만 교체하면 됩니다.
+// =====================================================================
+function loadGender(): Gender {
+  const saved = localStorage.getItem(GENDER_STORAGE_KEY);
+  return saved === "man" || saved === "girl" ? saved : null;
+}
+
+function saveGender(gender: Gender) {
+  if (gender) localStorage.setItem(GENDER_STORAGE_KEY, gender);
+}
 
 function getDifficultyColor(difficulty?: string) {
   switch (difficulty) {
@@ -107,8 +149,10 @@ function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
   return next;
 }
 
-export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: AttendanceCheckInProps) {
+export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, favTeamCode }: AttendanceCheckInProps) {
   const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
+  const [gender, setGender] = useState<Gender>(() => loadGender());
+  const [imgFailed, setImgFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -121,6 +165,19 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
     () => Math.min(100, Math.round(((status.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100)),
     [status.xp],
   );
+
+  // 지금 보여줄 캐릭터 이미지 경로 (레벨+팀+성별 조합)
+  const characterSrc = useMemo(
+    () => getCharacterImage(status.level, favTeamCode, gender),
+    [status.level, favTeamCode, gender],
+  );
+
+  // 성별을 고르면 저장하고 상태에 반영
+  function handlePickGender(picked: Gender) {
+    saveGender(picked); // ★ 나중에 서버 저장으로 바뀌는 부분(함수 내부만)
+    setGender(picked);
+    setImgFailed(false);
+  }
 
   const authHeaders = (extra?: Record<string, string>) =>
     authToken ? { Authorization: `Bearer ${authToken}`, ...extra } : { ...extra };
@@ -264,19 +321,69 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
   const allDone = quizQuestions.length > 0 && answeredCount >= quizQuestions.length;
   const totalQuizXp = Object.values(quizResults).reduce((sum, result) => sum + result.xp_earned, 0);
 
+  // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
+  if (!gender) {
+    return (
+      <section className="attendance-panel" aria-label="\uce90\ub9ad\ud130 \uc131\ubcc4 \uc120\ud0dd">
+        <div style={{ textAlign: "center", padding: "12px 0" }}>
+          <p className="eyebrow">Start</p>
+          <h2 style={{ margin: "4px 0 4px" }}>{"\uce90\ub9ad\ud130\ub97c \uc120\ud0dd\ud558\uc138\uc694"}</h2>
+          <p className="attendance-message" style={{ marginBottom: 16 }}>
+            {"\ud568\uaed8 \uc131\uc7a5\ud560 \ub098\ub9cc\uc758 \uc57c\uad6c \uc120\uc218\ub97c \uace8\ub77c\uc8fc\uc138\uc694."}
+          </p>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handlePickGender("man")}
+              style={genderCardStyle}
+            >
+              <img
+                src="/character/default_man.png"
+                alt="\ub0a8\uc790 \uce90\ub9ad\ud130"
+                style={{ width: 96, height: 96, objectFit: "contain" }}
+                onError={(e) => { (e.currentTarget.style.display = "none"); }}
+              />
+              <span style={{ marginTop: 8, fontWeight: 700 }}>{"\ub0a8\uc790"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePickGender("girl")}
+              style={genderCardStyle}
+            >
+              <img
+                src="/character/default_girl.png"
+                alt="\uc5ec\uc790 \uce90\ub9ad\ud130"
+                style={{ width: 96, height: 96, objectFit: "contain" }}
+                onError={(e) => { (e.currentTarget.style.display = "none"); }}
+              />
+              <span style={{ marginTop: 8, fontWeight: 700 }}>{"\uc5ec\uc790"}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="attendance-panel" aria-label="\ucd9c\uc11d \uccb4\ud06c">
-      <div className="attendance-mascot" aria-hidden="true">
-        <div className="attendance-ear left" />
-        <div className="attendance-ear right" />
-        <div className="attendance-body">
-          <span className="attendance-eye left" />
-          <span className="attendance-eye right" />
-          <span className="attendance-mouth" />
-          <span className="attendance-cheek left" />
-          <span className="attendance-cheek right" />
-          <span className="attendance-hand" />
-        </div>
+      {/* ===== 캐릭터(레벨+팀+성별에 따라 이미지) ===== */}
+      <div className="attendance-character" aria-hidden="true" style={{ textAlign: "center" }}>
+        {!imgFailed ? (
+          <img
+            src={characterSrc}
+            alt="\ub2e4\ub9c8\uace0\uce58 \uce90\ub9ad\ud130"
+            style={{ width: 140, height: 140, objectFit: "contain" }}
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          // 이미지 파일이 아직 없을 때: 기본 캐릭터로 대체 시도
+          <img
+            src={`/character/default_${gender}.png`}
+            alt="\uae30\ubcf8 \uce90\ub9ad\ud130"
+            style={{ width: 140, height: 140, objectFit: "contain" }}
+            onError={(e) => { (e.currentTarget.style.display = "none"); }}
+          />
+        )}
       </div>
 
       <div className="attendance-copy">
@@ -394,3 +501,15 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
     </section>
   );
 }
+
+// 성별 선택 카드 버튼 스타일(외부 CSS 없이 동작하도록 인라인)
+const genderCardStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  padding: "16px 24px",
+  border: "2px solid #e2e8f0",
+  borderRadius: 16,
+  background: "#fff",
+  cursor: "pointer",
+};
