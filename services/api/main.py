@@ -99,7 +99,11 @@ def get_games(date: str | None = None):
 
 
 @app.get("/schedule")
-def get_schedule(date: str | None = None):
+def get_schedule(date: str | None = None, month: str | None = None):
+    # month="YYYY-MM" 이면 그 달 전체 경기 반환 (캘린더 프리필용). 아니면 하루치.
+    if month:
+        rows = list(db.schedule.find({"date": {"$regex": f"^{month}-"}}, {"_id": 0}))
+        return {"month": month, "count": len(rows), "schedule": rows}
     d = date or latest_date("schedule")
     rows = list(db.schedule.find({"date": d}, {"_id": 0}))
     return {"date": d, "count": len(rows), "schedule": rows}
