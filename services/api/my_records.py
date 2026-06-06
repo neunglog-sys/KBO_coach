@@ -22,7 +22,7 @@ MOOD_STAMPS = {
 
 class MyRecordIn(BaseModel):
     record_date: date
-    mood: Mood
+    mood: Mood | None = None   # 예정 경기·결과 미입력은 mood 없이 저장 가능
     game_id: str | None = None
     team_code: str | None = None
     stadium: str | None = None
@@ -30,7 +30,8 @@ class MyRecordIn(BaseModel):
 
 
 def _with_mood_stamp(row: dict) -> dict:
-    row["mood_stamp"] = MOOD_STAMPS[row["mood"]]
+    # mood가 없으면(예정 경기 등) 스탬프도 None
+    row["mood_stamp"] = MOOD_STAMPS.get(row["mood"]) if row.get("mood") else None
     return row
 
 
@@ -120,7 +121,7 @@ def get_my_record_stats(uid: int = Depends(current_user_id)):
                 (uid,),
             )
             by_mood = {
-                r["mood"]: {"count": r["count"], "stamp": MOOD_STAMPS[r["mood"]]}
+                r["mood"]: {"count": r["count"], "stamp": MOOD_STAMPS.get(r["mood"])}
                 for r in cur.fetchall()
             }
         return {"total_records": total, "by_mood": by_mood}
