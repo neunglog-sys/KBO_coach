@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS my_baseball_records (
     game_id VARCHAR(20),
     team_code VARCHAR(4),
     stadium VARCHAR(50),
-    mood VARCHAR(16) NOT NULL CHECK (
-        mood IN (
+    mood VARCHAR(16) CHECK (
+        mood IS NULL OR mood IN (
             'win_happy',
             'draw_calm',
             'loss_sad'

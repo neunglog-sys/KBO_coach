@@ -5,6 +5,8 @@ import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
 import { clearMouth, setActiveViseme } from "../lipSync";
+import { MyRecordsView } from "./MyRecordsView";
+import { TeamChatView } from "./TeamChatView";
 import "./MainViewV2.css";
 
 interface MainViewV2Props {
@@ -24,6 +26,7 @@ const NAV_ITEMS = [
   { key: "record", icon: "📒", label: "나만의 기록" },
   { key: "pet", icon: "🥕", label: "다마고치" },
   { key: "stadium", icon: "🏟️", label: "구장정보" },
+  { key: "settings", icon: "⚙️", label: "환경설정" },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -105,6 +108,8 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [isListening, setIsListening] = useState(false);
   // 어떤 메뉴 화면이 열려 있는지 (null = 닫힘, "pet" = 다마고치)
   const [activePanel, setActivePanel] = useState<NavKey | null>(null);
+  const [showRecords, setShowRecords] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -311,9 +316,17 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   }
 
   function handleNav(key: NavKey) {
-    // 다마고치(pet)는 우리 화면을 모달로 띄운다. 나머지는 아직 미연결.
+    // 다마고치(pet)는 모달, 기록/채팅은 각자 화면으로 전환. 나머지는 아직 미연결.
     if (key === "pet") {
       setActivePanel("pet");
+      return;
+    }
+    if (key === "record") {
+      setShowRecords(true);
+      return;
+    }
+    if (key === "chat") {
+      setShowChat(true);
       return;
     }
     console.info(`[MainViewV2] ${key} navigation is not connected yet.`);
@@ -394,6 +407,14 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
           favTeamCode={favTeamCode}
           onClose={() => setActivePanel(null)}
         />
+      ) : null}
+
+      {showRecords ? (
+        <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
+      ) : null}
+
+      {showChat ? (
+        <TeamChatView authToken={authToken} onBack={() => setShowChat(false)} />
       ) : null}
     </section>
   );

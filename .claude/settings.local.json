@@ -52,7 +52,19 @@
       "Bash(curl -s -m 3 http://127.0.0.1:8000/tts/health)",
       "Bash(curl -s -m 10 https://kboai-5dea0.web.app/tts/health)",
       "Bash(curl -s -m 30 -X POST https://kboai-5dea0.web.app/tts -H \"Content-Type: application/json\" --data \"{\\\\\"text\\\\\":\\\\\"test\\\\\"}\" -w \"\\\\nHTTP %{http_code}\\\\n\" -o resp_deploy.txt)",
-      "Bash(\"C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe\" -c \"from PIL import Image; im=Image.open\\('app_front_design.png'\\); print\\('size:',im.size,'mode:',im.mode\\)\")"
+      "Bash(\"C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe\" -c \"from PIL import Image; im=Image.open\\('app_front_design.png'\\); print\\('size:',im.size,'mode:',im.mode\\)\")",
+      "Bash(C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe -c 'from PIL import Image; im=Image.open\\(r'\\\\''__TRACKED_VAR__'\\\\''\\); print\\(r'\\\\''__TRACKED_VAR__'\\\\'', im.size, im.mode\\)')",
+      "Bash(ls frontend/public/*.png)",
+      "Bash(C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe -c ' *)",
+      "Bash(\"C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe\" -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(grep -rn *)",
+      "Bash(grep -nE \"my_records|saveRecord|getRecords|getRecordByDate|team_code|record_date|CREATE TABLE\" frontend/src/db.ts)",
+      "Bash(sed -n '1,60p' services/api/my_records.py)",
+      "Bash(curl -s -m 2 -o /dev/null -w \"5000 status: %{http_code}\\\\n\" http://127.0.0.1:5000)",
+      "Bash(curl -s -m 3 \"http://127.0.0.1:8000/schedule?month=2026-06\" -o /dev/null -w \"local 8000: %{http_code}\\\\n\")",
+      "Bash(curl -s -m 2 -o /dev/null -w \"5000: %{http_code}\\\\n\" http://127.0.0.1:5000)",
+      "Bash(grep -iE \"services/|requirements|main.py|firebase.json|\\\\.sql|\\\\.py$\")",
+      "Bash(grep -vE \"android/app/build|frontend/dist|frontend/android/app/src/main/assets|\\\\.glb$\")"
     ]
   }
 }
