@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
+import PetModal from "./PetModal";
 import { clearMouth, setActiveViseme } from "../lipSync";
 import { MyRecordsView } from "./MyRecordsView";
 import { TeamChatView } from "./TeamChatView";
@@ -10,6 +11,7 @@ import "./MainViewV2.css";
 
 interface MainViewV2Props {
   authToken: string;
+  favTeamCode?: string;
   onLogout: () => void;
 }
 
@@ -97,13 +99,15 @@ function buildLocalFallbackAnswer(question: string) {
   );
 }
 
-export function MainViewV2({ authToken }: MainViewV2Props) {
+export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
   ]);
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 어떤 메뉴 화면이 열려 있는지 (null = 닫힘, "pet" = 다마고치)
+  const [activePanel, setActivePanel] = useState<NavKey | null>(null);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
@@ -312,6 +316,11 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   }
 
   function handleNav(key: NavKey) {
+    // 다마고치(pet)는 모달, 기록/채팅은 각자 화면으로 전환. 나머지는 아직 미연결.
+    if (key === "pet") {
+      setActivePanel("pet");
+      return;
+    }
     if (key === "record") {
       setShowRecords(true);
       return;
@@ -389,6 +398,16 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
           </button>
         </form>
       </section>
+
+      {/* ===== 다마고치 모달 (다마고치 메뉴 누르면 열림) ===== */}
+      {/* 모달 내용은 PetModal.tsx 로 분리. 여기선 열림 여부만 관리한다. */}
+      {activePanel === "pet" ? (
+        <PetModal
+          authToken={authToken}
+          favTeamCode={favTeamCode}
+          onClose={() => setActivePanel(null)}
+        />
+      ) : null}
 
       {showRecords ? (
         <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
