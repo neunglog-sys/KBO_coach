@@ -11,7 +11,22 @@ import SettingsView from "./SettingsView";
 import { StadiumPage } from "./StadiumPage";
 import { TeamChatView } from "./TeamChatView";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import { WeatherFx, type WeatherCondition } from "./WeatherFx";
 import "./MainViewV2.css";
+
+// 팀 코드 → 홈 구장 (weather.py STADIUMS 키와 일치)
+const TEAM_HOME_STADIUM: Record<string, string> = {
+  OB: "잠실야구장",
+  LG: "잠실야구장",
+  HT: "광주-KIA챔피언스필드",
+  SS: "대구삼성라이온즈파크",
+  NC: "창원NC파크",
+  KT: "수원KT위즈파크",
+  SK: "SSG랜더스필드",
+  WO: "고척스카이돔",
+  HH: "대전한화생명볼파크",
+  LT: "사직야구장",
+};
 
 interface MainViewV2Props {
   authToken: string;
@@ -106,6 +121,47 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [, setAttendanceCheckedToday] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>(null);
+
+  // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
+  useEffect(() => {
+    let alive = true;
+    // 디버그/테스트용: URL ?wx=rain|snow|clear|overcast 로 강제 지정
+    const wxOverride = new URLSearchParams(window.location.search).get("wx");
+    if (wxOverride) {
+      setWeatherCondition(wxOverride as WeatherCondition);
+      return;
+    }
+    (async () => {
+      let code = localStorage.getItem("myTeamCode");
+      if (!code && authToken) {
+        try {
+          const r = await fetch(apiUrl("/auth/me"), {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+          if (r.ok) {
+            const d = await r.json();
+            code = d.fav_team_code || d.user?.fav_team_code || null;
+          }
+        } catch {
+          /* 무시 */
+        }
+      }
+      const stadium = TEAM_HOME_STADIUM[code ?? ""] ?? "잠실야구장";
+      try {
+        const r = await fetch(apiUrl(`/weather/now?stadium=${encodeURIComponent(stadium)}`));
+        if (r.ok && alive) {
+          const d = await r.json();
+          if (d.condition) setWeatherCondition(d.condition as WeatherCondition);
+        }
+      } catch {
+        /* 날씨 없으면 효과 생략 */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [authToken]);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -340,9 +396,15 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   return (
     <section className="stage-view" aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
-        <div className="stage-bg-track">
-          <img className="stage-bg-image" src="/background2.png" alt="" />
-          <img className="stage-bg-image" src="/background2.png" alt="" />
+        {/* 하늘 레이어 (뒤, 느리게) */}
+        <div className="stage-bg-track stage-bg-sky">
+          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
+          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
+        </div>
+        {/* 경기장 레이어 (앞, 빠르게) */}
+        <div className="stage-bg-track stage-bg-ground">
+          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
+          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
@@ -352,6 +414,8 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
       <div className="stage-character" aria-hidden="false">
         <Character3D isSpeaking={isSpeaking} className="stage-character-canvas" />
       </div>
+
+      <WeatherFx condition={weatherCondition} />
 
       <section className="stage-chat" aria-label="야구 코치 채팅">
         <div className="stage-chatlog" ref={chatLogRef} aria-live="polite">

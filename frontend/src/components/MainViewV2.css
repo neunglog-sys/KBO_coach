@@ -33,12 +33,24 @@
 }
 
 .stage-bg-track {
+  position: absolute;
+  inset: 0;
   display: flex;
   width: max-content;
   height: 100%;
-  animation: stage-bg-scroll 42s linear infinite;
   will-change: transform;
 }
+
+/* ▼▼▼ 배경 스크롤 속도 조절 (숫자 클수록 느림) ▼▼▼ */
+.stage-bg-sky {
+  z-index: 0; /* 하늘 = 뒤 */
+  animation: stage-bg-scroll 80s linear infinite; /* ← 하늘 속도 */
+}
+.stage-bg-ground {
+  z-index: 1; /* 경기장 = 앞 */
+  animation: stage-bg-scroll 40s linear infinite; /* ← 경기장 속도 */
+}
+/* ▲▲▲ 위 두 숫자(80s / 40s)만 바꾸면 됩니다 ▲▲▲ */
 
 .stage-bg-image {
   flex: 0 0 auto;
