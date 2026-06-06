@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
+import PetModal from "./PetModal";
 import { clearMouth, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
@@ -14,6 +15,7 @@ import "./MainViewV2.css";
 
 interface MainViewV2Props {
   authToken: string;
+  favTeamCode?: string;
   onLogout: () => void;
 }
 
@@ -91,7 +93,7 @@ function buildLocalFallbackAnswer(question: string) {
   );
 }
 
-export function MainViewV2({ authToken }: MainViewV2Props) {
+export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
   ]);
