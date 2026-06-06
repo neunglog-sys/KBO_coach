@@ -4,6 +4,10 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import { clearMouth, setActiveViseme } from "../lipSync";
+import AttendanceCheckIn from "./AttendanceCheckIn";
+import SettingsView from "./SettingsView";
+import { StadiumPage } from "./StadiumPage";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./MainViewV2.css";
 
 interface MainViewV2Props {
@@ -16,15 +20,6 @@ interface ChatMessage {
   type: "user" | "bot";
   text: string;
 }
-
-const NAV_ITEMS = [
-  { key: "chat", icon: "💬", label: "채팅방" },
-  { key: "record", icon: "📒", label: "나만의 기록" },
-  { key: "pet", icon: "🥕", label: "다마고치" },
-  { key: "stadium", icon: "🏟️", label: "구장정보" },
-] as const;
-
-type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const LOCAL_FALLBACK_ANSWERS = [
   {
@@ -101,6 +96,10 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
+  const [, setAttendanceCheckedToday] = useState(false);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -306,8 +305,27 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
     }
   }
 
-  function handleNav(key: NavKey) {
-    console.info(`[MainViewV2] ${key} navigation is not connected yet.`);
+  function handleNav(key: TopMenuTarget) {
+    if (key === "home") {
+      return;
+    }
+    if (key === "tamagotchi") {
+      setIsAttendanceOpen(true);
+      return;
+    }
+    if (key === "stadium") {
+      setIsStadiumPageOpen(true);
+      return;
+    }
+    if (key === "settings") {
+      setIsSettingsOpen(true);
+      return;
+    }
+    if (key === "chat") {
+      document.querySelector<HTMLInputElement>(".stage-inputbar input")?.focus();
+      return;
+    }
+    console.info("[MainViewV2] 기록 화면은 아직 연결되지 않았습니다.");
   }
 
   return (
@@ -320,22 +338,7 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
 
-      <nav className="stage-nav" aria-label="상단 메뉴">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className="stage-nav-item"
-            onClick={() => handleNav(item.key)}
-            aria-label={`${item.label} 열기`}
-          >
-            <span className="stage-nav-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="stage-nav-label">{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
         <Character3D isSpeaking={isSpeaking} className="stage-character-canvas" />
@@ -376,6 +379,88 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
           </button>
         </form>
       </section>
+
+      {isAttendanceOpen ? (
+        <div
+          className="attendance-window-backdrop"
+          role="presentation"
+          onClick={() => setIsAttendanceOpen(false)}
+        >
+          <section
+            className="attendance-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="다마고치"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="attendance-window-close"
+              type="button"
+              aria-label="뒤로가기"
+              onClick={() => setIsAttendanceOpen(false)}
+            >
+              뒤로가기
+            </button>
+            <AttendanceCheckIn
+              authToken={authToken}
+              onCheckedTodayChange={setAttendanceCheckedToday}
+              onRequestClose={() => setIsAttendanceOpen(false)}
+              onNavigate={(target) => {
+                setIsAttendanceOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isStadiumPageOpen ? (
+        <div
+          className="stadium-page-backdrop"
+          role="presentation"
+          onClick={() => setIsStadiumPageOpen(false)}
+        >
+          <section
+            className="stadium-page-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="구장정보"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <StadiumPage
+              onClose={() => setIsStadiumPageOpen(false)}
+              onNavigate={(target) => {
+                setIsStadiumPageOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isSettingsOpen ? (
+        <div
+          className="settings-window-backdrop"
+          role="presentation"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <section
+            className="settings-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="환경설정"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SettingsView
+              onClose={() => setIsSettingsOpen(false)}
+              onNavigate={(target) => {
+                setIsSettingsOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

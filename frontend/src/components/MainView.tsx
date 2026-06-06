@@ -9,6 +9,8 @@ import { setActiveViseme, clearMouth } from "../lipSync";
 // 3D(glb) 캐릭터 사용 중. Live2D로 되돌리려면 위 줄 주석 + 아래 줄 주석 해제 + JSX 교체.
 // import CharacterLive2D from "./CharacterLive2D";
 import AttendanceCheckIn from "./AttendanceCheckIn";
+import SettingsView from "./SettingsView";
+import { StadiumPage } from "./StadiumPage";
 
 type MessageType = "bot" | "user";
 
@@ -155,6 +157,8 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
   const [attendanceCheckedToday, setAttendanceCheckedToday] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [messageId, setMessageId] = useState(2);
@@ -885,6 +889,26 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
           <strong>{attendanceCheckedToday ? "\uc624\ub298 \uc644\ub8cc" : "\uc624\ub298 +20 XP"}</strong>
         </button>
 
+        <button
+          className={`settings-entry-tile ${isSettingsOpen ? "is-active" : ""}`}
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          aria-pressed={isSettingsOpen}
+        >
+          <span>설정</span>
+          <strong>환경설정</strong>
+        </button>
+
+        <button
+          className={`settings-entry-tile stadium-page-entry ${isStadiumPageOpen ? "is-active" : ""}`}
+          type="button"
+          onClick={() => setIsStadiumPageOpen(true)}
+          aria-pressed={isStadiumPageOpen}
+        >
+          <span>구장</span>
+          <strong>구장정보</strong>
+        </button>
+
         </div>
 
         <div className="character-stage" aria-label="3D 캐릭터 영역">
@@ -909,12 +933,117 @@ export function MainView({ authToken, onLogout }: MainViewProps) {
             <button
               className="attendance-window-close"
               type="button"
-              aria-label="\ucd9c\uc11d \ucc3d \ub2eb\uae30"
+              aria-label="뒤로가기"
               onClick={() => setIsAttendanceOpen(false)}
             >
-              {"\ub2eb\uae30"}
+              뒤로가기
             </button>
-            <AttendanceCheckIn authToken={authToken} onCheckedTodayChange={setAttendanceCheckedToday} />
+            <AttendanceCheckIn
+              authToken={authToken}
+              onCheckedTodayChange={setAttendanceCheckedToday}
+              onRequestClose={() => setIsAttendanceOpen(false)}
+              onNavigate={(target) => {
+                setIsAttendanceOpen(false);
+                if (target === "tamagotchi") return;
+                if (target === "stadium") {
+                  setIsStadiumPageOpen(true);
+                  return;
+                }
+                if (target === "settings") {
+                  setIsSettingsOpen(true);
+                  return;
+                }
+                if (target === "home") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  return;
+                }
+                requestAnimationFrame(() => {
+                  document
+                    .querySelector(target === "chat" ? ".chat-panel" : ".records-section")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isStadiumPageOpen ? (
+        <div
+          className="stadium-page-backdrop"
+          role="presentation"
+          onClick={() => setIsStadiumPageOpen(false)}
+        >
+          <section
+            className="stadium-page-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="구장정보"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <StadiumPage
+              onClose={() => setIsStadiumPageOpen(false)}
+              onNavigate={(target) => {
+                setIsStadiumPageOpen(false);
+                if (target === "settings") {
+                  setIsSettingsOpen(true);
+                  return;
+                }
+                if (target === "home") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  return;
+                }
+                if (target === "tamagotchi") {
+                  setIsAttendanceOpen(true);
+                  return;
+                }
+                requestAnimationFrame(() => {
+                  document
+                    .querySelector(target === "chat" ? ".chat-panel" : ".records-section")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isSettingsOpen ? (
+        <div
+          className="settings-window-backdrop"
+          role="presentation"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <section
+            className="settings-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="환경설정"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SettingsView
+              onClose={() => setIsSettingsOpen(false)}
+              onNavigate={(target) => {
+                setIsSettingsOpen(false);
+                if (target === "tamagotchi") {
+                  setIsAttendanceOpen(true);
+                  return;
+                }
+                if (target === "stadium") {
+                  setIsStadiumPageOpen(true);
+                  return;
+                }
+                if (target === "home") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  return;
+                }
+                requestAnimationFrame(() => {
+                  document
+                    .querySelector(target === "chat" ? ".chat-panel" : ".records-section")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            />
           </section>
         </div>
       ) : null}

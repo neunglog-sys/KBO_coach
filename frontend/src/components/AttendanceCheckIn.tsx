@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  BookOpenCheck,
+  CalendarCheck,
+  Megaphone,
+  Shirt,
+  Smile,
+  Volume2,
+} from "lucide-react";
+import { apiUrl } from "../api";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
 interface AttendanceStatus {
   level: number;
@@ -26,19 +36,24 @@ interface QuizResult {
 interface AttendanceCheckInProps {
   authToken: string;
   onCheckedTodayChange?: (checkedToday: boolean) => void;
+  onRequestClose?: () => void;
+  onNavigate?: (target: TopMenuTarget) => void;
 }
 
 const STORAGE_KEY = "baseballCoachAttendance";
 const CHECKIN_XP = 20;
 const XP_PER_LEVEL = 100;
+const CHILD_CHARACTER_SRC = "/img/tamagotchi-child.png?v=transparent-fixed";
+const ADULT_CHARACTER_SRC = "/img/tamagotchi-adult.png?v=transparent-fixed-gap";
+const FALLBACK_CHARACTER_SRC = "/img/character.png";
 
 function getDifficultyColor(difficulty?: string) {
   switch (difficulty) {
-    case "\ucd08\ubcf4":
+    case "초보":
       return "#2980b9";
-    case "\uc911\uae09":
+    case "중급":
       return "#e67e22";
-    case "\uace0\uae09":
+    case "고급":
       return "#e74c3c";
     default:
       return "#27ae60";
@@ -63,7 +78,7 @@ function fallbackStatus(): AttendanceStatus {
         checked_today: parsed.last_checkin_date === todayKey(),
         last_checkin_date: parsed.last_checkin_date || null,
         gained_xp: 0,
-        message: parsed.last_checkin_date === todayKey() ? "\uc624\ub298 \ucd9c\uc11d \uc644\ub8cc!" : "\uc544\uc9c1 \uc624\ub298 \ucd9c\uc11d \uc804\uc774\uc5d0\uc694.",
+        message: parsed.last_checkin_date === todayKey() ? "오늘 출석 완료!" : "아직 오늘 출석 전이에요.",
       };
     } catch {
       localStorage.removeItem(STORAGE_KEY);
@@ -78,7 +93,7 @@ function fallbackStatus(): AttendanceStatus {
     checked_today: false,
     last_checkin_date: null,
     gained_xp: 0,
-    message: "\uc544\uc9c1 \uc624\ub298 \ucd9c\uc11d \uc804\uc774\uc5d0\uc694.",
+    message: "아직 오늘 출석 전이에요.",
   };
 }
 
@@ -88,7 +103,7 @@ function saveFallback(status: AttendanceStatus) {
 
 function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
   if (current.checked_today) {
-    return { ...current, gained_xp: 0, message: "\uc624\ub298\uc740 \uc774\ubbf8 \ucd9c\uc11d\ud588\uc5b4\uc694." };
+    return { ...current, gained_xp: 0, message: "오늘은 이미 출석했어요." };
   }
 
   const xp = current.xp + CHECKIN_XP;
@@ -101,13 +116,18 @@ function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
     checked_today: true,
     last_checkin_date: todayKey(),
     gained_xp: CHECKIN_XP,
-    message: "\ucd9c\uc11d \uc644\ub8cc! \uacbd\ud5d8\uce58\uac00 \uc62c\ub790\uc5b4\uc694.",
+    message: "출석 완료! 경험치가 올랐어요.",
   };
   saveFallback(next);
   return next;
 }
 
-export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: AttendanceCheckInProps) {
+export default function AttendanceCheckIn({
+  authToken,
+  onCheckedTodayChange,
+  onRequestClose,
+  onNavigate,
+}: AttendanceCheckInProps) {
   const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState("");
@@ -116,11 +136,20 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [showingResult, setShowingResult] = useState(false);
   const [quizLoading, setQuizLoading] = useState(false);
+  const [quizLoadError, setQuizLoadError] = useState("");
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [characterSrc, setCharacterSrc] = useState(() =>
+    fallbackStatus().level >= 10 ? ADULT_CHARACTER_SRC : CHILD_CHARACTER_SRC,
+  );
 
   const progress = useMemo(
     () => Math.min(100, Math.round(((status.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100)),
     [status.xp],
   );
+
+  const displayLevel = status.level || 3;
+  const displayProgress = progress || 60;
+  const cheerPower = Math.min(99, 78 + Math.max(0, displayLevel - 3));
 
   const authHeaders = (extra?: Record<string, string>) =>
     authToken ? { Authorization: `Bearer ${authToken}`, ...extra } : { ...extra };
@@ -130,11 +159,15 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
   }, [onCheckedTodayChange, status.checked_today]);
 
   useEffect(() => {
+    setCharacterSrc(status.level >= 10 ? ADULT_CHARACTER_SRC : CHILD_CHARACTER_SRC);
+  }, [status.level]);
+
+  useEffect(() => {
     let ignore = false;
 
     async function loadStatus() {
       try {
-        const response = await fetch("/attendance/status", { headers: authHeaders() });
+        const response = await fetch(apiUrl("/attendance/status"), { headers: authHeaders() });
         if (!response.ok) return;
         const data = (await response.json()) as AttendanceStatus;
         if (!ignore) {
@@ -157,8 +190,11 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
 
     async function loadQuiz() {
       try {
-        const response = await fetch("/quiz/daily", { headers: authHeaders() });
-        if (!response.ok) return;
+        const response = await fetch(apiUrl("/quiz/daily"), { headers: authHeaders() });
+        if (!response.ok) {
+          if (!ignore) setQuizLoadError("퀴즈 데이터를 불러오지 못했어요.");
+          return;
+        }
         const data = (await response.json()) as {
           questions: QuizQuestion[];
           results: Record<string, QuizResult>;
@@ -169,9 +205,12 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
           setQuizResults(data.results);
           setCurrentQuizIdx(data.answered_count);
           setShowingResult(false);
+          setQuizLoadError(data.questions.length > 0 ? "" : "오늘 풀 수 있는 퀴즈가 없어요.");
         }
       } catch {
-        // Quiz is optional while the backend or seed data is not ready.
+        if (!ignore) {
+          setQuizLoadError("백엔드 연결을 확인한 뒤 다시 실행해 주세요.");
+        }
       }
     }
 
@@ -188,7 +227,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
     setNotice("");
 
     try {
-      const response = await fetch("/attendance/check-in", {
+      const response = await fetch(apiUrl("/attendance/check-in"), {
         method: "POST",
         headers: authHeaders(),
       });
@@ -201,7 +240,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
     } catch {
       const next = applyLocalCheckIn(status);
       setStatus(next);
-      setNotice("\ubc31\uc5d4\ub4dc \uc5f0\uacb0 \uc804\uc774\ub77c \ube0c\ub77c\uc6b0\uc800\uc5d0 \uc784\uc2dc \uc800\uc7a5\ud588\uc5b4\uc694.");
+      setNotice("백엔드 연결 전이라 브라우저에 임시 저장했어요.");
     } finally {
       setIsLoading(false);
     }
@@ -213,7 +252,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
 
     setQuizLoading(true);
     try {
-      const response = await fetch("/quiz/answer", {
+      const response = await fetch(apiUrl("/quiz/answer"), {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ quiz_id: question.quiz_id, answer }),
@@ -258,6 +297,14 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
     setCurrentQuizIdx((index) => index + 1);
   }
 
+  function handleCheer() {
+    setNotice("고마워! 힘이 난다!");
+  }
+
+  function handleDecorate() {
+    setNotice("꾸미기는 준비 중이에요.");
+  }
+
   const currentQuestion = quizQuestions[currentQuizIdx] ?? null;
   const currentResult = currentQuestion ? quizResults[String(currentQuestion.quiz_id)] : null;
   const answeredCount = Object.keys(quizResults).length;
@@ -265,60 +312,97 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
   const totalQuizXp = Object.values(quizResults).reduce((sum, result) => sum + result.xp_earned, 0);
 
   return (
-    <section className="attendance-panel" aria-label="\ucd9c\uc11d \uccb4\ud06c">
-      <div className="attendance-mascot" aria-hidden="true">
-        <div className="attendance-ear left" />
-        <div className="attendance-ear right" />
-        <div className="attendance-body">
-          <span className="attendance-eye left" />
-          <span className="attendance-eye right" />
-          <span className="attendance-mouth" />
-          <span className="attendance-cheek left" />
-          <span className="attendance-cheek right" />
-          <span className="attendance-hand" />
+    <section className="tamagotchi-dashboard" aria-label="다마고치">
+      <TopMenu
+        active="tamagotchi"
+        className="tamagotchi-nav"
+        onNavigate={(target) => onNavigate?.(target)}
+      />
+
+      <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
+        <div className="tamagotchi-status-top">
+          <h2>
+            <span>Lv.{displayLevel}</span>
+            김동아
+          </h2>
+          <div className="tamagotchi-exp">
+            <strong>EXP</strong>
+            <div aria-label={`경험치 ${displayProgress}%`}>
+              <span style={{ width: `${displayProgress}%` }} />
+            </div>
+            <b>{displayProgress}%</b>
+          </div>
         </div>
+        <div className="tamagotchi-status-bottom">
+          <p>
+            <Smile aria-hidden="true" />
+            오늘의 상태: <strong>좋음</strong>
+          </p>
+          <p>
+            <Volume2 aria-hidden="true" />
+            응원력 <strong>{cheerPower}</strong>
+          </p>
+        </div>
+      </section>
+
+      <section className="tamagotchi-field-card" aria-label="캐릭터 영역">
+        <div className="tamagotchi-speech-bubble">
+          안녕 김동아!<br />
+          오늘도 왔구나!
+        </div>
+        <img
+          className="tamagotchi-character-img"
+          src={characterSrc}
+          alt="야구 다마고치 캐릭터"
+          onError={() => setCharacterSrc(FALLBACK_CHARACTER_SRC)}
+        />
+      </section>
+
+      <div className="tamagotchi-actions">
+        <button
+          className="tamagotchi-action is-check"
+          type="button"
+          disabled={status.checked_today || isLoading}
+          onClick={handleCheckIn}
+        >
+          <span><CalendarCheck /></span>
+          <strong>{status.checked_today ? "출석완료" : "출석체크"}</strong>
+        </button>
+        <button className="tamagotchi-action is-dress" type="button" onClick={handleDecorate}>
+          <span><Shirt /></span>
+          <strong>꾸미기</strong>
+        </button>
+        <button className="tamagotchi-action is-cheer" type="button" onClick={handleCheer}>
+          <span><Megaphone /></span>
+          <strong>응원하기</strong>
+        </button>
+        <button
+          className="tamagotchi-action is-quiz"
+          type="button"
+          onClick={() => setShowQuiz((current) => !current)}
+        >
+          <span><BookOpenCheck /></span>
+          <strong>퀴즈풀기</strong>
+        </button>
       </div>
 
-      <div className="attendance-copy">
-        <p className="eyebrow">Daily Check-in</p>
-        <h2>{"\uc624\ub298 \ucd9c\uc11d\ud558\uae30"}</h2>
-        <p className="attendance-message">{notice || status.message}</p>
-      </div>
+      {notice ? <p className="tamagotchi-notice" aria-live="polite">{notice}</p> : null}
 
-      <div className="attendance-stats" aria-label="\ucd9c\uc11d \uc0c1\ud0dc">
-        <div>
-          <span>{"\ub808\ubca8"}</span>
-          <strong>{status.level}</strong>
-        </div>
-        <div>
-          <span>{"\uacbd\ud5d8\uce58"}</span>
-          <strong>{status.xp} XP</strong>
-        </div>
-        <div>
-          <span>{"\ub204\uc801 \ucd9c\uc11d"}</span>
-          <strong>{status.total_checkins}{"\uc77c"}</strong>
-        </div>
-      </div>
-
-      <div className="attendance-progress" aria-label={`\ub2e4\uc74c \ub808\ubca8\uae4c\uc9c0 ${status.xp_to_next} \uacbd\ud5d8\uce58`}>
-        <span style={{ width: `${progress}%` }} />
-      </div>
-
-      {quizQuestions.length > 0 ? (
-        <div className="quiz-section">
+      {showQuiz && quizQuestions.length > 0 ? (
+        <div className="quiz-section tamagotchi-quiz-section">
           <div className="quiz-header">
-            <span>{"OX \ud034\uc988"}</span>
+            <span>OX 퀴즈</span>
             <span className="quiz-count">
-              {answeredCount} / {quizQuestions.length}{"\ubb38\uc81c \uc644\ub8cc"}
+              {answeredCount} / {quizQuestions.length}문제 완료
             </span>
           </div>
 
           {allDone ? (
             <div className="quiz-done-message">
-              <p>{"\uc624\ub298 \ud034\uc988 \uc644\ub8cc!"}</p>
+              <p>오늘 퀴즈 완료!</p>
               {totalQuizXp > 0 ? (
                 <p className="quiz-total-xp">
-                  {"\ud034\uc988 \ud68d\ub4dd XP: "}<strong>+{totalQuizXp} XP</strong>
+                  퀴즈 획득 XP: <strong>+{totalQuizXp} XP</strong>
                 </p>
               ) : null}
             </div>
@@ -364,7 +448,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
                 <div className={`quiz-result-box ${currentResult.is_correct ? "correct" : "wrong"}`}>
                   <div className="quiz-result-header">
                     <span className="quiz-result-icon">
-                      {currentResult.is_correct ? "\uc815\ub2f5!" : "\uc624\ub2f5"}
+                      {currentResult.is_correct ? "정답!" : "오답"}
                     </span>
                     {currentResult.xp_earned > 0 ? (
                       <span className="quiz-xp-badge">+{currentResult.xp_earned} XP</span>
@@ -373,7 +457,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
                   <p className="quiz-explanation">{currentResult.explanation}</p>
                   {currentQuizIdx + 1 < quizQuestions.length ? (
                     <button className="quiz-next-btn" type="button" onClick={handleNextQuiz}>
-                      {"\ub2e4\uc74c \ubb38\uc81c"}
+                      다음 문제
                     </button>
                   ) : null}
                 </div>
@@ -383,14 +467,19 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange }: A
         </div>
       ) : null}
 
-      <button
-        className="attendance-check-button"
-        type="button"
-        disabled={status.checked_today || isLoading}
-        onClick={handleCheckIn}
-      >
-        {status.checked_today ? "\ucd9c\uc11d \uc644\ub8cc" : isLoading ? "\ucc98\ub9ac \uc911" : `\ucd9c\uc11d\ud558\uace0 +${CHECKIN_XP} XP`}
-      </button>
+      {showQuiz && quizQuestions.length === 0 ? (
+        <div className="quiz-section tamagotchi-quiz-section" role="status">
+          <div className="quiz-done-message">
+            <p>{quizLoadError || "퀴즈를 불러오는 중이에요."}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="tamagotchi-streak-card">
+        <span><CalendarCheck /></span>
+        <strong>연속 출석:</strong>
+        <b>3일째</b>
+      </div>
     </section>
   );
 }

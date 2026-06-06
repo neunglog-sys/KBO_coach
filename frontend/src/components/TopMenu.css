@@ -1,0 +1,157 @@
+.app-top-menu {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-top-menu button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 2px;
+  color: #143159;
+  background: transparent;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.8);
+}
+
+.app-top-menu button.is-active {
+  color: #126dff;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 12px rgba(20, 49, 89, 0.12);
+}
+
+.app-top-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 1.32rem;
+  line-height: 1;
+}
+
+.app-top-menu-label {
+  display: block;
+  max-width: 68px;
+  color: #10243c;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.app-top-menu button.is-active .app-top-menu-label {
+  color: #126dff;
+}
+
+.app-top-menu.settings-top-menu,
+.app-top-menu.stadium-page-top-menu,
+.app-top-menu.tamagotchi-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-top-menu.settings-top-menu,
+.app-top-menu.stadium-page-top-menu {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 18px;
+}
+
+.app-top-menu.settings-top-menu button,
+.app-top-menu.stadium-page-top-menu button,
+.app-top-menu.tamagotchi-nav button {
+  gap: 2px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 2px;
+  color: #143159;
+  background: transparent;
+  font-size: inherit;
+}
+
+.app-top-menu.settings-top-menu button.is-active,
+.app-top-menu.stadium-page-top-menu button.is-active,
+.app-top-menu.tamagotchi-nav button.is-active {
+  min-height: 48px;
+  margin: 0;
+  border: 0;
+  color: #126dff;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 12px rgba(20, 49, 89, 0.12);
+}
+
+.app-top-menu.tamagotchi-nav button.is-active {
+  position: relative;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-top-menu.tamagotchi-nav button.is-active::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  bottom: -4px;
+  left: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: #126dff;
+}
+
+.app-top-menu.settings-top-menu .app-top-menu-icon,
+.app-top-menu.stadium-page-top-menu .app-top-menu-icon,
+.app-top-menu.tamagotchi-nav .app-top-menu-icon {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font-size: 1.32rem;
+}
+
+.app-top-menu.settings-top-menu .app-top-menu-label,
+.app-top-menu.stadium-page-top-menu .app-top-menu-label,
+.app-top-menu.tamagotchi-nav .app-top-menu-label {
+  min-height: 0;
+  max-width: 68px;
+  color: #10243c;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.app-top-menu.settings-top-menu button.is-active .app-top-menu-label,
+.app-top-menu.stadium-page-top-menu button.is-active .app-top-menu-label,
+.app-top-menu.tamagotchi-nav button.is-active .app-top-menu-label {
+  color: #126dff;
+}
+
+@media (max-width: 360px) {
+  .app-top-menu-label {
+    font-size: 0.62rem;
+  }
+
+  .app-top-menu.settings-top-menu .app-top-menu-label,
+  .app-top-menu.stadium-page-top-menu .app-top-menu-label,
+  .app-top-menu.tamagotchi-nav .app-top-menu-label {
+    font-size: 0.62rem;
+  }
+}
