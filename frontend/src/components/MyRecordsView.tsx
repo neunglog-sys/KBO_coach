@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiUrl } from "../api";
-import { getRecords, saveRecord, deleteRecordByDate } from "../db";
 import "./MyRecordsView.css";
 
 interface MyRecordsViewProps {
@@ -9,6 +8,7 @@ interface MyRecordsViewProps {
 }
 
 interface RecordRow {
+  record_id: number;
   record_date: string;
   team_code: string | null; // 상대팀 코드
   stadium: string | null;
@@ -82,11 +82,38 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
   const [closing, setClosing] = useState(false); // 뒤로가기 슬라이드 아웃용
 
   async function reload() {
-    setRecords((await getRecords()) as RecordRow[]);
+    if (!authToken) {
+      setRecords([]);
+      return;
+    }
+    try {
+      const r = await fetch(apiUrl("/my-records"), {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!r.ok) {
+        setRecords([]);
+        return;
+      }
+      const d = await r.json();
+      const rows: RecordRow[] = (Array.isArray(d.records) ? d.records : []).map(
+        (x: Record<string, unknown>) => ({
+          record_id: Number(x.record_id),
+          record_date: String(x.record_date).slice(0, 10),
+          team_code: (x.team_code as string) ?? null,
+          stadium: (x.stadium as string) ?? null,
+          mood: (x.mood as string) ?? null,
+          memo: (x.memo as string) ?? null,
+        }),
+      );
+      setRecords(rows);
+    } catch {
+      setRecords([]);
+    }
   }
   useEffect(() => {
     reload();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authToken]);
 
   // 회원가입 시 고른 응원팀(fav_team_code) → 내 홈팀 자동 고정
   useEffect(() => {
@@ -318,6 +345,7 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
           myTeam={myTeamObj ?? null}
           game={scheduleByDate.get(modalDate) ?? null}
           existing={recordsByDate.get(modalDate) ?? null}
+          authToken={authToken}
           onClose={() => setModalDate(null)}
           onSaved={async () => {
             await reload();
@@ -365,6 +393,7 @@ function RecordModal({
   myTeam,
   game,
   existing,
+  authToken,
   onClose,
   onSaved,
 }: {
@@ -372,6 +401,7 @@ function RecordModal({
   myTeam: { code: string; name: string; short: string; color: string } | null;
   game: ScheduleGame | null;
   existing: RecordRow | null;
+  authToken: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -387,17 +417,27 @@ function RecordModal({
   const hasGame = Boolean(game || existing);
 
   async function handleSave() {
-    if (!oppCode) return;
+    if (!oppCode || !mood || !authToken) return;
     setSaving(true);
     try {
-      await deleteRecordByDate(date);
-      await saveRecord({
-        record_date: date,
-        team_code: oppCode,
-        stadium: stadium.trim() || undefined,
-        mood: mood ?? undefined,
-        memo: memo.trim() || undefined,
-        game_id: game?.gameId ?? (myTeam ? `${myTeam.code} vs ${oppCode}` : oppCode),
+      // 날짜당 1건 유지: 기존 기록 있으면 삭제 후 생성 (백엔드 update 없음)
+      if (existing?.record_id) {
+        await fetch(apiUrl(`/my-records/${existing.record_id}`), {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
+      await fetch(apiUrl("/my-records"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          record_date: date,
+          mood,
+          team_code: oppCode,
+          stadium: stadium.trim() || null,
+          memo: memo.trim() || null,
+          game_id: game?.gameId ?? (myTeam ? `${myTeam.code} vs ${oppCode}` : oppCode),
+        }),
       });
       onSaved();
     } finally {
@@ -406,9 +446,13 @@ function RecordModal({
   }
 
   async function handleDelete() {
+    if (!existing?.record_id || !authToken) return;
     setSaving(true);
     try {
-      await deleteRecordByDate(date);
+      await fetch(apiUrl(`/my-records/${existing.record_id}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
       onSaved();
     } finally {
       setSaving(false);
@@ -492,8 +536,13 @@ function RecordModal({
                   삭제
                 </button>
               ) : null}
-              <button type="button" className="rec-save" onClick={handleSave} disabled={saving}>
-                {saving ? "저장 중" : "직관 기록 저장"}
+              <button
+                type="button"
+                className="rec-save"
+                onClick={handleSave}
+                disabled={saving || !mood}
+              >
+                {saving ? "저장 중" : !mood ? "결과를 선택하세요" : "직관 기록 저장"}
               </button>
             </div>
           </>

@@ -64,7 +64,10 @@
       "Bash(curl -s -m 3 \"http://127.0.0.1:8000/schedule?month=2026-06\" -o /dev/null -w \"local 8000: %{http_code}\\\\n\")",
       "Bash(curl -s -m 2 -o /dev/null -w \"5000: %{http_code}\\\\n\" http://127.0.0.1:5000)",
       "Bash(grep -iE \"services/|requirements|main.py|firebase.json|\\\\.sql|\\\\.py$\")",
-      "Bash(grep -vE \"android/app/build|frontend/dist|frontend/android/app/src/main/assets|\\\\.glb$\")"
+      "Bash(grep -vE \"android/app/build|frontend/dist|frontend/android/app/src/main/assets|\\\\.glb$\")",
+      "Bash(python -)",
+      "Bash(PYTHONIOENCODING=utf-8 C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe -c ' *)",
+      "Bash(curl -s -m 2 -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5000)"
     ]
   }
 }
