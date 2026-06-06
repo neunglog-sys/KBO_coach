@@ -3,11 +3,13 @@ import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
+import AttendanceCheckIn from "./AttendanceCheckIn";
 import { clearMouth, setActiveViseme } from "../lipSync";
 import "./MainViewV2.css";
 
 interface MainViewV2Props {
   authToken: string;
+  favTeamCode?: string;
   onLogout: () => void;
 }
 
@@ -94,13 +96,15 @@ function buildLocalFallbackAnswer(question: string) {
   );
 }
 
-export function MainViewV2({ authToken }: MainViewV2Props) {
+export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
   ]);
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 어떤 메뉴 화면이 열려 있는지 (null = 닫힘, "pet" = 다마고치)
+  const [activePanel, setActivePanel] = useState<NavKey | null>(null);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -307,6 +311,11 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   }
 
   function handleNav(key: NavKey) {
+    // 다마고치(pet)는 우리 화면을 모달로 띄운다. 나머지는 아직 미연결.
+    if (key === "pet") {
+      setActivePanel("pet");
+      return;
+    }
     console.info(`[MainViewV2] ${key} navigation is not connected yet.`);
   }
 
@@ -376,6 +385,78 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
           </button>
         </form>
       </section>
+
+      {/* ===== 다마고치 모달 (다마고치 메뉴 누르면 열림) ===== */}
+      {activePanel === "pet" ? (
+        <div
+          role="dialog"
+          aria-label="다마고치"
+          onClick={() => setActivePanel(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 20,
+              padding: 20,
+              width: "min(560px, 96vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative",
+            }}
+          >
+            <style>{`
+              .pet-modal-body .attendance-panel {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                width: 100% !important;
+                max-width: 100% !important;
+              }
+              .pet-modal-body .attendance-stats {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 8px !important;
+              }
+              .pet-modal-body .attendance-panel * {
+                max-width: 100%;
+              }
+            `}</style>
+            <button
+              type="button"
+              onClick={() => setActivePanel(null)}
+              aria-label="닫기"
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                border: "none",
+                background: "#f1f5f9",
+                borderRadius: 999,
+                width: 32,
+                height: 32,
+                cursor: "pointer",
+                fontSize: 16,
+                zIndex: 1,
+              }}
+            >
+              ✕
+            </button>
+            <div className="pet-modal-body" style={{ width: "100%", display: "block" }}>
+              <AttendanceCheckIn authToken={authToken} favTeamCode={favTeamCode} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

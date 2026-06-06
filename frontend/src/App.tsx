@@ -17,29 +17,34 @@ const AUTH_SESSION_KEY = "baseballCoachAuth";
 function loadAuthSession() {
   const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
   if (!saved) {
-    return { isLoggedIn: false, authToken: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "" };
   }
 
   try {
-    const parsed = JSON.parse(saved) as { authToken?: string; isLoggedIn?: boolean };
+    const parsed = JSON.parse(saved) as { authToken?: string; isLoggedIn?: boolean; favTeamCode?: string };
     return {
       isLoggedIn: Boolean(parsed.isLoggedIn),
       authToken: parsed.authToken || "",
+      favTeamCode: parsed.favTeamCode || "",
     };
   } catch {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
-    return { isLoggedIn: false, authToken: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "" };
   }
 }
 
-function saveAuthSession(authToken: string) {
-  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ isLoggedIn: true, authToken }));
+function saveAuthSession(authToken: string, favTeamCode: string) {
+  sessionStorage.setItem(
+    AUTH_SESSION_KEY,
+    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode }),
+  );
 }
 
 export function App() {
   const [authSession] = useState(loadAuthSession);
   const [isLoggedIn, setIsLoggedIn] = useState(authSession.isLoggedIn);
   const [authToken, setAuthToken] = useState(authSession.authToken);
+  const [favTeamCode, setFavTeamCode] = useState(authSession.favTeamCode);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
@@ -69,9 +74,11 @@ export function App() {
       if (response.ok) {
         const data = await response.json();
         const token = data.access_token || data.token || "";
+        const teamCode = data.user?.fav_team_code || ""; // 로그인 응답의 응원팀
         setAuthToken(token);
+        setFavTeamCode(teamCode);
         setIsLoggedIn(true);
-        saveAuthSession(token);
+        saveAuthSession(token, teamCode);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
@@ -81,8 +88,9 @@ export function App() {
 
     if (id === DEMO_AUTH.id && password === DEMO_AUTH.pw) {
       setAuthToken("");
+      setFavTeamCode("");
       setIsLoggedIn(true);
-      saveAuthSession("");
+      saveAuthSession("", "");
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
@@ -130,6 +138,7 @@ export function App() {
     window.speechSynthesis?.cancel();
     sessionStorage.removeItem(AUTH_SESSION_KEY);
     setAuthToken("");
+    setFavTeamCode("");
     setIsLoggedIn(false);
     setLoginError("");
     setLoginNotice("");
@@ -140,7 +149,7 @@ export function App() {
   return (
     <main className="app-shell">
       {isLoggedIn ? (
-        <MainViewV2 authToken={authToken} onLogout={handleLogout} />
+        <MainViewV2 authToken={authToken} favTeamCode={favTeamCode} onLogout={handleLogout} />
       ) : authMode === "register" ? (
         <RegisterView
           error={registerError}
