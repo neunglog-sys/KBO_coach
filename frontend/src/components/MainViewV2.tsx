@@ -4,6 +4,8 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import { clearMouth, setActiveViseme } from "../lipSync";
+import { MyRecordsView } from "./MyRecordsView";
+import { TeamChatView } from "./TeamChatView";
 import "./MainViewV2.css";
 
 interface MainViewV2Props {
@@ -22,6 +24,7 @@ const NAV_ITEMS = [
   { key: "record", icon: "📒", label: "나만의 기록" },
   { key: "pet", icon: "🥕", label: "다마고치" },
   { key: "stadium", icon: "🏟️", label: "구장정보" },
+  { key: "settings", icon: "⚙️", label: "환경설정" },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -101,6 +104,8 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [showRecords, setShowRecords] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -307,6 +312,14 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   }
 
   function handleNav(key: NavKey) {
+    if (key === "record") {
+      setShowRecords(true);
+      return;
+    }
+    if (key === "chat") {
+      setShowChat(true);
+      return;
+    }
     console.info(`[MainViewV2] ${key} navigation is not connected yet.`);
   }
 
@@ -376,6 +389,14 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
           </button>
         </form>
       </section>
+
+      {showRecords ? (
+        <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
+      ) : null}
+
+      {showChat ? (
+        <TeamChatView authToken={authToken} onBack={() => setShowChat(false)} />
+      ) : null}
     </section>
   );
 }

@@ -111,6 +111,12 @@ export async function getRecordByDate(date: string): Promise<any | null> {
   const c = await conn();
   return select(c, "SELECT * FROM my_records WHERE record_date=? LIMIT 1", [date])[0] ?? null;
 }
+/** 특정 날짜 기록 삭제 (날짜당 1건 유지/수정용 upsert에 사용). */
+export async function deleteRecordByDate(date: string) {
+  const c = await conn();
+  c.run("DELETE FROM my_records WHERE record_date=?", [date]);
+  await persist();
+}
 
 /** 현재 로컬 DB를 .sqlite 파일로 다운로드 → 'DB Browser for SQLite' 등으로 열어 확인. */
 export async function exportDb(filename = "kbo_local.sqlite"): Promise<void> {
