@@ -3,7 +3,8 @@ import { apiUrl } from "./api";
 import { registerPush } from "./push";
 import { initDb } from "./db";
 import { LoginView } from "./components/LoginView";
-import { MainView } from "./components/MainView";
+// import { MainView } from "./components/MainView"; // 구버전 메인(되돌리려면 이 줄 + 아래 JSX 교체)
+import { MainViewV2 } from "./components/MainViewV2";
 import { RegisterView } from "./components/RegisterView";
 
 const DEMO_AUTH = {
@@ -139,7 +140,7 @@ export function App() {
   return (
     <main className="app-shell">
       {isLoggedIn ? (
-        <MainView authToken={authToken} onLogout={handleLogout} />
+        <MainViewV2 authToken={authToken} onLogout={handleLogout} />
       ) : authMode === "register" ? (
         <RegisterView
           error={registerError}

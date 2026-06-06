@@ -58,16 +58,44 @@ button {
   display: grid;
   place-items: center;
   padding: 24px;
+  /* 연한 하늘색 그라데이션 배경 (설정 화면 톤) */
+  background: linear-gradient(180deg, #cfe4ff 0%, #e7f1ff 46%, #f4f8ff 100%);
 }
 
 .login-panel {
-  width: min(100%, 420px);
-  padding: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.52);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(14px);
+  width: min(100%, 400px);
+  padding: 30px 26px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(46, 109, 224, 0.16);
+}
+
+/* 상단 브랜드(아이콘 뱃지 + 제목) */
+.auth-brand {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.auth-logo {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #e8f1ff, #d8e8ff);
+  box-shadow: 0 8px 18px rgba(46, 109, 224, 0.18);
+  font-size: 2rem;
+}
+
+.auth-sub {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .eyebrow {
@@ -86,9 +114,33 @@ p {
 }
 
 .login-panel h1 {
-  margin-bottom: 26px;
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  font-weight: 900;
   line-height: 1.15;
+}
+
+/* 로그인/회원가입 입력 — 둥근 연파랑 필드 */
+.login-panel label {
+  color: var(--navy);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.login-panel input,
+.login-panel select {
+  min-height: 50px;
+  border: 1px solid #e2ecfb;
+  border-radius: 14px;
+  background: #f3f7ff;
+}
+
+.login-panel input:focus,
+.login-panel select:focus {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.14);
 }
 
 label {
@@ -130,14 +182,25 @@ select:focus {
 
 .login-panel button {
   width: 100%;
+  margin-top: 6px;
+  border-radius: 14px;
+  /* 파란 포인트 버튼 (설정 화면 톤) */
+  background: linear-gradient(135deg, #3b8cff, #126dff);
+  box-shadow: 0 10px 22px rgba(18, 109, 255, 0.28);
+}
+
+.login-panel button:disabled {
+  opacity: 0.6;
 }
 
 .login-panel .text-button {
   min-height: 44px;
-  margin-top: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.14);
-  color: var(--navy);
-  background: rgba(255, 255, 255, 0.72);
+  margin-top: 10px;
+  border: 0;
+  color: var(--blue);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 700;
 }
 
 .error-text {

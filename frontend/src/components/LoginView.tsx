@@ -26,8 +26,11 @@ export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewP
   return (
     <section className="login-view" aria-label="로그인">
       <form id="loginForm" className="login-panel" onSubmit={handleSubmit}>
-        <p className="eyebrow">Baseball Rookie Coach</p>
-        <h1>야구 초보자를 위한 AI 코치</h1>
+        <div className="auth-brand">
+          <div className="auth-logo" aria-hidden="true">⚾</div>
+          <h1>공복이</h1>
+          <p className="auth-sub">야구 초보자를 위한 AI 코치</p>
+        </div>
         <label>
           <span>아이디</span>
           <input
