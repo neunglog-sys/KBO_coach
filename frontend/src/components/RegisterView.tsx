@@ -55,8 +55,11 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
   return (
     <section className="login-view" aria-label="회원가입">
       <form id="registerForm" className="login-panel" onSubmit={handleSubmit}>
-        <p className="eyebrow">Create Account</p>
-        <h1>야구공 코치 시작하기</h1>
+        <div className="auth-brand">
+          <div className="auth-logo" aria-hidden="true">⚾</div>
+          <h1>회원가입</h1>
+          <p className="auth-sub">야구공 코치 시작하기</p>
+        </div>
         <label>
           <span>아이디</span>
           <input
@@ -98,7 +101,7 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
           />
         </label>
         <label>
-          <span>fav_team_code</span>
+          <span>응원팀</span>
           <select
             id="registerFavTeamCode"
             value={favTeamCode}
