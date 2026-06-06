@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  BookOpenCheck,
+  CalendarCheck,
+  Megaphone,
+  Shirt,
+  Smile,
+  Volume2,
+} from "lucide-react";
+import { apiUrl } from "../api";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
 interface AttendanceStatus {
   level: number;
@@ -29,8 +39,8 @@ type Gender = "man" | "girl" | null;
 interface AttendanceCheckInProps {
   authToken: string;
   onCheckedTodayChange?: (checkedToday: boolean) => void;
-  // 사용자가 응원하는 팀 코드(SS, LG ...). 없으면 무소속(default).
-  // 지금은 안 넘겨도 동작하며, 나중에 팀 선택 기능에서 넘겨주면 됩니다.
+  onRequestClose?: () => void;
+  onNavigate?: (target: TopMenuTarget) => void;
   favTeamCode?: string | null;
 }
 
@@ -38,6 +48,9 @@ const STORAGE_KEY = "baseballCoachAttendance";
 const GENDER_STORAGE_KEY = "baseballCoachGender"; // 성별 임시 저장(브라우저)
 const CHECKIN_XP = 20;
 const XP_PER_LEVEL = 100;
+const CHILD_CHARACTER_SRC = "/img/tamagotchi-child.png?v=transparent-fixed";
+const ADULT_CHARACTER_SRC = "/img/tamagotchi-adult.png?v=transparent-fixed-gap";
+const FALLBACK_CHARACTER_SRC = "/img/character.png";
 
 // ★ 테스트 패널 스위치 ★
 //   true  = 테스트 패널 표시(레벨·구단을 직접 바꿔 캐릭터 확인) → 팀원 확인용
@@ -115,11 +128,11 @@ function saveGender(gender: Gender) {
 
 function getDifficultyColor(difficulty?: string) {
   switch (difficulty) {
-    case "\ucd08\ubcf4":
+    case "초보":
       return "#2980b9";
-    case "\uc911\uae09":
+    case "중급":
       return "#e67e22";
-    case "\uace0\uae09":
+    case "고급":
       return "#e74c3c";
     default:
       return "#27ae60";
@@ -144,7 +157,7 @@ function fallbackStatus(): AttendanceStatus {
         checked_today: parsed.last_checkin_date === todayKey(),
         last_checkin_date: parsed.last_checkin_date || null,
         gained_xp: 0,
-        message: parsed.last_checkin_date === todayKey() ? "\uc624\ub298 \ucd9c\uc11d \uc644\ub8cc!" : "\uc544\uc9c1 \uc624\ub298 \ucd9c\uc11d \uc804\uc774\uc5d0\uc694.",
+        message: parsed.last_checkin_date === todayKey() ? "오늘 출석 완료!" : "아직 오늘 출석 전이에요.",
       };
     } catch {
       localStorage.removeItem(STORAGE_KEY);
@@ -159,7 +172,7 @@ function fallbackStatus(): AttendanceStatus {
     checked_today: false,
     last_checkin_date: null,
     gained_xp: 0,
-    message: "\uc544\uc9c1 \uc624\ub298 \ucd9c\uc11d \uc804\uc774\uc5d0\uc694.",
+    message: "아직 오늘 출석 전이에요.",
   };
 }
 
@@ -169,7 +182,7 @@ function saveFallback(status: AttendanceStatus) {
 
 function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
   if (current.checked_today) {
-    return { ...current, gained_xp: 0, message: "\uc624\ub298\uc740 \uc774\ubbf8 \ucd9c\uc11d\ud588\uc5b4\uc694." };
+    return { ...current, gained_xp: 0, message: "오늘은 이미 출석했어요." };
   }
 
   const xp = current.xp + CHECKIN_XP;
@@ -182,13 +195,19 @@ function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
     checked_today: true,
     last_checkin_date: todayKey(),
     gained_xp: CHECKIN_XP,
-    message: "\ucd9c\uc11d \uc644\ub8cc! \uacbd\ud5d8\uce58\uac00 \uc62c\ub790\uc5b4\uc694.",
+    message: "출석 완료! 경험치가 올랐어요.",
   };
   saveFallback(next);
   return next;
 }
 
-export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, favTeamCode }: AttendanceCheckInProps) {
+export default function AttendanceCheckIn({
+  authToken,
+  onCheckedTodayChange,
+  onRequestClose,
+  onNavigate,
+  favTeamCode,
+}: AttendanceCheckInProps) {
   const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
   const [gender, setGender] = useState<Gender>(() => loadGender());
   const [imgFailed, setImgFailed] = useState(false);
@@ -199,7 +218,8 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [showingResult, setShowingResult] = useState(false);
   const [quizLoading, setQuizLoading] = useState(false);
-
+  const [quizLoadError, setQuizLoadError] = useState("");
+  const [showQuiz, setShowQuiz] = useState(false);
   // 테스트 패널용 값 (SHOW_TEST_PANEL=true 일 때만 사용)
   const [testLevel, setTestLevel] = useState(1);
   const [testTeam, setTestTeam] = useState(""); // "" = 무소속(default)
@@ -212,9 +232,10 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
     [status.xp],
   );
 
-  // 캐릭터 이미지 경로
-  //  - 테스트 모드: 패널에서 고른 testLevel/testTeam 사용
-  //  - 실제 모드: 진짜 레벨(status.level) + 응원팀(favTeamCode) 사용
+  const displayLevel = status.level || 3;
+  const displayProgress = progress || 60;
+  const cheerPower = Math.min(99, 78 + Math.max(0, displayLevel - 3));
+
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
   const characterSrc = useMemo(
@@ -222,19 +243,15 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
     [charLevel, charTeam, gender],
   );
 
-  // 캐릭터 경로가 바뀌면 "이미지 실패" 깃발을 초기화 (새 이미지 다시 시도)
   useEffect(() => {
     setImgFailed(false);
   }, [characterSrc]);
 
-  // 현재 레벨 기준 보유 아이템(좌측 컬렉션에 표시)
   const ownedItems = useMemo(() => getOwnedItems(charLevel), [charLevel]);
 
-  // 레벨업 감지 → 새로 도달한 보상 레벨이 있으면 연출 대기열에 추가
   const prevLevelRef = useRef<number | null>(null);
   useEffect(() => {
     if (SHOW_TEST_PANEL) {
-      // 테스트 모드: 직전 레벨과 비교 → 낮췄다 다시 올리면 연출 재생
       const prev = prevLevelRef.current ?? 1;
       if (charLevel > prev) {
         const newly: RewardItem[] = [];
@@ -247,7 +264,6 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
       return;
     }
 
-    // 실제 모드: 한 번 받은 보상은 다시 안 뜸(localStorage로 기억)
     const seen = Number(localStorage.getItem(LEVEL_SEEN_KEY) || "1");
     if (charLevel > seen) {
       const newly: RewardItem[] = [];
@@ -259,14 +275,13 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
     }
   }, [charLevel]);
 
-  const rewardPopup = rewardQueue[0] ?? null; // 지금 보여줄 보상(없으면 null)
+  const rewardPopup = rewardQueue[0] ?? null;
   function dismissReward() {
     setRewardQueue((q) => q.slice(1));
   }
 
-  // 성별을 고르면 저장하고 상태에 반영
   function handlePickGender(picked: Gender) {
-    saveGender(picked); // ★ 나중에 서버 저장으로 바뀌는 부분(함수 내부만)
+    saveGender(picked);
     setGender(picked);
     setImgFailed(false);
   }
@@ -283,7 +298,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
 
     async function loadStatus() {
       try {
-        const response = await fetch("/attendance/status", { headers: authHeaders() });
+        const response = await fetch(apiUrl("/attendance/status"), { headers: authHeaders() });
         if (!response.ok) return;
         const data = (await response.json()) as AttendanceStatus;
         if (!ignore) {
@@ -306,8 +321,11 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
 
     async function loadQuiz() {
       try {
-        const response = await fetch("/quiz/daily", { headers: authHeaders() });
-        if (!response.ok) return;
+        const response = await fetch(apiUrl("/quiz/daily"), { headers: authHeaders() });
+        if (!response.ok) {
+          if (!ignore) setQuizLoadError("퀴즈 데이터를 불러오지 못했어요.");
+          return;
+        }
         const data = (await response.json()) as {
           questions: QuizQuestion[];
           results: Record<string, QuizResult>;
@@ -318,9 +336,12 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
           setQuizResults(data.results);
           setCurrentQuizIdx(data.answered_count);
           setShowingResult(false);
+          setQuizLoadError(data.questions.length > 0 ? "" : "오늘 풀 수 있는 퀴즈가 없어요.");
         }
       } catch {
-        // Quiz is optional while the backend or seed data is not ready.
+        if (!ignore) {
+          setQuizLoadError("백엔드 연결을 확인한 뒤 다시 실행해 주세요.");
+        }
       }
     }
 
@@ -337,7 +358,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
     setNotice("");
 
     try {
-      const response = await fetch("/attendance/check-in", {
+      const response = await fetch(apiUrl("/attendance/check-in"), {
         method: "POST",
         headers: authHeaders(),
       });
@@ -350,7 +371,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
     } catch {
       const next = applyLocalCheckIn(status);
       setStatus(next);
-      setNotice("\ubc31\uc5d4\ub4dc \uc5f0\uacb0 \uc804\uc774\ub77c \ube0c\ub77c\uc6b0\uc800\uc5d0 \uc784\uc2dc \uc800\uc7a5\ud588\uc5b4\uc694.");
+      setNotice("백엔드 연결 전이라 브라우저에 임시 저장했어요.");
     } finally {
       setIsLoading(false);
     }
@@ -362,7 +383,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
 
     setQuizLoading(true);
     try {
-      const response = await fetch("/quiz/answer", {
+      const response = await fetch(apiUrl("/quiz/answer"), {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ quiz_id: question.quiz_id, answer }),
@@ -405,6 +426,14 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
   function handleNextQuiz() {
     setShowingResult(false);
     setCurrentQuizIdx((index) => index + 1);
+  }
+
+  function handleCheer() {
+    setNotice("고마워! 힘이 난다!");
+  }
+
+  function handleDecorate() {
+    setNotice("꾸미기는 준비 중이에요.");
   }
 
   const currentQuestion = quizQuestions[currentQuizIdx] ?? null;
@@ -457,178 +486,97 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
   }
 
   return (
-    <section className="attendance-panel" aria-label="\ucd9c\uc11d \uccb4\ud06c">
-      {/* 보상 연출용 애니메이션 */}
-      <style>{`
-        @keyframes rewardPop { 0%{transform:scale(0.4);opacity:0} 60%{transform:scale(1.1);opacity:1} 100%{transform:scale(1)} }
-        @keyframes rewardSpin { 0%{transform:rotate(0) scale(1)} 50%{transform:rotate(8deg) scale(1.15)} 100%{transform:rotate(0) scale(1)} }
-        @keyframes itemPopIn { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
-      `}</style>
+    <section className="tamagotchi-dashboard" aria-label="다마고치">
+      <TopMenu
+        active="tamagotchi"
+        className="tamagotchi-nav"
+        onNavigate={(target) => onNavigate?.(target)}
+      />
 
-      {/* ===== 캐릭터 + 좌측 컬렉션 ===== */}
-      <div className="attendance-character" aria-hidden="true" style={{ position: "relative", textAlign: "center", minHeight: 230 }}>
-        {/* 좌측 컬렉션(획득한 아이템) */}
-        {ownedItems.length > 0 ? (
-          <div style={{ position: "absolute", left: 0, top: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-            {ownedItems.map((item) => (
-              <img
-                key={item.src}
-                src={item.src}
-                alt={item.name}
-                title={item.name}
-                style={{
-                  width: 68, height: 68, objectFit: "contain",
-                  background: "#f8fafc", border: "1px solid #e2e8f0",
-                  borderRadius: 14, padding: 6,
-                  animation: "itemPopIn 0.3s ease",
-                }}
-                onError={(e) => { (e.currentTarget.style.display = "none"); }}
-              />
-            ))}
+      <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
+        <div className="tamagotchi-status-top">
+          <h2>
+            <span>Lv.{displayLevel}</span>
+            김동아
+          </h2>
+          <div className="tamagotchi-exp">
+            <strong>EXP</strong>
+            <div aria-label={`경험치 ${displayProgress}%`}>
+              <span style={{ width: `${displayProgress}%` }} />
+            </div>
+            <b>{displayProgress}%</b>
           </div>
-        ) : null}
+        </div>
+        <div className="tamagotchi-status-bottom">
+          <p>
+            <Smile aria-hidden="true" />
+            오늘의 상태: <strong>좋음</strong>
+          </p>
+          <p>
+            <Volume2 aria-hidden="true" />
+            응원력 <strong>{cheerPower}</strong>
+          </p>
+        </div>
+      </section>
 
-        {!imgFailed ? (
-          <img
-            key={characterSrc}
-            src={characterSrc}
-            alt="\ub2e4\ub9c8\uace0\uce58 \uce90\ub9ad\ud130"
-            style={{ width: 200, height: 200, objectFit: "contain" }}
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          // 이미지 파일이 아직 없을 때: 기본 캐릭터로 대체 시도
-          <img
-            src={`/character/default_${gender}.png`}
-            alt="\uae30\ubcf8 \uce90\ub9ad\ud130"
-            style={{ width: 200, height: 200, objectFit: "contain" }}
-            onError={(e) => { (e.currentTarget.style.display = "none"); }}
-          />
-        )}
-      </div>
+      <section className="tamagotchi-field-card" aria-label="캐릭터 영역">
+        <div className="tamagotchi-speech-bubble">
+          안녕 김동아!<br />
+          오늘도 왔구나!
+        </div>
+        <img
+          className="tamagotchi-character-img"
+          src={imgFailed ? FALLBACK_CHARACTER_SRC : characterSrc}
+          alt="야구 다마고치 캐릭터"
+          onError={() => setImgFailed(true)}
+        />
+      </section>
 
-      {/* ===== 레벨업 보상 획득 연출 ===== */}
-      {rewardPopup ? (
-        <div
-          onClick={dismissReward}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000,
-          }}
+      <div className="tamagotchi-actions">
+        <button
+          className="tamagotchi-action is-check"
+          type="button"
+          disabled={status.checked_today || isLoading}
+          onClick={handleCheckIn}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff", borderRadius: 24, padding: "32px 36px",
-              textAlign: "center", position: "relative",
-              animation: "rewardPop 0.5s cubic-bezier(0.34,1.56,0.64,1)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div style={{ fontSize: 28, marginBottom: 4 }}>✨🎉✨</div>
-            <img
-              src={rewardPopup.src}
-              alt={rewardPopup.name}
-              style={{ width: 120, height: 120, objectFit: "contain", animation: "rewardSpin 0.8s ease" }}
-              onError={(e) => { (e.currentTarget.style.display = "none"); }}
-            />
-            <h3 style={{ margin: "12px 0 4px", fontSize: 22 }}>{"\ud68d\ub4dd\ud558\uc168\uc5b4\uc694!"}</h3>
-            <p style={{ color: "#64748b", margin: 0, fontWeight: 700 }}>{rewardPopup.name}</p>
-            <button
-              type="button"
-              onClick={dismissReward}
-              style={{
-                marginTop: 18, border: "none", borderRadius: 12,
-                padding: "10px 28px", background: "#27ae60", color: "#fff",
-                fontWeight: 700, fontSize: 15, cursor: "pointer",
-              }}
-            >
-              {"\ud655\uc778"}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* 테스트 패널 (SHOW_TEST_PANEL=true 일 때만 표시) */}
-      {SHOW_TEST_PANEL ? (
-        <div style={testPanelStyle}>
-          <strong style={{ fontSize: 12, color: "#c026d3" }}>🧪 테스트 패널 (배포 시 SHOW_TEST_PANEL=false)</strong>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
-            <label style={{ fontSize: 12 }}>레벨</label>
-            <input
-              type="range" min={1} max={10} value={testLevel}
-              onChange={(e) => { setTestLevel(Number(e.target.value)); setImgFailed(false); }}
-              style={{ flex: 1, minWidth: 120 }}
-            />
-            <span style={{ fontWeight: 700, width: 24, textAlign: "center" }}>{testLevel}</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <label style={{ fontSize: 12 }}>구단</label>
-            <select
-              value={testTeam}
-              onChange={(e) => { setTestTeam(e.target.value); setImgFailed(false); }}
-              style={{ flex: 1, padding: 4 }}
-            >
-              <option value="">무소속(default)</option>
-              <option value="HH">한화 (HH)</option>
-              <option value="HT">KIA (HT)</option>
-              <option value="KT">KT (KT)</option>
-              <option value="LG">LG (LG)</option>
-              <option value="LT">롯데 (LT)</option>
-              <option value="NC">NC (NC)</option>
-              <option value="OB">두산 (OB)</option>
-              <option value="SK">SSG (SK)</option>
-              <option value="SS">삼성 (SS)</option>
-              <option value="WO">키움 (WO)</option>
-            </select>
-          </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, wordBreak: "break-all" }}>
-            단계: {charLevel <= 1 ? "default(1레벨)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
-            {" · "}경로: <code>{characterSrc}</code>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="attendance-copy">
-        <p className="eyebrow">Daily Check-in</p>
-        <h2>{"\uc624\ub298 \ucd9c\uc11d\ud558\uae30"}</h2>
-        <p className="attendance-message">{notice || status.message}</p>
+          <span><CalendarCheck /></span>
+          <strong>{status.checked_today ? "출석완료" : "출석체크"}</strong>
+        </button>
+        <button className="tamagotchi-action is-dress" type="button" onClick={handleDecorate}>
+          <span><Shirt /></span>
+          <strong>꾸미기</strong>
+        </button>
+        <button className="tamagotchi-action is-cheer" type="button" onClick={handleCheer}>
+          <span><Megaphone /></span>
+          <strong>응원하기</strong>
+        </button>
+        <button
+          className="tamagotchi-action is-quiz"
+          type="button"
+          onClick={() => setShowQuiz((current) => !current)}
+        >
+          <span><BookOpenCheck /></span>
+          <strong>퀴즈풀기</strong>
+        </button>
       </div>
 
-      <div className="attendance-stats" aria-label="\ucd9c\uc11d \uc0c1\ud0dc">
-        <div>
-          <span>{"\ub808\ubca8"}</span>
-          <strong>{status.level}</strong>
-        </div>
-        <div>
-          <span>{"\uacbd\ud5d8\uce58"}</span>
-          <strong>{status.xp} XP</strong>
-        </div>
-        <div>
-          <span>{"\ub204\uc801 \ucd9c\uc11d"}</span>
-          <strong>{status.total_checkins}{"\uc77c"}</strong>
-        </div>
-      </div>
+      {notice ? <p className="tamagotchi-notice" aria-live="polite">{notice}</p> : null}
 
-      <div className="attendance-progress" aria-label={`\ub2e4\uc74c \ub808\ubca8\uae4c\uc9c0 ${status.xp_to_next} \uacbd\ud5d8\uce58`}>
-        <span style={{ width: `${progress}%` }} />
-      </div>
-
-      {quizQuestions.length > 0 ? (
-        <div className="quiz-section">
+      {showQuiz && quizQuestions.length > 0 ? (
+        <div className="quiz-section tamagotchi-quiz-section">
           <div className="quiz-header">
-            <span>{"OX \ud034\uc988"}</span>
+            <span>OX 퀴즈</span>
             <span className="quiz-count">
-              {answeredCount} / {quizQuestions.length}{"\ubb38\uc81c \uc644\ub8cc"}
+              {answeredCount} / {quizQuestions.length}문제 완료
             </span>
           </div>
 
           {allDone ? (
             <div className="quiz-done-message">
-              <p>{"\uc624\ub298 \ud034\uc988 \uc644\ub8cc!"}</p>
+              <p>오늘 퀴즈 완료!</p>
               {totalQuizXp > 0 ? (
                 <p className="quiz-total-xp">
-                  {"\ud034\uc988 \ud68d\ub4dd XP: "}<strong>+{totalQuizXp} XP</strong>
+                  퀴즈 획득 XP: <strong>+{totalQuizXp} XP</strong>
                 </p>
               ) : null}
             </div>
@@ -674,7 +622,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
                 <div className={`quiz-result-box ${currentResult.is_correct ? "correct" : "wrong"}`}>
                   <div className="quiz-result-header">
                     <span className="quiz-result-icon">
-                      {currentResult.is_correct ? "\uc815\ub2f5!" : "\uc624\ub2f5"}
+                      {currentResult.is_correct ? "정답!" : "오답"}
                     </span>
                     {currentResult.xp_earned > 0 ? (
                       <span className="quiz-xp-badge">+{currentResult.xp_earned} XP</span>
@@ -683,7 +631,7 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
                   <p className="quiz-explanation">{currentResult.explanation}</p>
                   {currentQuizIdx + 1 < quizQuestions.length ? (
                     <button className="quiz-next-btn" type="button" onClick={handleNextQuiz}>
-                      {"\ub2e4\uc74c \ubb38\uc81c"}
+                      다음 문제
                     </button>
                   ) : null}
                 </div>
@@ -693,14 +641,19 @@ export default function AttendanceCheckIn({ authToken, onCheckedTodayChange, fav
         </div>
       ) : null}
 
-      <button
-        className="attendance-check-button"
-        type="button"
-        disabled={status.checked_today || isLoading}
-        onClick={handleCheckIn}
-      >
-        {status.checked_today ? "\ucd9c\uc11d \uc644\ub8cc" : isLoading ? "\ucc98\ub9ac \uc911" : `\ucd9c\uc11d\ud558\uace0 +${CHECKIN_XP} XP`}
-      </button>
+      {showQuiz && quizQuestions.length === 0 ? (
+        <div className="quiz-section tamagotchi-quiz-section" role="status">
+          <div className="quiz-done-message">
+            <p>{quizLoadError || "퀴즈를 불러오는 중이에요."}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="tamagotchi-streak-card">
+        <span><CalendarCheck /></span>
+        <strong>연속 출석:</strong>
+        <b>3일째</b>
+      </div>
     </section>
   );
 }

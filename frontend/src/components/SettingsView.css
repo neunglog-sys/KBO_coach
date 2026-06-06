@@ -1,0 +1,670 @@
+.settings-entry-tile {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-height: 70px;
+  place-items: center;
+  border: 2px solid rgba(18, 109, 255, 0.7);
+  border-radius: 8px;
+  color: #0d2f55;
+  background: #eef8ff;
+  box-shadow: 0 8px 0 rgba(18, 109, 255, 0.16);
+  font-weight: 900;
+}
+
+.settings-entry-tile span {
+  font-size: 1.28rem;
+}
+
+.settings-entry-tile strong {
+  color: #126dff;
+  font-size: 0.8rem;
+}
+
+.settings-entry-tile.is-active,
+.settings-entry-tile:hover {
+  background: #dff3ff;
+  transform: translateY(1px);
+  box-shadow: 0 5px 0 rgba(18, 109, 255, 0.18);
+}
+
+.settings-window-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 12, 32, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.settings-window {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(920px, calc(100vh - 40px));
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 34px;
+  background: #dff5ff;
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.42);
+}
+
+.settings-app-screen {
+  position: relative;
+  min-height: min(920px, calc(100vh - 40px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 34px 28px 110px;
+  color: #101a36;
+  background:
+    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.26) 0 64px, transparent 65px),
+    linear-gradient(180deg, #8bd7ff 0%, #dff5ff 38%, #f7fcff 100%);
+  font-family:
+    Pretendard,
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
+    sans-serif;
+}
+
+.settings-app-screen::before {
+  content: "";
+  position: absolute;
+  right: 32px;
+  top: 52px;
+  width: 118px;
+  height: 118px;
+  border: 10px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+
+.settings-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 58px 1fr 58px;
+  align-items: center;
+  min-height: 72px;
+  margin-bottom: 22px;
+}
+
+.settings-header h2 {
+  margin: 0;
+  color: #101a36;
+  font-size: 2.35rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.55);
+}
+
+.settings-back-button {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.settings-back-button svg {
+  width: 38px;
+  height: 38px;
+}
+
+.settings-top-menu,
+.settings-stack,
+.settings-card-list,
+.settings-form-card,
+.settings-team-card {
+  position: relative;
+  z-index: 1;
+}
+
+.settings-top-menu {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 36px;
+  padding: 22px 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 42px rgba(31, 117, 179, 0.22);
+}
+
+.settings-top-menu button {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  align-content: center;
+  min-width: 0;
+  min-height: 118px;
+  border: 2px solid transparent;
+  border-radius: 28px;
+  padding: 10px 8px;
+  color: #101a36;
+  background: transparent;
+  font-weight: 900;
+  text-align: center;
+}
+
+.settings-top-menu button > span:last-child {
+  display: block;
+  max-width: 100%;
+  min-height: 2.6em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  line-height: 1.3;
+}
+
+.settings-top-menu button.is-active {
+  border-color: #1978ff;
+  color: #126dff;
+  background: #eef8ff;
+  box-shadow: 0 10px 24px rgba(18, 109, 255, 0.15);
+}
+
+.settings-icon-circle {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #126dff;
+  background: #e9f6ff;
+  box-shadow: inset 0 0 0 1px rgba(18, 109, 255, 0.06);
+}
+
+.settings-icon-circle svg {
+  width: 52%;
+  height: 52%;
+}
+
+.settings-menu-icon {
+  width: 68px;
+  height: 68px;
+}
+
+.settings-top-menu button.is-active .settings-menu-icon {
+  border: 2px solid #1978ff;
+  color: #126dff;
+  background: #e8f4ff;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.75),
+    0 10px 22px rgba(18, 109, 255, 0.18);
+}
+
+.settings-stack,
+.settings-card-list {
+  display: grid;
+  gap: 22px;
+}
+
+.settings-large-card,
+.settings-menu-card,
+.settings-form-card,
+.settings-team-card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 36px rgba(20, 93, 150, 0.14);
+}
+
+.settings-large-card {
+  padding: 12px 22px;
+}
+
+.settings-menu-card,
+.settings-toggle-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.settings-menu-card {
+  width: 100%;
+  min-height: 142px;
+  padding: 24px 26px;
+  color: #101a36;
+  text-align: left;
+}
+
+.settings-toggle-row {
+  min-height: 138px;
+}
+
+.settings-menu-card .settings-icon-circle,
+.settings-toggle-row .settings-icon-circle {
+  width: 86px;
+  height: 86px;
+}
+
+.settings-icon-circle.is-danger {
+  color: #ef4444;
+  background: #ffecec;
+}
+
+.settings-row-text {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-row-text strong {
+  color: #101a36;
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.settings-row-text span {
+  color: #677182;
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.settings-chevron {
+  color: #101a36;
+  width: 46px;
+  height: 46px;
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 0 8px;
+  background: rgba(15, 23, 42, 0.1);
+}
+
+.settings-toggle {
+  display: inline-grid;
+  grid-template-columns: 74px auto;
+  gap: 10px;
+  align-items: center;
+  color: #727987;
+  background: transparent;
+  font-weight: 900;
+}
+
+.settings-toggle span {
+  position: relative;
+  width: 74px;
+  height: 42px;
+  border: 3px solid #8c95a3;
+  border-radius: 999px;
+  background: #cfd3d9;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.settings-toggle span::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.24);
+  transition: transform 0.16s ease;
+}
+
+.settings-toggle.is-on {
+  color: #126dff;
+}
+
+.settings-toggle.is-on span {
+  border-color: #126dff;
+  background: #126dff;
+}
+
+.settings-toggle.is-on span::after {
+  transform: translateX(32px);
+}
+
+.settings-form-card,
+.settings-team-card {
+  padding: 34px 34px 28px;
+}
+
+.settings-form-card {
+  display: grid;
+  gap: 28px;
+}
+
+.settings-form-card label {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  color: #101a36;
+  font-size: 1.28rem;
+  font-weight: 900;
+}
+
+.settings-form-card input {
+  min-height: 68px;
+  border: 1px solid rgba(18, 109, 255, 0.14);
+  border-radius: 18px;
+  padding: 0 22px;
+  color: #101a36;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(18, 109, 255, 0.08);
+  font-size: 1.08rem;
+}
+
+.settings-form-card input:focus {
+  border-color: #126dff;
+  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.16);
+}
+
+.settings-primary-button {
+  min-height: 68px;
+  border-radius: 18px;
+  color: #fff;
+  background: #126dff;
+  box-shadow: 0 12px 24px rgba(18, 109, 255, 0.24);
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.settings-team-card {
+  display: grid;
+  gap: 24px;
+}
+
+.settings-team-card fieldset {
+  display: grid;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.settings-radio-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  min-height: 72px;
+  margin: 0;
+  border-bottom: 1px solid rgba(18, 109, 255, 0.12);
+  color: #101a36;
+  font-size: 1.34rem;
+  font-weight: 900;
+}
+
+.settings-radio-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-radio-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-radio-row > span {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #9aa3b2;
+  border-radius: 999px;
+}
+
+.settings-radio-row input:checked + span {
+  border-color: #126dff;
+}
+
+.settings-radio-row input:checked + span::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: inherit;
+  background: #126dff;
+}
+
+.settings-radio-row input:focus-visible + span {
+  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.16);
+}
+
+.settings-notice {
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  color: #126dff;
+  font-weight: 900;
+  text-align: center;
+}
+
+.settings-stadium-decoration {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  opacity: 0.62;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 92% 90%, #fff 0 64px, transparent 65px),
+    linear-gradient(180deg, transparent 0%, rgba(89, 171, 240, 0.35) 34%, rgba(74, 149, 224, 0.52) 100%);
+}
+
+.settings-stadium-decoration::before,
+.settings-stadium-decoration::after {
+  content: "";
+  position: absolute;
+  bottom: 20px;
+  width: 42%;
+  height: 64px;
+  border-top: 8px solid rgba(89, 171, 240, 0.5);
+  background: rgba(114, 184, 244, 0.28);
+}
+
+.settings-stadium-decoration::before {
+  left: -26px;
+  transform: skewY(10deg);
+}
+
+.settings-stadium-decoration::after {
+  right: -26px;
+  transform: skewY(-10deg);
+}
+
+.settings-stadium-decoration span {
+  position: absolute;
+  bottom: 92px;
+  width: 52px;
+  height: 68px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.settings-stadium-decoration span:first-child {
+  left: 52px;
+}
+
+.settings-stadium-decoration span:last-child {
+  right: 52px;
+}
+
+.settings-stadium-decoration span::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 62px;
+  width: 8px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.settings-app-screen.is-dark-preview {
+  background:
+    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.18) 0 64px, transparent 65px),
+    linear-gradient(180deg, #6fbdea 0%, #bddff3 42%, #edf7ff 100%);
+}
+
+@media (max-width: 720px) {
+  .settings-window-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .settings-window {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .settings-app-screen {
+    min-height: 100dvh;
+    padding: 18px 12px 88px;
+  }
+
+  .settings-header {
+    grid-template-columns: 46px 1fr 46px;
+    min-height: 58px;
+    margin-bottom: 14px;
+  }
+
+  .settings-header h2 {
+    font-size: 1.75rem;
+  }
+
+  .settings-back-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-back-button svg {
+    width: 31px;
+    height: 31px;
+  }
+
+  .settings-top-menu {
+    gap: 4px;
+    margin-bottom: 18px;
+    border-radius: 26px;
+    padding: 12px 8px;
+  }
+
+  .settings-top-menu button {
+    gap: 6px;
+    min-height: 88px;
+    border-radius: 18px;
+    padding: 6px 2px;
+    font-size: 0.68rem;
+  }
+
+  .settings-top-menu button > span:last-child {
+    min-height: 3.6em;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .settings-menu-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .settings-row-text strong {
+    font-size: 1.2rem;
+    line-height: 1.22;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  .settings-row-text span {
+    font-size: 0.86rem;
+  }
+
+  .settings-menu-card,
+  .settings-toggle-row {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .settings-menu-card {
+    min-height: 96px;
+    border-radius: 24px;
+    padding: 14px;
+  }
+
+  .settings-large-card {
+    border-radius: 24px;
+    padding: 6px 12px;
+  }
+
+  .settings-toggle-row {
+    min-height: 96px;
+  }
+
+  .settings-menu-card .settings-icon-circle,
+  .settings-toggle-row .settings-icon-circle {
+    width: 54px;
+    height: 54px;
+  }
+
+  .settings-toggle {
+    grid-template-columns: 54px;
+    justify-items: center;
+    gap: 5px;
+    font-size: 0.74rem;
+  }
+
+  .settings-toggle span {
+    width: 54px;
+    height: 32px;
+    border-width: 2px;
+  }
+
+  .settings-toggle span::after {
+    width: 24px;
+    height: 24px;
+    left: 2px;
+    top: 2px;
+  }
+
+  .settings-toggle.is-on span::after {
+    transform: translateX(26px);
+  }
+
+  .settings-chevron {
+    width: 30px;
+    height: 30px;
+  }
+
+  .settings-form-card,
+  .settings-team-card {
+    border-radius: 28px;
+    padding: 24px 18px;
+  }
+
+  .settings-form-card label {
+    font-size: 1.08rem;
+  }
+
+  .settings-form-card input,
+  .settings-primary-button {
+    min-height: 58px;
+  }
+
+  .settings-radio-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 62px;
+    font-size: 1.08rem;
+  }
+
+  .settings-radio-row > span {
+    width: 28px;
+    height: 28px;
+  }
+}

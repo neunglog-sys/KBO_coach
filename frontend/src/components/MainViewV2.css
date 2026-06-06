@@ -107,9 +107,9 @@
 }
 
 .stage-nav-label {
-  max-width: 76px;
+  max-width: 68px;
   color: #10243c;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0;
@@ -293,7 +293,7 @@
   }
 
   .stage-nav-label {
-    font-size: 0.7rem;
+    font-size: 0.62rem;
   }
 
   .stage-inputbar {

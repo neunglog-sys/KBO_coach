@@ -5,8 +5,12 @@ import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
 import { clearMouth, setActiveViseme } from "../lipSync";
+import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
+import SettingsView from "./SettingsView";
+import { StadiumPage } from "./StadiumPage";
 import { TeamChatView } from "./TeamChatView";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./MainViewV2.css";
 
 interface MainViewV2Props {
@@ -20,16 +24,6 @@ interface ChatMessage {
   type: "user" | "bot";
   text: string;
 }
-
-const NAV_ITEMS = [
-  { key: "chat", icon: "💬", label: "채팅방" },
-  { key: "record", icon: "📒", label: "나만의 기록" },
-  { key: "pet", icon: "🥕", label: "다마고치" },
-  { key: "stadium", icon: "🏟️", label: "구장정보" },
-  { key: "settings", icon: "⚙️", label: "환경설정" },
-] as const;
-
-type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const LOCAL_FALLBACK_ANSWERS = [
   {
@@ -106,8 +100,10 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  // 어떤 메뉴 화면이 열려 있는지 (null = 닫힘, "pet" = 다마고치)
-  const [activePanel, setActivePanel] = useState<NavKey | null>(null);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
+  const [, setAttendanceCheckedToday] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
@@ -315,10 +311,20 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
     }
   }
 
-  function handleNav(key: NavKey) {
-    // 다마고치(pet)는 모달, 기록/채팅은 각자 화면으로 전환. 나머지는 아직 미연결.
-    if (key === "pet") {
-      setActivePanel("pet");
+  function handleNav(key: TopMenuTarget) {
+    if (key === "home") {
+      return;
+    }
+    if (key === "tamagotchi") {
+      setIsAttendanceOpen(true);
+      return;
+    }
+    if (key === "stadium") {
+      setIsStadiumPageOpen(true);
+      return;
+    }
+    if (key === "settings") {
+      setIsSettingsOpen(true);
       return;
     }
     if (key === "record") {
@@ -329,7 +335,6 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
       setShowChat(true);
       return;
     }
-    console.info(`[MainViewV2] ${key} navigation is not connected yet.`);
   }
 
   return (
@@ -342,22 +347,7 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
 
-      <nav className="stage-nav" aria-label="상단 메뉴">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className="stage-nav-item"
-            onClick={() => handleNav(item.key)}
-            aria-label={`${item.label} 열기`}
-          >
-            <span className="stage-nav-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="stage-nav-label">{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
         <Character3D isSpeaking={isSpeaking} className="stage-character-canvas" />
@@ -399,14 +389,86 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
         </form>
       </section>
 
-      {/* ===== 다마고치 모달 (다마고치 메뉴 누르면 열림) ===== */}
-      {/* 모달 내용은 PetModal.tsx 로 분리. 여기선 열림 여부만 관리한다. */}
-      {activePanel === "pet" ? (
-        <PetModal
-          authToken={authToken}
-          favTeamCode={favTeamCode}
-          onClose={() => setActivePanel(null)}
-        />
+      {isAttendanceOpen ? (
+        <div
+          className="attendance-window-backdrop"
+          role="presentation"
+          onClick={() => setIsAttendanceOpen(false)}
+        >
+          <section
+            className="attendance-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="다마고치"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="attendance-window-close"
+              type="button"
+              aria-label="뒤로가기"
+              onClick={() => setIsAttendanceOpen(false)}
+            >
+              뒤로가기
+            </button>
+            <AttendanceCheckIn
+              authToken={authToken}
+              onCheckedTodayChange={setAttendanceCheckedToday}
+              onRequestClose={() => setIsAttendanceOpen(false)}
+              onNavigate={(target) => {
+                setIsAttendanceOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isStadiumPageOpen ? (
+        <div
+          className="stadium-page-backdrop"
+          role="presentation"
+          onClick={() => setIsStadiumPageOpen(false)}
+        >
+          <section
+            className="stadium-page-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="구장정보"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <StadiumPage
+              onClose={() => setIsStadiumPageOpen(false)}
+              onNavigate={(target) => {
+                setIsStadiumPageOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isSettingsOpen ? (
+        <div
+          className="settings-window-backdrop"
+          role="presentation"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <section
+            className="settings-window"
+            role="dialog"
+            aria-modal="true"
+            aria-label="환경설정"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SettingsView
+              onClose={() => setIsSettingsOpen(false)}
+              onNavigate={(target) => {
+                setIsSettingsOpen(false);
+                window.setTimeout(() => handleNav(target), 0);
+              }}
+            />
+          </section>
+        </div>
       ) : null}
 
       {showRecords ? (
