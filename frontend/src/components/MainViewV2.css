@@ -10,7 +10,9 @@
   --stage-side: clamp(14px, 4vw, 24px);
   --stage-nav-top: calc(env(safe-area-inset-top, 0px) + 8px);
   --stage-character-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 9vh, 92px));
-  --stage-character-size: clamp(260px, min(82vw, 47vh), 430px);
+  --stage-character-size: clamp(300px, min(92vw, 53vh), 480px);
+  --stage-bg-rise: clamp(90px, 30vh, 240px);
+  /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
   --stage-chat-limit: clamp(210px, 34vh, 390px);
   --stage-content-width: min(680px, 100%);
 }
@@ -26,6 +28,8 @@
   z-index: 0;
   overflow: hidden;
   background: #afe1ff;
+  /* 배경을 위로 끌어올림 → 필드가 캐릭터 발쪽으로, 아래는 흰색으로 빠짐 */
+  transform: translateY(calc(-1 * var(--stage-bg-rise, 0px)));
 }
 
 .stage-bg-track {
@@ -50,6 +54,7 @@
   from {
     transform: translate3d(0, 0, 0);
   }
+
   to {
     transform: translate3d(-50%, 0, 0);
   }
@@ -59,13 +64,11 @@
   z-index: 1;
   top: auto;
   height: 48%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.62) 34%,
-    rgba(255, 255, 255, 0.94) 58%,
-    #ffffff 78%
-  );
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.62) 34%,
+      rgba(255, 255, 255, 0.94) 58%,
+      #ffffff 78%);
 }
 
 .stage-nav {
@@ -263,10 +266,12 @@
 }
 
 @keyframes stage-mic-pulse {
+
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(255, 97, 61, 0.46);
   }
+
   50% {
     box-shadow: 0 0 0 9px rgba(255, 97, 61, 0);
   }
@@ -315,7 +320,7 @@
 
   .stage-nav {
     left: 50%;
-    width: min(460px, calc(100% - 48px));
+    width: min(540px, calc(100% - 48px));
     transform: translateX(-50%);
   }
 }

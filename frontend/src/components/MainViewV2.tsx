@@ -5,8 +5,10 @@ import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import { clearMouth, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
+import { MyRecordsView } from "./MyRecordsView";
 import SettingsView from "./SettingsView";
 import { StadiumPage } from "./StadiumPage";
+import { TeamChatView } from "./TeamChatView";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./MainViewV2.css";
 
@@ -100,6 +102,8 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
   const [, setAttendanceCheckedToday] = useState(false);
+  const [showRecords, setShowRecords] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -321,11 +325,14 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
       setIsSettingsOpen(true);
       return;
     }
-    if (key === "chat") {
-      document.querySelector<HTMLInputElement>(".stage-inputbar input")?.focus();
+    if (key === "record") {
+      setShowRecords(true);
       return;
     }
-    console.info("[MainViewV2] 기록 화면은 아직 연결되지 않았습니다.");
+    if (key === "chat") {
+      setShowChat(true);
+      return;
+    }
   }
 
   return (
@@ -460,6 +467,14 @@ export function MainViewV2({ authToken }: MainViewV2Props) {
             />
           </section>
         </div>
+      ) : null}
+
+      {showRecords ? (
+        <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
+      ) : null}
+
+      {showChat ? (
+        <TeamChatView authToken={authToken} onBack={() => setShowChat(false)} />
       ) : null}
     </section>
   );
