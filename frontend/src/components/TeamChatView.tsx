@@ -56,6 +56,19 @@ function hhmm(iso: string): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+function dateKey(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dateLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}`;
+}
+
 export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
   const [team, setTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [messages, setMessages] = useState<BoardMessage[]>([]);
@@ -257,26 +270,39 @@ export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
         ) : messages.length === 0 ? (
           <p className="chat-empty">아직 메시지가 없어요. 첫 응원을 남겨보세요! ⚾</p>
         ) : (
-          messages.map((m) => (
-            <div
-              key={m.message_id}
-              ref={(el) => {
-                if (el) msgRefs.current.set(m.message_id, el);
-              }}
-              className={`chat-msg ${m.is_mine ? "mine" : ""} ${matchIds.has(m.message_id) ? "match" : ""}`}
-            >
-              {!m.is_mine ? <span className="chat-nick">{m.nickname}</span> : null}
-              <div className="chat-row">
-                <span
-                  className="chat-bubble"
-                  style={m.is_mine ? { background: rgba(headerColor, 0.9) } : undefined}
-                >
-                  {m.content}
-                </span>
-                <span className="chat-time">{hhmm(m.created_at)}</span>
+          messages.flatMap((m, i) => {
+            const items: React.ReactNode[] = [];
+            const prevKey = i > 0 ? dateKey(messages[i - 1].created_at) : null;
+            const curKey = dateKey(m.created_at);
+            if (curKey !== prevKey) {
+              items.push(
+                <div key={`date-${curKey}`} className="chat-date-divider">
+                  <span>{dateLabel(m.created_at)}</span>
+                </div>
+              );
+            }
+            items.push(
+              <div
+                key={m.message_id}
+                ref={(el) => {
+                  if (el) msgRefs.current.set(m.message_id, el);
+                }}
+                className={`chat-msg ${m.is_mine ? "mine" : ""} ${matchIds.has(m.message_id) ? "match" : ""}`}
+              >
+                {!m.is_mine ? <span className="chat-nick">{m.nickname}</span> : null}
+                <div className="chat-row">
+                  <span
+                    className="chat-bubble"
+                    style={m.is_mine ? { background: rgba(headerColor, 0.9) } : undefined}
+                  >
+                    {m.content}
+                  </span>
+                  <span className="chat-time">{hhmm(m.created_at)}</span>
+                </div>
               </div>
-            </div>
-          ))
+            );
+            return items;
+          })
         )}
       </div>
 
