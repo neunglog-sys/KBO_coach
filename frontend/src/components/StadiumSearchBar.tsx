@@ -6,6 +6,7 @@ interface StadiumSearchBarProps {
   onChange: (value: string) => void;
   onSearch: () => void;
   onSelectTeam: () => void;
+  isTeamListOpen: boolean;
 }
 
 export function StadiumSearchBar({
@@ -13,6 +14,7 @@ export function StadiumSearchBar({
   onChange,
   onSearch,
   onSelectTeam,
+  isTeamListOpen,
 }: StadiumSearchBarProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,15 +28,20 @@ export function StadiumSearchBar({
         <input
           type="search"
           value={value}
-          placeholder="구장명 또는 지역 검색"
-          aria-label="구장명 또는 지역 검색"
+          placeholder="구단명, 구장명 또는 지역 검색"
+          aria-label="구단명, 구장명 또는 지역 검색"
           onChange={(event) => onChange(event.target.value)}
         />
       </label>
       <button className="stadium-page-search-button" type="submit">
         검색
       </button>
-      <button className="stadium-page-team-button" type="button" onClick={onSelectTeam}>
+      <button
+        aria-expanded={isTeamListOpen}
+        className="stadium-page-team-button"
+        type="button"
+        onClick={onSelectTeam}
+      >
         선택 팀
       </button>
     </form>

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { stadiumData } from "../data/stadiumData";
+import { fetchStadiums, type Stadium } from "../data/stadiumData";
+import { matchesStadiumSearch } from "../data/stadiumMapper";
 import { StadiumFoodTab } from "./StadiumFoodTab";
 import { StadiumGuideTab } from "./StadiumGuideTab";
 import { StadiumRegionTab } from "./StadiumRegionTab";
@@ -14,48 +15,49 @@ interface StadiumPageProps {
   onNavigate: (target: Exclude<StadiumMenuTarget, "stadium">) => void;
 }
 
-function matchesSearch(searchValue: string, stadiumId: number) {
-  const stadium = stadiumData.find((item) => item.stadiumId === stadiumId);
-  if (!stadium) return false;
-  const query = searchValue.trim().toLowerCase().replace(/\s+/g, "");
-  if (!query) return true;
-  return [
-    stadium.stadiumName,
-    stadium.address,
-    ...stadium.teamNames,
-    ...stadium.regionInfo.nearbyAreas,
-  ].some((value) => value.toLowerCase().replace(/\s+/g, "").includes(query));
-}
-
 export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   const [activeTab, setActiveTab] = useState<StadiumTab>("guide");
-  const [selectedStadiumId, setSelectedStadiumId] = useState(stadiumData[0].stadiumId);
+  const [stadiums, setStadiums] = useState<Stadium[]>([]);
+  const [selectedTeamCode, setSelectedTeamCode] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState("구장정보를 불러오는 중입니다.");
+  const [isTeamListOpen, setIsTeamListOpen] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchStadiums(controller.signal)
+      .then((items) => {
+        setStadiums(items);
+        setSelectedTeamCode(items[0]?.teamCode ?? "");
+        setNotice(items.length ? `${items.length}개 구단의 구장정보를 불러왔습니다.` : "준비 중입니다");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setNotice(error instanceof Error ? error.message : "구장정보를 불러오지 못했습니다.");
+      });
+    return () => controller.abort();
+  }, []);
 
   const selectedStadium = useMemo(
-    () => stadiumData.find((stadium) => stadium.stadiumId === selectedStadiumId) ?? stadiumData[0],
-    [selectedStadiumId],
+    () => stadiums.find((stadium) => stadium.teamCode === selectedTeamCode) ?? null,
+    [selectedTeamCode, stadiums],
   );
 
-  function handleSearch() {
-    const result = stadiumData.find((stadium) => matchesSearch(searchValue, stadium.stadiumId));
-    if (!result) {
-      setNotice("검색 결과가 없습니다. 구장명, 팀명 또는 지역명으로 검색해 주세요.");
-      return;
-    }
-    setSelectedStadiumId(result.stadiumId);
-    setNotice(`${result.stadiumName} 정보를 보여드릴게요.`);
+  function selectTeam(stadium: Stadium) {
+    setSelectedTeamCode(stadium.teamCode);
+    setSearchValue(stadium.teamName);
+    setNotice(`${stadium.teamName} 홈구장을 선택했어요.`);
+    setIsTeamListOpen(false);
   }
 
-  function handleSelectTeam() {
-    const currentIndex = stadiumData.findIndex(
-      (stadium) => stadium.stadiumId === selectedStadiumId,
-    );
-    const nextStadium = stadiumData[(currentIndex + 1) % stadiumData.length];
-    setSelectedStadiumId(nextStadium.stadiumId);
-    setSearchValue(nextStadium.teamNames[0]);
-    setNotice(`${nextStadium.teamNames[0]} 홈구장을 선택했어요.`);
+  function handleSearch() {
+    const result = stadiums.find((stadium) => matchesStadiumSearch(searchValue, stadium));
+    if (!result) {
+      setNotice("검색 결과가 없습니다. 구단명, 구장명 또는 지역명으로 검색해 주세요.");
+      return;
+    }
+    selectTeam(result);
+    setNotice(`${result.stadiumName} 정보를 보여드릴게요.`);
   }
 
   function handleNavigate(target: StadiumMenuTarget) {
@@ -77,14 +79,35 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
         value={searchValue}
         onChange={setSearchValue}
         onSearch={handleSearch}
-        onSelectTeam={handleSelectTeam}
+        onSelectTeam={() => setIsTeamListOpen((open) => !open)}
+        isTeamListOpen={isTeamListOpen}
       />
+      {isTeamListOpen ? (
+        <div className="stadium-page-team-list" aria-label="KBO 구단 선택">
+          {stadiums.map((stadium) => (
+            <button
+              className={stadium.teamCode === selectedTeamCode ? "is-active" : ""}
+              key={stadium.teamCode}
+              type="button"
+              onClick={() => selectTeam(stadium)}
+            >
+              {stadium.teamName}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {notice ? <p className="stadium-page-notice" role="status">{notice}</p> : null}
       <StadiumTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {activeTab === "guide" ? <StadiumGuideTab stadium={selectedStadium} /> : null}
-      {activeTab === "food" ? <StadiumFoodTab stadium={selectedStadium} /> : null}
-      {activeTab === "region" ? <StadiumRegionTab stadium={selectedStadium} /> : null}
+      {selectedStadium ? (
+        <>
+          {activeTab === "guide" ? <StadiumGuideTab stadium={selectedStadium} /> : null}
+          {activeTab === "food" ? <StadiumFoodTab stadium={selectedStadium} /> : null}
+          {activeTab === "region" ? <StadiumRegionTab stadium={selectedStadium} /> : null}
+        </>
+      ) : (
+        <div className="stadium-page-empty">준비 중입니다</div>
+      )}
 
       <div className="stadium-page-bottom-decoration" aria-hidden="true" />
     </section>

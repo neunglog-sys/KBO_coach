@@ -10,9 +10,9 @@ export function StadiumFoodTab({ stadium }: { stadium: Stadium }) {
         {stadium.stadiumName} 먹거리
       </h3>
       <div className="stadium-page-food-list">
-        {stadium.foods.map((food) => (
+        {stadium.foods.length ? stadium.foods.map((food) => (
           <FoodCard food={food} key={food.foodId} />
-        ))}
+        )) : <div className="stadium-page-empty">준비 중입니다</div>}
       </div>
     </section>
   );

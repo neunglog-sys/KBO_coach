@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiUrl } from "./api";
-import { registerPush } from "./push";
+import { applyDarkMode, loadAppSettings, saveAppSettings } from "./appSettings";
+import { disablePush, registerPush } from "./push";
 import { initDb } from "./db";
 import { LoginView } from "./components/LoginView";
 // import { MainView } from "./components/MainView"; // 구버전 메인(되돌리려면 이 줄 + 아래 JSX 교체)
@@ -17,34 +18,42 @@ const AUTH_SESSION_KEY = "baseballCoachAuth";
 function loadAuthSession() {
   const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
   if (!saved) {
-    return { isLoggedIn: false, authToken: "", favTeamCode: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "" };
   }
 
   try {
-    const parsed = JSON.parse(saved) as { authToken?: string; isLoggedIn?: boolean; favTeamCode?: string };
+    const parsed = JSON.parse(saved) as {
+      authToken?: string;
+      isLoggedIn?: boolean;
+      favTeamCode?: string;
+      nickname?: string;
+    };
     return {
       isLoggedIn: Boolean(parsed.isLoggedIn),
       authToken: parsed.authToken || "",
       favTeamCode: parsed.favTeamCode || "",
+      nickname: parsed.nickname || "",
     };
   } catch {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
-    return { isLoggedIn: false, authToken: "", favTeamCode: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "" };
   }
 }
 
-function saveAuthSession(authToken: string, favTeamCode: string) {
+function saveAuthSession(authToken: string, favTeamCode: string, nickname: string) {
   sessionStorage.setItem(
     AUTH_SESSION_KEY,
-    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode }),
+    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname }),
   );
 }
 
 export function App() {
   const [authSession] = useState(loadAuthSession);
+  const [appSettings, setAppSettings] = useState(loadAppSettings);
   const [isLoggedIn, setIsLoggedIn] = useState(authSession.isLoggedIn);
   const [authToken, setAuthToken] = useState(authSession.authToken);
   const [favTeamCode, setFavTeamCode] = useState(authSession.favTeamCode);
+  const [nickname, setNickname] = useState(authSession.nickname);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
@@ -57,8 +66,18 @@ export function App() {
 
   // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
   useEffect(() => {
-    if (isLoggedIn && authToken) registerPush(authToken);
-  }, [isLoggedIn, authToken]);
+    saveAppSettings(appSettings);
+    applyDarkMode(appSettings.darkModeEnabled);
+  }, [appSettings]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !authToken) return;
+    if (appSettings.notificationEnabled) {
+      void registerPush(authToken);
+    } else {
+      void disablePush(authToken);
+    }
+  }, [isLoggedIn, authToken, appSettings.notificationEnabled]);
 
   async function handleLogin(id: string, password: string) {
     setLoginError("");
@@ -75,10 +94,12 @@ export function App() {
         const data = await response.json();
         const token = data.access_token || data.token || "";
         const teamCode = data.user?.fav_team_code || ""; // 로그인 응답의 응원팀
+        const userNickname = data.user?.nickname || "";
         setAuthToken(token);
         setFavTeamCode(teamCode);
+        setNickname(userNickname);
         setIsLoggedIn(true);
-        saveAuthSession(token, teamCode);
+        saveAuthSession(token, teamCode, userNickname);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
@@ -89,8 +110,9 @@ export function App() {
     if (id === DEMO_AUTH.id && password === DEMO_AUTH.pw) {
       setAuthToken("");
       setFavTeamCode("");
+      setNickname("야구팬");
       setIsLoggedIn(true);
-      saveAuthSession("", "");
+      saveAuthSession("", "", "야구팬");
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
@@ -139,6 +161,7 @@ export function App() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
     setAuthToken("");
     setFavTeamCode("");
+    setNickname("");
     setIsLoggedIn(false);
     setLoginError("");
     setLoginNotice("");
@@ -149,7 +172,20 @@ export function App() {
   return (
     <main className="app-shell">
       {isLoggedIn ? (
-        <MainViewV2 authToken={authToken} favTeamCode={favTeamCode} onLogout={handleLogout} />
+        <MainViewV2
+          authToken={authToken}
+          favTeamCode={favTeamCode}
+          nickname={nickname}
+          notificationEnabled={appSettings.notificationEnabled}
+          darkModeEnabled={appSettings.darkModeEnabled}
+          onNotificationEnabledChange={(notificationEnabled) =>
+            setAppSettings((current) => ({ ...current, notificationEnabled }))
+          }
+          onDarkModeEnabledChange={(darkModeEnabled) =>
+            setAppSettings((current) => ({ ...current, darkModeEnabled }))
+          }
+          onLogout={handleLogout}
+        />
       ) : authMode === "register" ? (
         <RegisterView
           error={registerError}
