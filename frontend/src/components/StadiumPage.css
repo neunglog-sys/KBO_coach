@@ -207,6 +207,33 @@
   background: #fff;
 }
 
+.stadium-page-team-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: -5px 0 14px;
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
+}
+
+.stadium-page-team-list button {
+  min-height: 42px;
+  border: 1px solid #d7e5f2;
+  border-radius: 12px;
+  color: #0a1732;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.stadium-page-team-list button.is-active {
+  border-color: #176dff;
+  color: #fff;
+  background: #176dff;
+}
+
 .stadium-page-notice {
   margin: -4px 4px 12px;
   color: #1267e8;
@@ -247,6 +274,25 @@
 .stadium-page-tab-panel {
   position: relative;
   z-index: 1;
+}
+
+.stadium-page-empty {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(198, 218, 236, 0.84);
+  border-radius: 16px;
+  padding: 40px 20px;
+  color: #65758a;
+  background: rgba(255, 255, 255, 0.96);
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.11);
+}
+
+.stadium-page-empty-copy {
+  margin: 12px 0 0;
+  color: #65758a;
+  font-weight: 700;
 }
 
 .stadium-page-guide-card,

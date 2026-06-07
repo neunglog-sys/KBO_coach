@@ -8,7 +8,7 @@ export function FoodCard({ food }: { food: Food }) {
   return (
     <article className="stadium-page-food-card">
       <div className="stadium-page-food-image">
-        {imageFailed ? (
+        {imageFailed || !food.imageUrl ? (
           <Utensils aria-label="음식 이미지 준비 중" />
         ) : (
           <img src={food.imageUrl} alt={food.name} onError={() => setImageFailed(true)} />

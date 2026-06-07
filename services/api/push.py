@@ -40,3 +40,15 @@ def unregister_token(body: TokenIn, uid: int = Depends(current_user_id)):
         return {"ok": True}
     finally:
         conn.close()
+
+
+@router.delete("/register/all")
+def unregister_all_tokens(uid: int = Depends(current_user_id)):
+    """Remove every push token owned by the current user."""
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM push_tokens WHERE user_id = %s", (uid,))
+        return {"ok": True}
+    finally:
+        conn.close()

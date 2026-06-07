@@ -65,14 +65,89 @@ def glossary(q: str | None = None):
         conn.close()
 
 
+STADIUM_ORDER_SQL = """
+    CASE t.team_code
+        WHEN 'LG' THEN 1
+        WHEN 'OB' THEN 2
+        WHEN 'WO' THEN 3
+        WHEN 'SK' THEN 4
+        WHEN 'KT' THEN 5
+        WHEN 'HT' THEN 6
+        WHEN 'SS' THEN 7
+        WHEN 'LT' THEN 8
+        WHEN 'HH' THEN 9
+        WHEN 'NC' THEN 10
+        ELSE 99
+    END
+"""
+
+
+@router.get("/stadiums")
+def stadiums():
+    """Return every KBO team with its stadium data."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT
+                    t.team_code,
+                    t.name AS team_name,
+                    t.city,
+                    t.home_stadium,
+                    s.stadium_id,
+                    s.name,
+                    s.location,
+                    s.parking,
+                    s.subway,
+                    s.food,
+                    s.stadium_size,
+                    s.seat_count,
+                    s.features,
+                    s.ktx_info,
+                    s.taxi_info,
+                    s.bus_info,
+                    s.parking_tip,
+                    s.restaurants,
+                    s.tourism,
+                    s.accommodations,
+                    s.reservation_site,
+                    s.reservation_tip
+                FROM teams t
+                LEFT JOIN stadiums s ON s.team_code = t.team_code
+                ORDER BY {STADIUM_ORDER_SQL}, s.stadium_id
+                """
+            )
+            rows = cur.fetchall()
+        return {"count": len(rows), "stadiums": rows}
+    finally:
+        conn.close()
+
+
 @router.get("/stadiums/{team_code}")
 def stadium(team_code: str):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM stadiums WHERE team_code = %s", (team_code,))
+            cur.execute(
+                """
+                SELECT
+                    t.team_code,
+                    t.name AS team_name,
+                    t.city,
+                    t.home_stadium,
+                    s.*
+                FROM teams t
+                LEFT JOIN stadiums s ON s.team_code = t.team_code
+                WHERE t.team_code = %s
+                ORDER BY s.stadium_id
+                """,
+                (team_code.upper(),),
+            )
             rows = cur.fetchall()
-        return {"team_code": team_code, "stadiums": rows}
+        if not rows:
+            raise HTTPException(status_code=404, detail="구단을 찾을 수 없습니다.")
+        return {"team_code": team_code.upper(), "stadiums": rows}
     finally:
         conn.close()
 

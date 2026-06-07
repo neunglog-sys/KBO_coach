@@ -22,11 +22,13 @@ export function StadiumGuideTab({ stadium }: { stadium: Stadium }) {
           <Lightbulb aria-hidden="true" />
           이용 팁
         </h3>
-        <ul>
-          {stadium.tips.map((tip) => (
-            <li key={tip}>{tip}</li>
-          ))}
-        </ul>
+        {stadium.tips.length ? (
+          <ul>
+            {stadium.tips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        ) : <p className="stadium-page-empty-copy">준비 중입니다</p>}
       </section>
     </section>
   );

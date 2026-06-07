@@ -14,11 +14,13 @@ export function RegionInfoCard({ icon: Icon, title, items }: RegionInfoCardProps
       </span>
       <div>
         <h3>{title}</h3>
-        <ul>
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        {items.length ? (
+          <ul>
+            {items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : <p className="stadium-page-empty-copy">준비 중입니다</p>}
       </div>
     </article>
   );

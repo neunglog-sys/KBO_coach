@@ -31,6 +31,11 @@ const TEAM_HOME_STADIUM: Record<string, string> = {
 interface MainViewV2Props {
   authToken: string;
   favTeamCode?: string;
+  nickname?: string;
+  notificationEnabled: boolean;
+  darkModeEnabled: boolean;
+  onNotificationEnabledChange: (enabled: boolean) => void;
+  onDarkModeEnabledChange: (enabled: boolean) => void;
   onLogout: () => void;
 }
 
@@ -108,7 +113,15 @@ function buildLocalFallbackAnswer(question: string) {
   );
 }
 
-export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
+export function MainViewV2({
+  authToken,
+  favTeamCode,
+  nickname,
+  notificationEnabled,
+  darkModeEnabled,
+  onNotificationEnabledChange,
+  onDarkModeEnabledChange,
+}: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
   ]);
@@ -476,6 +489,8 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
             </button>
             <AttendanceCheckIn
               authToken={authToken}
+              nickname={nickname}
+              favTeamCode={favTeamCode}
               onCheckedTodayChange={setAttendanceCheckedToday}
               onRequestClose={() => setIsAttendanceOpen(false)}
               onNavigate={(target) => {
@@ -526,6 +541,10 @@ export function MainViewV2({ authToken, favTeamCode }: MainViewV2Props) {
           >
             <SettingsView
               onClose={() => setIsSettingsOpen(false)}
+              notificationEnabled={notificationEnabled}
+              darkModeEnabled={darkModeEnabled}
+              onNotificationEnabledChange={onNotificationEnabledChange}
+              onDarkModeEnabledChange={onDarkModeEnabledChange}
               onNavigate={(target) => {
                 setIsSettingsOpen(false);
                 window.setTimeout(() => handleNav(target), 0);

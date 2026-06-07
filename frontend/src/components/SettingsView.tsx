@@ -10,6 +10,7 @@ import {
   UserX,
   type LucideIcon,
 } from "lucide-react";
+import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
 import "./SettingsView.css";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
@@ -18,6 +19,10 @@ type SettingsScreen = "main" | "myInfo" | "password" | "team";
 interface SettingsViewProps {
   onClose: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
+  notificationEnabled?: boolean;
+  darkModeEnabled?: boolean;
+  onNotificationEnabledChange?: (enabled: boolean) => void;
+  onDarkModeEnabledChange?: (enabled: boolean) => void;
 }
 
 const TEAMS = [
@@ -131,12 +136,46 @@ function MenuCard({
   );
 }
 
-export default function SettingsView({ onClose, onNavigate }: SettingsViewProps) {
+export default function SettingsView({
+  onClose,
+  onNavigate,
+  notificationEnabled: controlledNotificationEnabled,
+  darkModeEnabled: controlledDarkModeEnabled,
+  onNotificationEnabledChange,
+  onDarkModeEnabledChange,
+}: SettingsViewProps) {
   const [screen, setScreen] = useState<SettingsScreen>("main");
-  const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [fallbackSettings, setFallbackSettings] = useState(loadAppSettings);
   const [selectedTeam, setSelectedTeam] = useState("삼성 라이온즈");
   const [notice, setNotice] = useState("");
+  const notificationEnabled =
+    controlledNotificationEnabled ?? fallbackSettings.notificationEnabled;
+  const darkModeEnabled = controlledDarkModeEnabled ?? fallbackSettings.darkModeEnabled;
+
+  function handleNotificationChange(enabled: boolean) {
+    if (onNotificationEnabledChange) {
+      onNotificationEnabledChange(enabled);
+      return;
+    }
+    setFallbackSettings((current) => {
+      const next = { ...current, notificationEnabled: enabled };
+      saveAppSettings(next);
+      return next;
+    });
+  }
+
+  function handleDarkModeChange(enabled: boolean) {
+    if (onDarkModeEnabledChange) {
+      onDarkModeEnabledChange(enabled);
+      return;
+    }
+    setFallbackSettings((current) => {
+      const next = { ...current, darkModeEnabled: enabled };
+      saveAppSettings(next);
+      applyDarkMode(enabled);
+      return next;
+    });
+  }
 
   function goBack() {
     setNotice("");
@@ -162,7 +201,7 @@ export default function SettingsView({ onClose, onNavigate }: SettingsViewProps)
   }
 
   return (
-    <section className={`settings-app-screen ${darkModeEnabled ? "is-dark-preview" : ""}`}>
+    <section className="settings-app-screen">
       {screen === "main" ? (
         <>
           <SettingsHeader title="환경 설정" onBack={goBack} />
@@ -187,14 +226,14 @@ export default function SettingsView({ onClose, onNavigate }: SettingsViewProps)
                 icon={Bell}
                 title="알림 기능"
                 checked={notificationEnabled}
-                onChange={setNotificationEnabled}
+                onChange={handleNotificationChange}
               />
               <div className="settings-divider" />
               <ToggleRow
                 icon={Moon}
                 title="다크모드"
                 checked={darkModeEnabled}
-                onChange={setDarkModeEnabled}
+                onChange={handleDarkModeChange}
               />
             </div>
           </div>

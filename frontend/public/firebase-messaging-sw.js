@@ -1,4 +1,3 @@
-// 웹 푸시 백그라운드 수신 (앱 탭이 꺼져있을 때 OS 알림 표시).
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
@@ -11,12 +10,36 @@ firebase.initializeApp({
   appId: "1:785248354563:web:eec008a683c31236816936",
 });
 
+const PREFERENCE_CACHE = "baseball-coach-push-preference";
+const PREFERENCE_URL = "/__notification-preference__";
 const messaging = firebase.messaging();
-messaging.onBackgroundMessage((payload) => {
-  // notification payload가 있으면 브라우저가 자동으로 알림을 띄운다.
-  // 여기서 또 showNotification 하면 알림이 2개로 중복되므로, 자동표시에 맡기고 종료한다.
-  // 데이터 전용 메시지(notification 없음)일 때만 직접 표시한다.
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "NOTIFICATION_PREFERENCE") return;
+  event.waitUntil(
+    caches.open(PREFERENCE_CACHE).then((cache) =>
+      cache.put(
+        PREFERENCE_URL,
+        new Response(event.data.enabled ? "true" : "false"),
+      ),
+    ),
+  );
+});
+
+async function notificationsEnabled() {
+  const cache = await caches.open(PREFERENCE_CACHE);
+  const saved = await cache.match(PREFERENCE_URL);
+  return !saved || (await saved.text()) !== "false";
+}
+
+messaging.onBackgroundMessage(async (payload) => {
+  if (!(await notificationsEnabled())) return;
+
+  // Firebase displays notification payloads itself. Data-only payloads are
+  // displayed here so the saved preference can be checked first.
   if (payload.notification) return;
-  const d = payload.data || {};
-  self.registration.showNotification(d.title || "알림", { body: d.body || "" });
+  const data = payload.data || {};
+  await self.registration.showNotification(data.title || "알림", {
+    body: data.body || "",
+  });
 });

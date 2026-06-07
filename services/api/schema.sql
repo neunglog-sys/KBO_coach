@@ -118,8 +118,33 @@ CREATE TABLE IF NOT EXISTS stadiums ( -- 구장 안내
     location VARCHAR(200),
     parking TEXT,
     subway VARCHAR(100),
-    food TEXT
+    food TEXT,
+    stadium_size TEXT,
+    seat_count TEXT,
+    features TEXT,
+    ktx_info TEXT,
+    taxi_info TEXT,
+    bus_info TEXT,
+    parking_tip TEXT,
+    restaurants TEXT,
+    tourism TEXT,
+    accommodations TEXT,
+    reservation_site TEXT,
+    reservation_tip TEXT
 );
+
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS stadium_size TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS seat_count TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS features TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS ktx_info TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS taxi_info TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS bus_info TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS parking_tip TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS restaurants TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS tourism TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS accommodations TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS reservation_site TEXT;
+ALTER TABLE stadiums ADD COLUMN IF NOT EXISTS reservation_tip TEXT;
 
 CREATE TABLE IF NOT EXISTS quiz ( -- 다마고치 OX 퀴즈
     quiz_id SERIAL PRIMARY KEY,

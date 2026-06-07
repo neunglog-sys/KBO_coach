@@ -8,6 +8,19 @@ import {
   Volume2,
 } from "lucide-react";
 import { apiUrl } from "../api";
+import {
+  applyAttendance,
+  applyCheer,
+  ATTENDANCE_SPEECHES,
+  CHEER_SPEECHES,
+  DEFAULT_SPEECHES,
+  initializeTamagotchiState,
+  localDateKey,
+  randomSpeech,
+  syncAttendance,
+  tamagotchiStorageKey,
+  type TamagotchiViewState,
+} from "../data/tamagotchiState";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
 interface AttendanceStatus {
@@ -42,6 +55,7 @@ interface AttendanceCheckInProps {
   onRequestClose?: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
   favTeamCode?: string | null;
+  nickname?: string;
 }
 
 const STORAGE_KEY = "baseballCoachAttendance";
@@ -140,7 +154,7 @@ function getDifficultyColor(difficulty?: string) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey();
 }
 
 function fallbackStatus(): AttendanceStatus {
@@ -201,18 +215,50 @@ function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
   return next;
 }
 
+function loadDailyState(storageKey: string, nickname?: string): TamagotchiViewState {
+  let saved: Partial<TamagotchiViewState> | null = null;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    saved = raw ? JSON.parse(raw) as Partial<TamagotchiViewState> : null;
+  } catch {
+    localStorage.removeItem(storageKey);
+  }
+
+  const initialized = initializeTamagotchiState(
+    saved,
+    todayKey(),
+    randomSpeech(DEFAULT_SPEECHES, nickname),
+  );
+  saveDailyState(storageKey, initialized);
+  return initialized;
+}
+
+function saveDailyState(storageKey: string, state: TamagotchiViewState) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // Keep the in-memory state usable if browser storage is unavailable.
+  }
+}
+
 export default function AttendanceCheckIn({
   authToken,
   onCheckedTodayChange,
   onRequestClose,
   onNavigate,
   favTeamCode,
+  nickname: initialNickname,
 }: AttendanceCheckInProps) {
   const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
   const [gender, setGender] = useState<Gender>(() => loadGender());
   const [imgFailed, setImgFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [nickname, setNickname] = useState(initialNickname || "");
+  const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
+  const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
+    loadDailyState(stateStorageKey, initialNickname)
+  );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
@@ -234,7 +280,6 @@ export default function AttendanceCheckIn({
 
   const displayLevel = status.level || 3;
   const displayProgress = progress || 60;
-  const cheerPower = Math.min(99, 78 + Math.max(0, displayLevel - 3));
 
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
@@ -289,9 +334,46 @@ export default function AttendanceCheckIn({
   const authHeaders = (extra?: Record<string, string>) =>
     authToken ? { Authorization: `Bearer ${authToken}`, ...extra } : { ...extra };
 
+  function updateDailyState(
+    updater: (current: TamagotchiViewState) => TamagotchiViewState,
+  ) {
+    setDailyState((current) => {
+      const next = updater(current);
+      saveDailyState(stateStorageKey, next);
+      return next;
+    });
+  }
+
   useEffect(() => {
-    onCheckedTodayChange?.(status.checked_today);
-  }, [onCheckedTodayChange, status.checked_today]);
+    onCheckedTodayChange?.(status.checked_today || dailyState.todayAttendanceDone);
+  }, [dailyState.todayAttendanceDone, onCheckedTodayChange, status.checked_today]);
+
+  useEffect(() => {
+    if (initialNickname) {
+      setNickname(initialNickname);
+      return;
+    }
+    if (!authToken) return;
+
+    let ignore = false;
+    fetch(apiUrl("/auth/me"), { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((user) => {
+        if (!ignore && user?.nickname) {
+          const loadedNickname = String(user.nickname);
+          setNickname(loadedNickname);
+          updateDailyState((current) => ({
+            ...current,
+            speechText: current.speechText.split("야구팬").join(loadedNickname),
+          }));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      ignore = true;
+    };
+  }, [authToken, initialNickname]);
 
   useEffect(() => {
     let ignore = false;
@@ -304,6 +386,9 @@ export default function AttendanceCheckIn({
         if (!ignore) {
           setStatus(data);
           saveFallback(data);
+          updateDailyState((current) =>
+            syncAttendance(current, data.last_checkin_date, todayKey())
+          );
         }
       } catch {
         // Keep local fallback usable when the API is temporarily offline.
@@ -352,7 +437,7 @@ export default function AttendanceCheckIn({
   }, [authToken]);
 
   async function handleCheckIn() {
-    if (status.checked_today || isLoading) return;
+    if (dailyState.todayAttendanceDone || status.checked_today || isLoading) return;
 
     setIsLoading(true);
     setNotice("");
@@ -367,11 +452,15 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(data);
-      setNotice(data.message);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      updateDailyState((current) => applyAttendance(current, todayKey(), speech));
+      setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(status);
       setStatus(next);
-      setNotice("백엔드 연결 전이라 브라우저에 임시 저장했어요.");
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      updateDailyState((current) => applyAttendance(current, todayKey(), speech));
+      setNotice(speech);
     } finally {
       setIsLoading(false);
     }
@@ -429,7 +518,9 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    setNotice("고마워! 힘이 난다!");
+    const speech = randomSpeech(CHEER_SPEECHES, nickname);
+    updateDailyState((current) => applyCheer(current, todayKey(), speech));
+    setNotice(speech);
   }
 
   function handleDecorate() {
@@ -510,19 +601,18 @@ export default function AttendanceCheckIn({
         <div className="tamagotchi-status-bottom">
           <p>
             <Smile aria-hidden="true" />
-            오늘의 상태: <strong>좋음</strong>
+            오늘의 상태: <strong>{dailyState.moodStatus}</strong>
           </p>
           <p>
             <Volume2 aria-hidden="true" />
-            응원력 <strong>{cheerPower}</strong>
+            응원력 <strong>{dailyState.cheerPower}</strong>
           </p>
         </div>
       </section>
 
       <section className="tamagotchi-field-card" aria-label="캐릭터 영역">
         <div className="tamagotchi-speech-bubble">
-          안녕 김동아!<br />
-          오늘도 왔구나!
+          {dailyState.speechText}
         </div>
         <img
           className="tamagotchi-character-img"
@@ -536,19 +626,25 @@ export default function AttendanceCheckIn({
         <button
           className="tamagotchi-action is-check"
           type="button"
-          disabled={status.checked_today || isLoading}
+          disabled={dailyState.todayAttendanceDone || status.checked_today || isLoading}
           onClick={handleCheckIn}
         >
           <span><CalendarCheck /></span>
-          <strong>{status.checked_today ? "출석완료" : "출석체크"}</strong>
+          <strong>
+            {dailyState.todayAttendanceDone || status.checked_today ? "출석완료" : "출석체크"}
+          </strong>
         </button>
         <button className="tamagotchi-action is-dress" type="button" onClick={handleDecorate}>
           <span><Shirt /></span>
           <strong>꾸미기</strong>
         </button>
-        <button className="tamagotchi-action is-cheer" type="button" onClick={handleCheer}>
+        <button
+          className="tamagotchi-action is-cheer"
+          type="button"
+          onClick={handleCheer}
+        >
           <span><Megaphone /></span>
-          <strong>응원하기</strong>
+          <strong>{dailyState.todayCheerDone ? "응원완료" : "응원하기"}</strong>
         </button>
         <button
           className="tamagotchi-action is-quiz"

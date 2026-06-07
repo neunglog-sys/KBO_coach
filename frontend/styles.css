@@ -1971,32 +1971,35 @@ select:focus {
 
 .tamagotchi-speech-bubble {
   position: absolute;
-  z-index: 3;
-  left: 34px;
-  top: 28px;
-  max-width: 210px;
-  border: 3px solid #10265f;
-  border-radius: 14px;
-  padding: 14px 16px;
+  z-index: 1;
+  left: 12px;
+  top: 12px;
+  max-width: min(158px, 46%);
+  border: 2px solid #10265f;
+  border-radius: 16px;
+  padding: 10px 12px;
   color: #101a36;
   background: #fff;
-  font-size: 1.22rem;
+  font-size: 0.86rem;
   font-weight: 900;
-  line-height: 1.35;
-  box-shadow: 0 8px 16px rgba(16, 38, 95, 0.12);
+  line-height: 1.38;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  box-shadow: 0 5px 12px rgba(16, 38, 95, 0.12);
 }
 
 .tamagotchi-speech-bubble::after {
   content: "";
   position: absolute;
-  right: 26px;
-  bottom: -22px;
-  width: 28px;
-  height: 28px;
-  border-right: 3px solid #10265f;
-  border-bottom: 3px solid #10265f;
+  right: 12px;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  border-right: 2px solid #10265f;
+  border-bottom: 2px solid #10265f;
   background: #fff;
-  transform: rotate(38deg);
+  transform: rotate(45deg);
 }
 
 .tamagotchi-character-img {
@@ -2213,11 +2216,11 @@ select:focus {
   }
 
   .tamagotchi-speech-bubble {
-    left: 22px;
-    top: 22px;
-    max-width: 185px;
-    padding: 12px 14px;
-    font-size: 1.08rem;
+    left: 10px;
+    top: 10px;
+    max-width: min(145px, 44%);
+    padding: 9px 11px;
+    font-size: 0.8rem;
   }
 
   .tamagotchi-character-img {
@@ -2253,4 +2256,399 @@ select:focus {
     padding: 12px 14px;
     font-size: 0.96rem;
   }
+}
+
+/* Global persisted dark theme */
+html.theme-dark {
+  color-scheme: dark;
+  --ink: #f3f7ff;
+  --muted: #aab6c8;
+  --panel: #152238;
+  --line: #33435b;
+  --navy: #f3f7ff;
+}
+
+html.theme-dark,
+html.theme-dark body,
+html.theme-dark #root,
+html.theme-dark .app-shell {
+  color: #eef4ff;
+  background: #07111f;
+}
+
+.theme-dark :is(.login-view, .main-view, .stage-view) {
+  color: #eef4ff;
+  background: #07111f;
+}
+
+.theme-dark :is(.login-panel, .chat-panel, .schedule-panel, .standings-panel, .records-section) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark :is(input, textarea, select) {
+  color: #f5f8ff;
+  background-color: #0d192a;
+  border-color: #3a4b64;
+}
+
+.theme-dark :is(input, textarea)::placeholder {
+  color: #8290a5;
+}
+
+.theme-dark :is(.data-table, .schedule-table, .standings-table, .food-table) {
+  color: #e9eff9;
+  background: #152238;
+}
+
+.theme-dark :is(.data-table, .schedule-table, .standings-table, .food-table) th {
+  color: #b9c8dc;
+  background: #1d2d45;
+}
+
+.theme-dark :is(.data-table, .schedule-table, .standings-table, .food-table) td {
+  border-color: #33435b;
+}
+
+.theme-dark .stage-bg {
+  filter: brightness(0.38) saturate(0.72);
+}
+
+.theme-dark .stage-white-fade {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 17, 31, 0) 0%,
+    rgba(7, 17, 31, 0.66) 34%,
+    rgba(7, 17, 31, 0.94) 58%,
+    #07111f 78%
+  );
+}
+
+.theme-dark .stage-chat {
+  background: #07111f;
+}
+
+.theme-dark .stage-chat::before {
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0), #07111f);
+}
+
+.theme-dark .stage-msg.bot {
+  color: #eef4ff;
+  background: #1a2940;
+  border-color: #344761;
+}
+
+.theme-dark .stage-msg.user {
+  color: #e8f4ff;
+  background: #123a5b;
+  border-color: #275b80;
+}
+
+.theme-dark .stage-inputbar {
+  background: #152238;
+  border-color: #33435b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+
+.theme-dark .stage-inputbar input {
+  color: #f5f8ff;
+  background: transparent;
+}
+
+.theme-dark .app-top-menu button,
+.theme-dark .stage-nav-item {
+  color: #dbe7f7;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.72);
+}
+
+.theme-dark .app-top-menu-label,
+.theme-dark .stage-nav-label,
+.theme-dark .app-top-menu.settings-top-menu .app-top-menu-label,
+.theme-dark .app-top-menu.stadium-page-top-menu .app-top-menu-label,
+.theme-dark .app-top-menu.tamagotchi-nav .app-top-menu-label {
+  color: #e5edf9;
+}
+
+.theme-dark .app-top-menu button.is-active,
+.theme-dark .app-top-menu.settings-top-menu button.is-active,
+.theme-dark .app-top-menu.stadium-page-top-menu button.is-active {
+  background: rgba(24, 41, 64, 0.92);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+
+.theme-dark :is(.attendance-window, .settings-window, .stadium-page-window) {
+  background: #0b1728;
+  border-color: #33435b;
+}
+
+.theme-dark :is(.attendance-panel, .attendance-stats, .attendance-message) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+}
+
+.theme-dark .tamagotchi-dashboard {
+  color: #eef4ff;
+  background:
+    radial-gradient(circle at 88% 3%, rgba(32, 96, 150, 0.25), transparent 22%),
+    linear-gradient(180deg, #0a1b2e 0%, #07111f 100%);
+}
+
+.theme-dark :is(
+  .tamagotchi-status-card,
+  .tamagotchi-quiz-section,
+  .tamagotchi-streak-card,
+  .tamagotchi-notice
+) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+}
+
+.theme-dark .tamagotchi-status-bottom {
+  border-color: #33435b;
+}
+
+.theme-dark .tamagotchi-field-card {
+  box-shadow: inset 0 0 0 999px rgba(3, 10, 20, 0.2);
+}
+
+.theme-dark .tamagotchi-action {
+  color: #eef4ff;
+  background: #152238;
+}
+
+.theme-dark .quiz-question {
+  color: #eef4ff;
+}
+
+.theme-dark .chat-view {
+  color: #eef4ff;
+  background: #07111f !important;
+}
+
+.theme-dark :is(.chat-search, .chat-switch, .chat-inputbar) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+}
+
+.theme-dark .chat-switch button:not(.on) {
+  background: #0d192a !important;
+}
+
+.theme-dark .chat-log {
+  background: #0b1728;
+}
+
+.theme-dark .chat-bubble {
+  color: #eef4ff;
+  background: #1d2d45;
+  border-color: #3a4b64;
+}
+
+.theme-dark :is(.chat-nick, .chat-time, .chat-empty, .chat-search-count) {
+  color: #aab6c8;
+}
+
+.theme-dark .chat-inputbar input {
+  color: #f5f8ff;
+  background: #0d192a;
+}
+
+.theme-dark :is(.records-view, .records-top) {
+  color: #eef4ff;
+  background: #07111f;
+}
+
+.theme-dark :is(
+  .records-back,
+  .cal-card,
+  .rec-modal,
+  .goal-editor input,
+  .rec-input,
+  .rec-mood
+) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+}
+
+.theme-dark :is(.cal-head button, .rec-close) {
+  color: #dbe7f7;
+  background: #1d2d45;
+}
+
+.theme-dark :is(.cal-cell, .rec-modal-head) {
+  border-color: #33435b;
+}
+
+.theme-dark :is(.myteam-label, .cal-legend, .rec-field-label, .rec-nogame, .rec-time) {
+  color: #aab6c8;
+}
+
+.theme-dark .rec-backdrop {
+  background: rgba(1, 6, 14, 0.8);
+}
+
+.theme-dark .stadium-page {
+  color: #eef4ff;
+  background:
+    radial-gradient(circle at 90% 7%, rgba(35, 89, 136, 0.25) 0 54px, transparent 55px),
+    linear-gradient(180deg, #0d2840 0%, #0b1728 34%, #07111f 100%);
+}
+
+.theme-dark .stadium-page-header button {
+  color: #eef4ff;
+  background: rgba(21, 34, 56, 0.78);
+}
+
+.theme-dark :is(
+  .stadium-page-search,
+  .stadium-page-team-list,
+  .stadium-page-tabs,
+  .stadium-page-guide-card,
+  .stadium-page-food-card,
+  .stadium-page-region-card,
+  .stadium-page-empty,
+  .stadium-page-notice
+) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark :is(
+  .stadium-page-search label,
+  .stadium-page-team-button,
+  .stadium-page-team-list button,
+  .stadium-page-tabs button
+) {
+  color: #e7eef8;
+  background: #0d192a;
+  border-color: #3a4b64;
+}
+
+.theme-dark .stadium-page-search input {
+  color: #f5f8ff;
+}
+
+.theme-dark :is(
+  .stadium-page-description,
+  .stadium-page-address,
+  .stadium-page-guide-copy,
+  .stadium-page-home-team,
+  .stadium-page-tips
+) {
+  color: #b5c2d4;
+}
+
+.theme-dark .settings-app-screen {
+  color: #eef4ff;
+  background:
+    radial-gradient(circle at 84% 8%, rgba(42, 94, 142, 0.3) 0 64px, transparent 65px),
+    linear-gradient(180deg, #0d2a43 0%, #0b1728 38%, #07111f 100%);
+}
+
+.theme-dark :is(
+  .settings-menu-card,
+  .settings-large-card,
+  .settings-form-card,
+  .settings-team-card,
+  .settings-notice
+) {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #33435b;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.theme-dark :is(.settings-back-button, .settings-icon-circle) {
+  color: #7db4ff;
+  background: #1d2d45;
+}
+
+.theme-dark :is(.settings-row-text span, .settings-form-card label > span) {
+  color: #aab6c8;
+}
+
+.theme-dark :is(.settings-divider, .settings-radio-row) {
+  border-color: #33435b;
+}
+
+.theme-dark .settings-radio-row {
+  color: #eef4ff;
+  background: #0d192a;
+}
+
+.theme-dark .settings-form-card input {
+  color: #f5f8ff;
+  background: #0d192a;
+  border-color: #3a4b64;
+}
+
+.theme-dark :is(
+  .settings-header h2,
+  .settings-row-text strong,
+  .settings-chevron,
+  .settings-form-card label,
+  .settings-radio-row strong
+) {
+  color: #eef4ff;
+  text-shadow: none;
+}
+
+.theme-dark :is(
+  .tamagotchi-status-top h2,
+  .tamagotchi-exp,
+  .tamagotchi-status-bottom p,
+  .tamagotchi-streak-card
+) {
+  color: #eef4ff;
+}
+
+.theme-dark .tamagotchi-exp div {
+  background: #314158;
+}
+
+.theme-dark .tamagotchi-speech-bubble {
+  color: #eef4ff;
+  background: #152238;
+  border-color: #6682a8;
+}
+
+.theme-dark .tamagotchi-speech-bubble::after {
+  background: #152238;
+  border-color: #6682a8;
+}
+
+.theme-dark .tamagotchi-action.is-check,
+.theme-dark .tamagotchi-action.is-dress,
+.theme-dark .tamagotchi-action.is-cheer,
+.theme-dark .tamagotchi-action.is-quiz {
+  color: #eef4ff;
+  background: #152238;
+}
+
+.theme-dark .attendance-window:has(.tamagotchi-dashboard) .attendance-window-close::before {
+  background: #eef4ff;
+}
+
+.theme-dark .attendance-window:has(.tamagotchi-dashboard) .attendance-window-close::after {
+  border-color: #eef4ff;
+}
+
+.theme-dark .login-panel :is(input, select),
+.theme-dark .login-panel :is(input, select):focus {
+  color: #f5f8ff;
+  background: #0d192a;
+  border-color: #3a4b64;
+}
+
+.theme-dark .auth-logo {
+  color: #dce9fb;
+  background: linear-gradient(180deg, #1d2d45, #152238);
 }

@@ -1,8 +1,9 @@
-// 푸시 토큰 등록 — 웹(FCM 웹푸시) + 안드로이드 앱(네이티브 FCM) 둘 다.
-// 받은 토큰을 백엔드 /push/register 에 저장 → 서버 notify 잡이 응원팀 경기 알림 발송.
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { deleteToken, getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { apiUrl } from "./api";
+import { isNotificationEnabled } from "./appSettings";
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAfbA66vmcQVYW96l2M-iuUiAV_ck5_ZxQ",
@@ -12,28 +13,60 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "785248354563",
   appId: "1:785248354563:web:eec008a683c31236816936",
 };
+
 const VAPID_KEY =
   "BGIQfrtIfkeB3utT-IiDL4ohXrIVBBFsK7xqzmuhHbUZIx_i5PynechLD47TH3EXvhMi-q7ZuNFvZvDCjkgB2DY";
+const PUSH_TOKEN_KEY = "baseballCoachPushToken";
+const PUSH_PLATFORM_KEY = "baseballCoachPushPlatform";
 
 let currentJwt = "";
 let nativeReady = false;
+let webMessageListenerReady = false;
+
+function rememberToken(token: string, platform: string) {
+  localStorage.setItem(PUSH_TOKEN_KEY, token);
+  localStorage.setItem(PUSH_PLATFORM_KEY, platform);
+}
+
+function forgetToken() {
+  localStorage.removeItem(PUSH_TOKEN_KEY);
+  localStorage.removeItem(PUSH_PLATFORM_KEY);
+}
 
 async function saveToken(token: string, platform: string): Promise<void> {
+  if (!currentJwt || !isNotificationEnabled()) return;
+
   try {
-    await fetch(apiUrl("/push/register"), {
+    const response = await fetch(apiUrl("/push/register"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentJwt}` },
       body: JSON.stringify({ token, platform }),
     });
-  } catch (e) {
-    console.error("푸시 토큰 등록 실패", e);
+    if (response.ok) rememberToken(token, platform);
+  } catch (error) {
+    console.error("푸시 토큰 등록 실패", error);
   }
 }
 
-/** 로그인 시 호출. 웹이면 웹푸시, 안드 앱이면 네이티브 FCM 토큰을 등록한다. */
+async function syncServiceWorkerPreference(enabled: boolean) {
+  if (!("serviceWorker" in navigator)) return;
+
+  const registration =
+    (await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js")) ??
+    (enabled
+      ? await navigator.serviceWorker.register("/firebase-messaging-sw.js")
+      : undefined);
+
+  registration?.active?.postMessage({
+    type: "NOTIFICATION_PREFERENCE",
+    enabled,
+  });
+}
+
 export async function registerPush(authToken: string): Promise<void> {
-  if (!authToken) return;
+  if (!authToken || !isNotificationEnabled()) return;
   currentJwt = authToken;
+
   if (Capacitor.isNativePlatform()) {
     await registerNative();
   } else {
@@ -41,34 +74,93 @@ export async function registerPush(authToken: string): Promise<void> {
   }
 }
 
+export async function disablePush(authToken: string): Promise<void> {
+  if (!authToken) return;
+  currentJwt = authToken;
+
+  try {
+    await fetch(apiUrl("/push/register/all"), {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+  } catch (error) {
+    console.error("서버 푸시 토큰 해제 실패", error);
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await PushNotifications.unregister();
+      await PushNotifications.removeAllListeners();
+      nativeReady = false;
+    } catch (error) {
+      console.error("네이티브 푸시 해제 실패", error);
+    }
+  } else {
+    await syncServiceWorkerPreference(false);
+    try {
+      if (await isSupported()) {
+        const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
+        await deleteToken(getMessaging(app));
+      }
+    } catch (error) {
+      console.error("웹 푸시 토큰 해제 실패", error);
+    }
+  }
+
+  forgetToken();
+}
+
 async function registerNative(): Promise<void> {
+  if (!isNotificationEnabled()) return;
+
   if (!nativeReady) {
     nativeReady = true;
-    PushNotifications.addListener("registration", (t) => saveToken(t.value, "android"));
-    PushNotifications.addListener("registrationError", (e) => console.error("푸시 등록 에러", e));
-    PushNotifications.addListener("pushNotificationReceived", (n) =>
-      console.log("푸시 수신(앱 켜져있을 때)", n));
+    await PushNotifications.addListener("registration", (token) => {
+      if (isNotificationEnabled()) void saveToken(token.value, "android");
+    });
+    await PushNotifications.addListener("registrationError", (error) =>
+      console.error("푸시 등록 오류", error),
+    );
+    await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      if (isNotificationEnabled()) console.log("푸시 수신", notification);
+    });
   }
-  let perm = await PushNotifications.checkPermissions();
-  if (perm.receive === "prompt") perm = await PushNotifications.requestPermissions();
-  if (perm.receive !== "granted") return;
+
+  let permission = await PushNotifications.checkPermissions();
+  if (permission.receive === "prompt") {
+    permission = await PushNotifications.requestPermissions();
+  }
+  if (permission.receive !== "granted" || !isNotificationEnabled()) return;
   await PushNotifications.register();
 }
 
 async function registerWeb(): Promise<void> {
   try {
-    if (!("serviceWorker" in navigator) || !("Notification" in window)) return;
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") return;
-    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    const { initializeApp } = await import("firebase/app");
-    const { getMessaging, getToken, onMessage, isSupported } = await import("firebase/messaging");
+    if (!isNotificationEnabled() || !("serviceWorker" in navigator) || !("Notification" in window)) {
+      return;
+    }
     if (!(await isSupported())) return;
-    const messaging = getMessaging(initializeApp(FIREBASE_CONFIG));
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-    if (token) await saveToken(token, "web");
-    onMessage(messaging, (payload) => console.log("웹 푸시 수신(포그라운드)", payload));
-  } catch (e) {
-    console.error("웹 푸시 등록 실패", e);
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted" || !isNotificationEnabled()) return;
+
+    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    await syncServiceWorkerPreference(true);
+    const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
+    const messaging = getMessaging(app);
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (token && isNotificationEnabled()) await saveToken(token, "web");
+    if (!webMessageListenerReady) {
+      webMessageListenerReady = true;
+      onMessage(messaging, (payload) => {
+        if (isNotificationEnabled()) console.log("포그라운드 푸시 수신", payload);
+      });
+    }
+  } catch (error) {
+    console.error("웹 푸시 등록 실패", error);
   }
 }
