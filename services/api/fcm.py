@@ -4,6 +4,7 @@
 서비스 계정 키: 환경변수 FIREBASE_CRED_PATH, 없으면 repo 루트의 *firebase-adminsdk*.json 자동 탐색.
 키는 .gitignore 처리됨(절대 커밋 금지).
 """
+import datetime
 import os
 import pathlib
 
@@ -39,16 +40,23 @@ def _ensure_init():
     _initialized = True
 
 
-def send_to_tokens(tokens: list[str], title: str, body: str, data: dict | None = None) -> dict:
+def send_to_tokens(tokens: list[str], title: str, body: str, data: dict | None = None,
+                   ttl_seconds: int | None = None) -> dict:
     """여러 토큰에 알림 발송. 반환: {sent, failed, invalid_tokens}.
-    invalid_tokens = 만료·미등록 토큰(정리 대상)."""
+    invalid_tokens = 만료·미등록 토큰(정리 대상).
+    ttl_seconds: 지정 시 그 시간 안에 배달 못 하면 FCM이 폐기 → 기기를 늦게 켜도 지난 알림이 안 옴."""
     if not tokens:
         return {"sent": 0, "failed": 0, "invalid_tokens": []}
     _ensure_init()
+    extra = {}
+    if ttl_seconds is not None:
+        extra["android"] = messaging.AndroidConfig(ttl=datetime.timedelta(seconds=ttl_seconds))
+        extra["webpush"] = messaging.WebpushConfig(headers={"TTL": str(ttl_seconds)})
     message = messaging.MulticastMessage(
         tokens=tokens,
         notification=messaging.Notification(title=title, body=body),
         data={k: str(v) for k, v in (data or {}).items()},
+        **extra,
     )
     resp = messaging.send_each_for_multicast(message)
     invalid = []

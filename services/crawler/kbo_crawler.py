@@ -30,7 +30,7 @@ KBO 데일리 크롤러
          숫자는 숫자 타입, 빈값(&nbsp; 등)은 null.
 """
 from __future__ import annotations
-import os, sys, time, json, re, math, datetime, pathlib
+import os, sys, time, json, re, math, datetime, pathlib, random
 import html as htmllib
 from io import StringIO
 import requests
@@ -190,7 +190,7 @@ def _collect_pages(session, url, required_cols, start_html) -> list[pd.DataFrame
         form = _form_fields(doc)
         form["__EVENTTARGET"] = pages[nxt]
         form["__EVENTARGUMENT"] = ""
-        time.sleep(PAGE_DELAY)
+        time.sleep(PAGE_DELAY + random.uniform(0, 0.6))   # jitter: 봇 패턴 완화
         html = _post(session, url, form)
     return frames
 
@@ -211,7 +211,7 @@ def fetch_record(session, path, required_cols, by_team) -> pd.DataFrame:
             f[team_field] = code
             f["__EVENTTARGET"] = team_field
             f["__EVENTARGUMENT"] = ""
-            time.sleep(PAGE_DELAY)
+            time.sleep(PAGE_DELAY + random.uniform(0, 0.6))   # jitter: 봇 패턴 완화
             team_html = _post(session, url, f)
             frames += _collect_pages(session, url, required_cols, team_html)
     df = pd.concat(frames, ignore_index=True).drop_duplicates().reset_index(drop=True)
@@ -317,7 +317,7 @@ def fetch_boxscores(session, games_df) -> tuple:
         h, p = fetch_boxscore(session, g["gameId"])
         H += h
         P += p
-        time.sleep(PAGE_DELAY)
+        time.sleep(PAGE_DELAY + random.uniform(0, 0.6))   # jitter: 봇 패턴 완화
     return pd.DataFrame(H), pd.DataFrame(P)
 
 
@@ -340,18 +340,25 @@ def find_last_games(session, yday: datetime.date, cached_df):
 
 def main() -> int:
     today = datetime.date.today()
-    print(f"[{datetime.datetime.now():%H:%M:%S}] KBO 크롤 시작 (크롤일 {today})")
+    # --date=YYYY-MM-DD: 기준일 직접 지정(경기 종료 직후 야간 트리거=당일). 미지정 시 어제(정기 9시 크롤).
+    anchor = today - datetime.timedelta(days=1)
+    for a in sys.argv[1:]:
+        if a.startswith("--date="):
+            try:
+                anchor = datetime.date.fromisoformat(a.split("=", 1)[1])
+            except ValueError:
+                print(f"  [WARN] 잘못된 --date 무시: {a}", file=sys.stderr)
+    print(f"[{datetime.datetime.now():%H:%M:%S}] KBO 크롤 시작 (크롤일 {today}, 기준일 앵커 {anchor})")
     session = make_session()
     ok = fail = 0
 
     # 데이터 기준일 = 마지막 경기일. 폴더명·메타 모두 이 날짜 기준 (크롤한 날 아님)
-    yday = today - datetime.timedelta(days=1)
     try:
-        cached = fetch_games(session, yday)
+        cached = fetch_games(session, anchor)
     except Exception as e:
-        print(f"  [WARN] 어제 경기 조회 실패: {e}", file=sys.stderr)
+        print(f"  [WARN] 기준일({anchor}) 경기 조회 실패: {e}", file=sys.stderr)
         cached = None
-    data_date, games_df = find_last_games(session, yday, cached)
+    data_date, games_df = find_last_games(session, anchor, cached)
     ddir = data_date.isoformat()
     # 출력 위치: 기본 data/crawling/, 컨테이너(읽기전용 FS)에선 CRAWL_DIR=/tmp/crawling 등으로 지정
     _base = os.environ.get("CRAWL_DIR") or str(pathlib.Path(__file__).resolve().parents[2] / "data" / "crawling")
@@ -371,7 +378,7 @@ def main() -> int:
         except Exception as e:
             print(f"  [FAIL] {name}: {e}", file=sys.stderr)
             fail += 1
-        time.sleep(REQUEST_DELAY)
+        time.sleep(REQUEST_DELAY + random.uniform(0, 1.0))   # jitter: 봇 패턴 완화
 
     # ④ 그 날 경기 결과
     gmeta = {"dataset": "games", "scope": "single_day", "game_date": ddir,
