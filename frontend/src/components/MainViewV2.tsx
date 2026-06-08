@@ -36,6 +36,7 @@ interface MainViewV2Props {
   darkModeEnabled: boolean;
   onNotificationEnabledChange: (enabled: boolean) => void;
   onDarkModeEnabledChange: (enabled: boolean) => void;
+  onFavTeamChange?: (code: string) => void;
   onLogout: () => void;
 }
 
@@ -121,6 +122,7 @@ export function MainViewV2({
   darkModeEnabled,
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
+  onFavTeamChange,
 }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
@@ -135,6 +137,11 @@ export function MainViewV2({
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>(null);
+
+  // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
+  useEffect(() => {
+    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => {});
+  }, []);
 
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
   useEffect(() => {
@@ -314,26 +321,26 @@ export function MainViewV2({
     window.speechSynthesis.speak(utterance);
   }
 
-  async function askCoach(question: string): Promise<string> {
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (authToken) headers.Authorization = `Bearer ${authToken}`;
-
-      const response = await fetch(apiUrl("/chat"), {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ question, session_id: "frontend-demo" }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.answer && !isPlaceholderAnswer(data.answer)) return data.answer as string;
-      }
-    } catch (err) {
-      console.warn("[MainViewV2] /chat unavailable; using local fallback", err);
+  // 답변을 토큰 단위로 받아 도착할 때마다 onText로 갱신(스트리밍). 응원팀(team_code) 페르소나로 답함.
+  async function streamCoach(question: string, onText: (full: string) => void): Promise<string> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+    const response = await fetch(apiUrl("/chat/stream"), {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
+    });
+    if (!response.ok || !response.body) throw new Error("stream unavailable");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      full += decoder.decode(value, { stream: true });
+      onText(full);
     }
-
-    return buildLocalFallbackAnswer(question);
+    return full.trim();
   }
 
   async function submitQuestion(raw: string) {
@@ -341,11 +348,39 @@ export function MainViewV2({
     if (!question) return;
 
     const baseId = Date.now();
+    const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
     setInput("");
+    setMessages((prev) => [...prev, { id: botId, type: "bot", text: "" }]); // 스트리밍으로 채울 자리
 
-    const answer = await askCoach(question);
-    setMessages((prev) => [...prev, { id: baseId + 1, type: "bot", text: answer }]);
+    const setBot = (text: string) =>
+      setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
+
+    let answer = "";
+    try {
+      answer = await streamCoach(question, setBot);
+    } catch (err) {
+      console.warn("[MainViewV2] /chat/stream failed; trying /chat", err);
+      try {   // 스트림 미지원 환경 안전장치: 일반 /chat으로 실답변 재시도
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (authToken) headers.Authorization = `Bearer ${authToken}`;
+        const r = await fetch(apiUrl("/chat"), {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.answer && !isPlaceholderAnswer(d.answer)) { answer = d.answer as string; setBot(answer); }
+        }
+      } catch (e2) {
+        console.warn("[MainViewV2] /chat fallback failed", e2);
+      }
+    }
+    if (!answer || isPlaceholderAnswer(answer)) {
+      answer = buildLocalFallbackAnswer(question);
+      setBot(answer);
+    }
     void speakAnswer(answer);
   }
 
@@ -545,6 +580,9 @@ export function MainViewV2({
               darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
               onDarkModeEnabledChange={onDarkModeEnabledChange}
+              authToken={authToken}
+              favTeamCode={favTeamCode}
+              onFavTeamChange={onFavTeamChange}
               onNavigate={(target) => {
                 setIsSettingsOpen(false);
                 window.setTimeout(() => handleNav(target), 0);
