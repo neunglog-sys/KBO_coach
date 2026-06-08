@@ -224,7 +224,10 @@ export function MainViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function speakWithAzure(text: string): Promise<boolean> {
+  async function speakWithAzure(
+    text: string,
+    onReveal?: (revealed: string) => void,
+  ): Promise<boolean> {
     try {
       if (ttsAudioRef.current) {
         ttsAudioRef.current.pause();
@@ -244,6 +247,8 @@ export function MainViewV2({
       const visemes: Array<{ offset: number; id: number }> = Array.isArray(data.visemes)
         ? data.visemes
         : [];
+      const boundaries: Array<{ offset: number; textOffset: number; length: number }> =
+        Array.isArray(data.boundaries) ? data.boundaries : [];
       const audio = new Audio(`data:${data.mime || "audio/mpeg"};base64,${data.audio}`);
       ttsAudioRef.current = audio;
 
@@ -259,6 +264,22 @@ export function MainViewV2({
             else break;
           }
           setActiveViseme(activeId);
+          // 음성 진행에 맞춰 텍스트를 드러냄 — 단어경계 우선, 없으면 시간 비례로 폴백
+          if (onReveal) {
+            let revealed = "";
+            if (boundaries.length) {
+              let end = 0;
+              for (let i = 0; i < boundaries.length; i++) {
+                if (boundaries[i].offset <= tMs) end = Math.max(end, boundaries[i].textOffset + boundaries[i].length);
+                else break;
+              }
+              revealed = text.slice(0, end);
+            } else if (audio.duration) {
+              const ratio = Math.min(1, audio.currentTime / audio.duration);
+              revealed = text.slice(0, Math.floor(text.length * ratio));
+            }
+            if (revealed) onReveal(revealed);
+          }
           lipRaf = requestAnimationFrame(driveLipSync);
         };
 
@@ -269,6 +290,7 @@ export function MainViewV2({
           clearMouth();
           setIsSpeaking(false);
           if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+          if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
           resolve(ok);
         };
 
@@ -286,8 +308,10 @@ export function MainViewV2({
     }
   }
 
-  async function speakAnswer(text: string) {
-    if (await speakWithAzure(text)) return;
+  async function speakAnswer(text: string, onReveal?: (revealed: string) => void) {
+    if (await speakWithAzure(text, onReveal)) return;
+
+    onReveal?.(text);   // Azure 실패 → 정밀 타이밍 불가하니 전체 텍스트 즉시 표시
 
     if (Capacitor.isNativePlatform()) {
       setIsSpeaking(true);
@@ -321,26 +345,24 @@ export function MainViewV2({
     window.speechSynthesis.speak(utterance);
   }
 
-  // 답변을 토큰 단위로 받아 도착할 때마다 onText로 갱신(스트리밍). 응원팀(team_code) 페르소나로 답함.
-  async function streamCoach(question: string, onText: (full: string) => void): Promise<string> {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (authToken) headers.Authorization = `Bearer ${authToken}`;
-    const response = await fetch(apiUrl("/chat/stream"), {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
-    });
-    if (!response.ok || !response.body) throw new Error("stream unavailable");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let full = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      full += decoder.decode(value, { stream: true });
-      onText(full);
+  // 응원팀(team_code) 페르소나로 답변 전체를 받아옴. (표시는 음성에 맞춰 speakAnswer가 드러냄)
+  async function fetchAnswer(question: string): Promise<string> {
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const r = await fetch(apiUrl("/chat"), {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.answer && !isPlaceholderAnswer(d.answer)) return d.answer as string;
+      }
+    } catch (err) {
+      console.warn("[MainViewV2] /chat failed; using local fallback", err);
     }
-    return full.trim();
+    return buildLocalFallbackAnswer(question);
   }
 
   async function submitQuestion(raw: string) {
@@ -351,37 +373,14 @@ export function MainViewV2({
     const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
     setInput("");
-    setMessages((prev) => [...prev, { id: botId, type: "bot", text: "" }]); // 스트리밍으로 채울 자리
-
+    setMessages((prev) => [...prev, { id: botId, type: "bot", text: "…" }]); // 답변 준비 중 표시
     const setBot = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
-    let answer = "";
-    try {
-      answer = await streamCoach(question, setBot);
-    } catch (err) {
-      console.warn("[MainViewV2] /chat/stream failed; trying /chat", err);
-      try {   // 스트림 미지원 환경 안전장치: 일반 /chat으로 실답변 재시도
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (authToken) headers.Authorization = `Bearer ${authToken}`;
-        const r = await fetch(apiUrl("/chat"), {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
-        });
-        if (r.ok) {
-          const d = await r.json();
-          if (d.answer && !isPlaceholderAnswer(d.answer)) { answer = d.answer as string; setBot(answer); }
-        }
-      } catch (e2) {
-        console.warn("[MainViewV2] /chat fallback failed", e2);
-      }
-    }
-    if (!answer || isPlaceholderAnswer(answer)) {
-      answer = buildLocalFallbackAnswer(question);
-      setBot(answer);
-    }
-    void speakAnswer(answer);
+    const answer = await fetchAnswer(question);
+    // 음성 재생과 동시에 단어 단위로 텍스트를 드러냄(동기화). 음성 실패 시 speakAnswer가 전체를 한 번에 표시.
+    await speakAnswer(answer, setBot);
+    setBot(answer); // 안전장치: 종료 후 전체 텍스트 보장
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {

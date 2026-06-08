@@ -74,9 +74,18 @@ def tts(body: TtsIn):
     synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
 
     visemes: list[dict] = []
+    boundaries: list[dict] = []
     # audio_offset 단위는 100나노초(틱) → 1ms = 10000틱
     synthesizer.viseme_received.connect(
         lambda evt: visemes.append({"offset": evt.audio_offset / 10000, "id": evt.viseme_id})
+    )
+    # 단어 경계: 그 단어를 말하기 시작하는 시각(ms) + 입력 텍스트상 위치 → 프론트 자막 동기화용
+    synthesizer.synthesis_word_boundary.connect(
+        lambda evt: boundaries.append({
+            "offset": evt.audio_offset / 10000,
+            "textOffset": evt.text_offset,
+            "length": evt.word_length,
+        })
     )
 
     result = synthesizer.speak_text_async(text).get()
@@ -88,6 +97,7 @@ def tts(body: TtsIn):
             "mime": "audio/mpeg",
             "voice": voice,
             "visemes": visemes,
+            "boundaries": boundaries,
         }
 
     if result.reason == speechsdk.ResultReason.Canceled:
