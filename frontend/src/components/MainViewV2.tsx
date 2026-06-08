@@ -464,15 +464,21 @@ export function MainViewV2({
   return (
     <section className="stage-view" aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
-        {/* 하늘 레이어 (뒤, 느리게) */}
+        {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
-          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
-          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
         </div>
-        {/* 경기장 레이어 (앞, 빠르게) */}
+        {/* 경기장 레이어 (앞, 빠르게) — background_1~4를 이어붙이고, 같은 세트를 2번 반복해 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-ground">
-          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
-          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
