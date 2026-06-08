@@ -8,6 +8,8 @@ import { getTargetWeights, type MouthShape } from "../lipSync";
 interface Character3DProps {
   /** 말하는 중이면 입을 움직인다. */
   isSpeaking: boolean;
+  /** 값이 바뀔 때마다(증가) 인사(손 흔들기) 모션을 1회 재생한다. */
+  greetSignal?: number;
   className?: string;
 }
 
@@ -19,11 +21,13 @@ const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
 
-export default function Character3D({ isSpeaking, className }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   // 애니메이션 루프가 항상 최신 isSpeaking 값을 읽도록 ref로 보관
   const speakingRef = useRef(isSpeaking);
   speakingRef.current = isSpeaking;
+  // 모델 로드 후 채워지는 "인사 모션 재생" 함수. 외부 greetSignal 변화 시 호출.
+  const greetRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -127,6 +131,14 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
           mixer.addEventListener("finished", () => {
             introRunning = false;
           });
+          // 외부 인사 트리거 시 손 흔들기 모션을 처음부터 다시 1회 재생.
+          greetRef.current = () => {
+            action.reset();
+            action.play();
+            introRunning = true;
+            // 모션 길이 동안 렌더 루프가 깨어있도록 유지.
+            renderQuietUntil = performance.now() + clip.duration * 1000 + 300;
+          };
         }
         renderQuietUntil = performance.now() + 1500; // 로드 직후 모델 표시·입모양 정착 위해 잠깐 렌더
       },
@@ -211,11 +223,18 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       pmrem.dispose();
       dracoLoader.dispose();
       renderer.dispose();
+      greetRef.current = null;
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
     };
   }, []);
+
+  // greetSignal 이 바뀌면(0 제외) 인사 모션 재생. 모델 로드 전이면 무시.
+  useEffect(() => {
+    if (!greetSignal) return;
+    greetRef.current?.();
+  }, [greetSignal]);
 
   return (
     <div

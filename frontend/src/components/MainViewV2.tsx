@@ -14,6 +14,9 @@ import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import { WeatherFx, type WeatherCondition } from "./WeatherFx";
 import "./MainViewV2.css";
 
+// 인사말 감지용 (안녕/안뇽/하이/헬로/hi/hello/hey/반가). 소문자로 매칭.
+const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가)/;
+
 // 팀 코드 → 홈 구장 (weather.py STADIUMS 키와 일치)
 const TEAM_HOME_STADIUM: Record<string, string> = {
   OB: "잠실야구장",
@@ -130,6 +133,8 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
+  const [greetSignal, setGreetSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
@@ -378,8 +383,23 @@ export function MainViewV2({
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
     const answer = await fetchAnswer(question);
+
+    // 인사말이 "말로 나오는 순간"에 손을 흔들도록 준비.
+    // onReveal 은 음성 진행도에 맞춰 앞에서부터 누적된 텍스트를 준다.
+    // 인사말 단어의 끝 위치를 텍스트가 지나가면 그때 1회 흔든다.
+    const greetMatch = answer.toLowerCase().match(GREET_RE);
+    const greetEndIdx = greetMatch ? (greetMatch.index ?? 0) + greetMatch[0].length : -1;
+    let greeted = false;
+    const revealWithGreet = (revealed: string) => {
+      setBot(revealed);
+      if (!greeted && greetEndIdx >= 0 && revealed.length >= greetEndIdx) {
+        greeted = true;
+        setGreetSignal((n) => n + 1);
+      }
+    };
+
     // 음성 재생과 동시에 단어 단위로 텍스트를 드러냄(동기화). 음성 실패 시 speakAnswer가 전체를 한 번에 표시.
-    await speakAnswer(answer, setBot);
+    await speakAnswer(answer, revealWithGreet);
     setBot(answer); // 안전장치: 종료 후 전체 텍스트 보장
   }
 
@@ -459,7 +479,7 @@ export function MainViewV2({
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />
