@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { apiUrl } from "../api";
 import {
+  addDays,
   applyAttendance,
   applyCheer,
   ATTENDANCE_SPEECHES,
@@ -28,6 +29,7 @@ interface AttendanceStatus {
   xp: number;
   xp_to_next: number;
   total_checkins: number;
+  streak: number;
   checked_today: boolean;
   last_checkin_date: string | null;
   gained_xp: number;
@@ -148,6 +150,15 @@ function buddyNicknameStorageKey(authToken: string) {
   return `${BUDDY_NICKNAME_STORAGE_KEY}:${profileStorageSuffix(authToken)}`;
 }
 
+// 출석 fallback·레벨기록도 계정별로 분리(같은 기기에서 계정 바꿔도 안 섞이게).
+function attendanceStorageKey(authToken: string) {
+  return `${STORAGE_KEY}:${profileStorageSuffix(authToken)}`;
+}
+
+function levelSeenKey(authToken: string) {
+  return `${LEVEL_SEEN_KEY}:${profileStorageSuffix(authToken)}`;
+}
+
 function loadGender(authToken: string): Gender {
   const saved = localStorage.getItem(genderStorageKey(authToken)) || localStorage.getItem(GENDER_STORAGE_KEY);
   return saved === "man" || saved === "girl" ? saved : null;
@@ -183,24 +194,33 @@ function todayKey() {
   return localDateKey();
 }
 
-function fallbackStatus(): AttendanceStatus {
-  const saved = localStorage.getItem(STORAGE_KEY);
+function isYesterday(dateKey: string | null | undefined): boolean {
+  return !!dateKey && dateKey === addDays(todayKey(), -1);
+}
+
+function fallbackStatus(authToken: string): AttendanceStatus {
+  const saved = localStorage.getItem(attendanceStorageKey(authToken));
   if (saved) {
     try {
       const parsed = JSON.parse(saved) as Partial<AttendanceStatus>;
       const xp = Number(parsed.xp || 0);
+      const last = parsed.last_checkin_date || null;
+      // 연속출석: 마지막 출석이 오늘/어제면 유효, 그 이전이면 끊김(0)
+      const streak =
+        last === todayKey() || isYesterday(last) ? Number(parsed.streak || 0) : 0;
       return {
         level: Math.floor(xp / XP_PER_LEVEL) + 1,
         xp,
         xp_to_next: XP_PER_LEVEL - (xp % XP_PER_LEVEL),
         total_checkins: Number(parsed.total_checkins || 0),
-        checked_today: parsed.last_checkin_date === todayKey(),
-        last_checkin_date: parsed.last_checkin_date || null,
+        streak,
+        checked_today: last === todayKey(),
+        last_checkin_date: last,
         gained_xp: 0,
-        message: parsed.last_checkin_date === todayKey() ? "오늘 출석 완료!" : "아직 오늘 출석 전이에요.",
+        message: last === todayKey() ? "오늘 출석 완료!" : "아직 오늘 출석 전이에요.",
       };
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(attendanceStorageKey(authToken));
     }
   }
 
@@ -209,6 +229,7 @@ function fallbackStatus(): AttendanceStatus {
     xp: 0,
     xp_to_next: XP_PER_LEVEL,
     total_checkins: 0,
+    streak: 0,
     checked_today: false,
     last_checkin_date: null,
     gained_xp: 0,
@@ -216,28 +237,31 @@ function fallbackStatus(): AttendanceStatus {
   };
 }
 
-function saveFallback(status: AttendanceStatus) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(status));
+function saveFallback(authToken: string, status: AttendanceStatus) {
+  localStorage.setItem(attendanceStorageKey(authToken), JSON.stringify(status));
 }
 
-function applyLocalCheckIn(current: AttendanceStatus): AttendanceStatus {
+function applyLocalCheckIn(authToken: string, current: AttendanceStatus): AttendanceStatus {
   if (current.checked_today) {
     return { ...current, gained_xp: 0, message: "오늘은 이미 출석했어요." };
   }
 
   const xp = current.xp + CHECKIN_XP;
+  // 어제 출석했으면 연속 +1, 아니면 1부터
+  const streak = isYesterday(current.last_checkin_date) ? current.streak + 1 : 1;
   const next: AttendanceStatus = {
     ...current,
     xp,
     level: Math.floor(xp / XP_PER_LEVEL) + 1,
     xp_to_next: XP_PER_LEVEL - (xp % XP_PER_LEVEL),
     total_checkins: current.total_checkins + 1,
+    streak,
     checked_today: true,
     last_checkin_date: todayKey(),
     gained_xp: CHECKIN_XP,
     message: "출석 완료! 경험치가 올랐어요.",
   };
-  saveFallback(next);
+  saveFallback(authToken, next);
   return next;
 }
 
@@ -267,6 +291,33 @@ function saveDailyState(storageKey: string, state: TamagotchiViewState) {
   }
 }
 
+// 다마고치 상태(기분·응원파워·연속)를 계정에 묶어 서버에 보존 — 기기 바꿔도 유지.
+async function fetchServerDailyState(
+  authToken: string,
+): Promise<Partial<TamagotchiViewState> | null> {
+  if (!authToken) return null;
+  try {
+    const res = await fetch(apiUrl("/tamagotchi/state"), {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { state?: Partial<TamagotchiViewState> | null };
+    return data?.state ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function saveServerDailyState(authToken: string, state: TamagotchiViewState) {
+  if (!authToken) return;
+  // fire-and-forget — 실패해도 로컬 저장으로 동작 유지
+  fetch(apiUrl("/tamagotchi/state"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ state }),
+  }).catch(() => undefined);
+}
+
 export default function AttendanceCheckIn({
   authToken,
   onCheckedTodayChange,
@@ -277,7 +328,7 @@ export default function AttendanceCheckIn({
   buddyNickname: initialBuddyNickname,
   onBuddyNicknameChange,
 }: AttendanceCheckInProps) {
-  const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
+  const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus(authToken));
   const [gender, setGender] = useState<Gender>(() => loadGender(authToken));
   const [pendingGender, setPendingGender] = useState<Gender>(() => loadGender(authToken));
   const [buddyNickname, setBuddyNickname] = useState(() =>
@@ -315,8 +366,8 @@ export default function AttendanceCheckIn({
     [status.xp],
   );
 
-  const displayLevel = status.level || 3;
-  const displayProgress = progress || 60;
+  const displayLevel = status.level || 1;
+  const displayProgress = progress;
   const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
@@ -336,6 +387,8 @@ export default function AttendanceCheckIn({
     const nextBuddyNickname = loadBuddyNickname(authToken, initialBuddyNickname);
     setBuddyNickname(nextBuddyNickname);
     setBuddyNicknameInput(nextBuddyNickname);
+    // 계정 바뀌면 출석 상태도 그 계정 기준으로 즉시 리셋(서버 응답 전까지 이전 계정값 노출 방지)
+    setStatus(fallbackStatus(authToken));
   }, [authToken, initialBuddyNickname]);
 
   const ownedItems = useMemo(() => getOwnedItems(charLevel), [charLevel]);
@@ -355,16 +408,16 @@ export default function AttendanceCheckIn({
       return;
     }
 
-    const seen = Number(localStorage.getItem(LEVEL_SEEN_KEY) || "1");
+    const seen = Number(localStorage.getItem(levelSeenKey(authToken)) || "1");
     if (charLevel > seen) {
       const newly: RewardItem[] = [];
       for (let L = seen + 1; L <= charLevel; L++) {
         if (LEVEL_REWARDS[L]) newly.push(LEVEL_REWARDS[L]);
       }
       if (newly.length) setRewardQueue((q) => [...q, ...newly]);
-      localStorage.setItem(LEVEL_SEEN_KEY, String(charLevel));
+      localStorage.setItem(levelSeenKey(authToken), String(charLevel));
     }
-  }, [charLevel]);
+  }, [charLevel, authToken]);
 
   const rewardPopup = rewardQueue[0] ?? null;
   function dismissReward() {
@@ -436,6 +489,7 @@ export default function AttendanceCheckIn({
     setDailyState((current) => {
       const next = updater(current);
       saveDailyState(stateStorageKey, next);
+      saveServerDailyState(authToken, next);   // 계정에 묶어 서버에도 보존
       return next;
     });
   }
@@ -508,7 +562,7 @@ export default function AttendanceCheckIn({
         const data = (await response.json()) as AttendanceStatus;
         if (!ignore) {
           setStatus(data);
-          saveFallback(data);
+          saveFallback(authToken, data);
           updateDailyState((current) =>
             syncAttendance(current, data.last_checkin_date, todayKey())
           );
@@ -519,6 +573,38 @@ export default function AttendanceCheckIn({
     }
 
     loadStatus();
+    return () => {
+      ignore = true;
+    };
+  }, [authToken]);
+
+  // 다마고치 상태(기분·응원파워·연속)를 서버에서 불러와 계정별로 복원(기기 바꿔도 유지).
+  useEffect(() => {
+    if (!authToken) return;
+    let ignore = false;
+
+    (async () => {
+      const serverState = await fetchServerDailyState(authToken);
+      if (ignore) return;
+      if (serverState) {
+        // 서버 상태로 초기화(오늘 기준 연속·페널티 평가 적용) → 화면·로컬·서버 동기화
+        const initialized = initializeTamagotchiState(
+          serverState,
+          todayKey(),
+          randomSpeech(DEFAULT_SPEECHES, buddyNickname || nickname),
+        );
+        setDailyState(initialized);
+        saveDailyState(stateStorageKey, initialized);
+        saveServerDailyState(authToken, initialized);
+      } else {
+        // 서버에 기록이 없으면(최초) 현재 로컬 상태를 계정에 올려 보존 시작
+        setDailyState((current) => {
+          saveServerDailyState(authToken, current);
+          return current;
+        });
+      }
+    })();
+
     return () => {
       ignore = true;
     };
@@ -574,12 +660,12 @@ export default function AttendanceCheckIn({
 
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
-      saveFallback(data);
+      saveFallback(authToken, data);
       const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
-      const next = applyLocalCheckIn(status);
+      const next = applyLocalCheckIn(authToken, status);
       setStatus(next);
       const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
@@ -624,7 +710,7 @@ export default function AttendanceCheckIn({
             level: Math.floor(xp / XP_PER_LEVEL) + 1,
             xp_to_next: XP_PER_LEVEL - (xp % XP_PER_LEVEL),
           };
-          saveFallback(next);
+          saveFallback(authToken, next);
           return next;
         });
       }
@@ -893,7 +979,7 @@ export default function AttendanceCheckIn({
       <div className="tamagotchi-streak-card">
         <span><CalendarCheck /></span>
         <strong>연속 출석:</strong>
-        <b>3일째</b>
+        <b>{status.streak}일째</b>
       </div>
     </section>
   );
