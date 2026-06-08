@@ -9,15 +9,17 @@
 
 /* 기본(메인 화면): 그라데이션 오버레이 위 → 흰색 텍스트, 약한 그림자 */
 .app-top-menu button {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   min-width: 0;
+  height: 66px;
   min-height: 64px;
-  border: 0;
-  border-radius: 14px;
+  border: 1px solid transparent;
+  border-radius: 16px;
   padding: 6px 4px;
   color: #ffffff;
   background: transparent;
@@ -27,19 +29,12 @@
 /* 활성 상태: 큰 흰 박스 대신 아이콘 아래 작은 도트 표시 */
 .app-top-menu button.is-active {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
 .app-top-menu button.is-active::after {
-  content: "";
-  display: block;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: #ffffff;
-  margin-top: 2px;
-  flex-shrink: 0;
+  content: none;
 }
 
 .app-top-menu-icon {
@@ -98,10 +93,12 @@
 .app-top-menu.settings-top-menu button,
 .app-top-menu.stadium-page-top-menu button,
 .app-top-menu.tamagotchi-nav button {
+  position: relative;
   gap: 4px;
+  height: 66px;
   min-height: 64px;
-  border: 0;
-  border-radius: 14px;
+  border: 1px solid transparent;
+  border-radius: 16px;
   padding: 6px 4px;
   color: #0f172a;
   background: transparent;
@@ -113,15 +110,16 @@
 .app-top-menu.stadium-page-top-menu button.is-active,
 .app-top-menu.tamagotchi-nav button.is-active {
   color: #126dff;
-  background: transparent;
-  box-shadow: none;
+  background: rgba(22, 119, 255, 0.1);
+  border-color: rgba(22, 119, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.18);
 }
 
 /* 밝은 배경 화면의 활성 도트는 파란색 */
 .app-top-menu.settings-top-menu button.is-active::after,
 .app-top-menu.stadium-page-top-menu button.is-active::after,
 .app-top-menu.tamagotchi-nav button.is-active::after {
-  background: #126dff;
+  content: none;
 }
 
 .app-top-menu.tamagotchi-nav button.is-active {
@@ -190,6 +188,7 @@
     justify-content: center;
     gap: 2px;
     min-height: 62px;
+    height: 62px;
     border-radius: 10px;
     padding: 0 2px;
   }

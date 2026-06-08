@@ -2089,6 +2089,7 @@ select:focus {
 
 .tamagotchi-nav button.is-active {
   min-height: 52px;
+  height: 52px;
   margin: 0;
   color: #126dff;
   background: rgba(255, 255, 255, 0.72);
@@ -2456,12 +2457,14 @@ select:focus {
     justify-items: center;
     gap: 2px;
     min-height: 48px;
+    height: 62px;
     border-radius: 10px;
     padding: 0 2px;
   }
 
   .tamagotchi-nav button.is-active {
     min-height: 62px;
+    height: 62px;
   }
 
   .tamagotchi-status-card {

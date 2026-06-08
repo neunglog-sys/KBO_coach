@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiUrl } from "../api";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./TeamChatView.css";
 
 interface TeamChatViewProps {
   authToken: string;
   onBack: () => void;
+  onNavigate?: (target: TopMenuTarget) => void;
 }
 
 interface BoardMessage {
@@ -69,7 +71,7 @@ function dateLabel(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}`;
 }
 
-export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
+export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProps) {
   const [team, setTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [messages, setMessages] = useState<BoardMessage[]>([]);
   const [notice, setNotice] = useState("");
@@ -188,6 +190,11 @@ export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
     else setClosing(true);
   }
 
+  function handleTopMenuNavigate(target: TopMenuTarget) {
+    if (target === "chat") return;
+    onNavigate?.(target);
+  }
+
   const headerColor = teamObj?.color ?? "#444";
 
   return (
@@ -227,6 +234,8 @@ export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
           ☰
         </button>
       </header>
+
+      <TopMenu active="chat" className="chat-top-menu" onNavigate={handleTopMenuNavigate} />
 
       {searchOpen ? (
         <div className="chat-search">

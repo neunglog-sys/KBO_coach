@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiUrl } from "../api";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./MyRecordsView.css";
 
 interface MyRecordsViewProps {
   authToken: string;
   onBack: () => void;
+  onNavigate?: (target: TopMenuTarget) => void;
 }
 
 interface RecordRow {
@@ -78,7 +80,7 @@ function calcStreak(dateSet: Set<string>): number {
   return streak;
 }
 
-export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
+export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewProps) {
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [myTeam, setMyTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [monthGames, setMonthGames] = useState<Record<string, unknown>[]>([]);
@@ -247,6 +249,11 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
     }
   }
 
+  function handleTopMenuNavigate(target: TopMenuTarget) {
+    if (target === "record") return;
+    onNavigate?.(target);
+  }
+
   return (
     <section
       className={`records-view ${closing ? "closing" : ""}`}
@@ -262,6 +269,8 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
         <h1>나만의 야구기록</h1>
         <span className="records-top-spacer" />
       </header>
+
+      <TopMenu active="record" className="records-top-menu" onNavigate={handleTopMenuNavigate} />
 
       <div className="streak-card" style={streakStyle}>
         <div className="streak-card-head">

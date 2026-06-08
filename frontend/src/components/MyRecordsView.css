@@ -78,6 +78,13 @@
 }
 
 /* 연속 기록 도전 카드 */
+.records-top-menu {
+  position: relative;
+  z-index: 2;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+}
+
 .streak-card {
   margin: 4px 16px 14px;
   padding: 20px;

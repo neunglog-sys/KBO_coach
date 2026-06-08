@@ -700,7 +700,7 @@ export default function AttendanceCheckIn({
               type="text"
               value={buddyNicknameInput}
               maxLength={MAX_BUDDY_NICKNAME_LENGTH}
-              placeholder="예: 동아"
+              placeholder="예: 야꿍"
               onChange={(event) => setBuddyNicknameInput(event.target.value)}
             />
             <small>{buddyNicknameInput.trim().length} / {MAX_BUDDY_NICKNAME_LENGTH}</small>

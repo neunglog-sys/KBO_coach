@@ -143,6 +143,7 @@ export function MainViewV2({
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
+  const [closingOverlay, setClosingOverlay] = useState<"tamagotchi" | "stadium" | "settings" | null>(null);
   const [, setAttendanceCheckedToday] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -196,6 +197,7 @@ export function MainViewV2({
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const overlayCloseTimerRef = useRef<number | null>(null);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -233,6 +235,53 @@ export function MainViewV2({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => () => {
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+    }
+  }, []);
+
+  function closeOverlay(
+    overlay: "tamagotchi" | "stadium" | "settings",
+    afterClose?: () => void,
+  ) {
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const finish = () => {
+      if (overlay === "tamagotchi") setIsAttendanceOpen(false);
+      if (overlay === "stadium") setIsStadiumPageOpen(false);
+      if (overlay === "settings") setIsSettingsOpen(false);
+      setClosingOverlay(null);
+      afterClose?.();
+    };
+
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+      overlayCloseTimerRef.current = null;
+    }
+
+    if (reduceMotion) {
+      finish();
+      return;
+    }
+
+    setClosingOverlay(overlay);
+    overlayCloseTimerRef.current = window.setTimeout(finish, 260);
+  }
+
+  function switchToMenuTarget(key: TopMenuTarget) {
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+      overlayCloseTimerRef.current = null;
+    }
+
+    setClosingOverlay(null);
+    setIsAttendanceOpen(key === "tamagotchi");
+    setIsStadiumPageOpen(key === "stadium");
+    setIsSettingsOpen(key === "settings");
+    setShowRecords(key === "record");
+    setShowChat(key === "chat");
+  }
 
   async function speakWithAzure(
     text: string,
@@ -443,26 +492,7 @@ export function MainViewV2({
     if (key === "home") {
       return;
     }
-    if (key === "tamagotchi") {
-      setIsAttendanceOpen(true);
-      return;
-    }
-    if (key === "stadium") {
-      setIsStadiumPageOpen(true);
-      return;
-    }
-    if (key === "settings") {
-      setIsSettingsOpen(true);
-      return;
-    }
-    if (key === "record") {
-      setShowRecords(true);
-      return;
-    }
-    if (key === "chat") {
-      setShowChat(true);
-      return;
-    }
+    switchToMenuTarget(key);
   }
 
   return (
@@ -528,9 +558,9 @@ export function MainViewV2({
 
       {isAttendanceOpen ? (
         <div
-          className="attendance-window-backdrop"
+          className={`attendance-window-backdrop ${closingOverlay === "tamagotchi" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsAttendanceOpen(false)}
+          onClick={() => closeOverlay("tamagotchi")}
         >
           <section
             className="attendance-window"
@@ -543,7 +573,7 @@ export function MainViewV2({
               className="attendance-window-close"
               type="button"
               aria-label="뒤로가기"
-              onClick={() => setIsAttendanceOpen(false)}
+              onClick={() => closeOverlay("tamagotchi")}
             >
               뒤로가기
             </button>
@@ -554,10 +584,9 @@ export function MainViewV2({
               favTeamCode={favTeamCode}
               onBuddyNicknameChange={onBuddyNicknameChange}
               onCheckedTodayChange={setAttendanceCheckedToday}
-              onRequestClose={() => setIsAttendanceOpen(false)}
+              onRequestClose={() => closeOverlay("tamagotchi")}
               onNavigate={(target) => {
-                setIsAttendanceOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -566,9 +595,9 @@ export function MainViewV2({
 
       {isStadiumPageOpen ? (
         <div
-          className="stadium-page-backdrop"
+          className={`stadium-page-backdrop ${closingOverlay === "stadium" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsStadiumPageOpen(false)}
+          onClick={() => closeOverlay("stadium")}
         >
           <section
             className="stadium-page-window"
@@ -578,10 +607,9 @@ export function MainViewV2({
             onClick={(event) => event.stopPropagation()}
           >
             <StadiumPage
-              onClose={() => setIsStadiumPageOpen(false)}
+              onClose={() => closeOverlay("stadium")}
               onNavigate={(target) => {
-                setIsStadiumPageOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -590,9 +618,9 @@ export function MainViewV2({
 
       {isSettingsOpen ? (
         <div
-          className="settings-window-backdrop"
+          className={`settings-window-backdrop ${closingOverlay === "settings" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsSettingsOpen(false)}
+          onClick={() => closeOverlay("settings")}
         >
           <section
             className="settings-window"
@@ -602,7 +630,7 @@ export function MainViewV2({
             onClick={(event) => event.stopPropagation()}
           >
             <SettingsView
-              onClose={() => setIsSettingsOpen(false)}
+              onClose={() => closeOverlay("settings")}
               notificationEnabled={notificationEnabled}
               darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
@@ -612,8 +640,7 @@ export function MainViewV2({
               onFavTeamChange={onFavTeamChange}
               onLogout={onLogout}
               onNavigate={(target) => {
-                setIsSettingsOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -621,11 +648,19 @@ export function MainViewV2({
       ) : null}
 
       {showRecords ? (
-        <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
+        <MyRecordsView
+          authToken={authToken}
+          onBack={() => setShowRecords(false)}
+          onNavigate={switchToMenuTarget}
+        />
       ) : null}
 
       {showChat ? (
-        <TeamChatView authToken={authToken} onBack={() => setShowChat(false)} />
+        <TeamChatView
+          authToken={authToken}
+          onBack={() => setShowChat(false)}
+          onNavigate={switchToMenuTarget}
+        />
       ) : null}
     </section>
   );
