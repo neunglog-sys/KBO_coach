@@ -22,6 +22,7 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
+import { AppBackButton } from "./AppBackButton";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
 interface AttendanceStatus {
@@ -809,6 +810,12 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
+      <header className="tamagotchi-page-title">
+        <AppBackButton onClick={() => onRequestClose?.()} />
+        <h1>야구짝꿍</h1>
+        <span className="app-screen-title-spacer" />
+      </header>
+
       <TopMenu
         active="tamagotchi"
         className="tamagotchi-nav"

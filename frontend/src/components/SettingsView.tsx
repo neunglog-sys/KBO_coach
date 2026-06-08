@@ -1,6 +1,5 @@
 import { FormEvent, useState } from "react";
 import {
-  ArrowLeft,
   Bell,
   ChevronRight,
   LogOut,
@@ -12,6 +11,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { AppBackButton } from "./AppBackButton";
 import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
 import { apiUrl } from "../api";
 import "./SettingsView.css";
@@ -75,14 +75,6 @@ function IconCircle({
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button className="settings-back-button" type="button" aria-label="뒤로가기" onClick={onClick}>
-      <ArrowLeft aria-hidden="true" strokeWidth={2.8} />
-    </button>
-  );
-}
-
 function CloseButton({ onClick }: { onClick: () => void }) {
   return (
     <button className="settings-close-button" type="button" aria-label="메인화면으로 이동" onClick={onClick}>
@@ -102,9 +94,9 @@ function SettingsHeader({
 }) {
   return (
     <header className="settings-header">
-      <BackButton onClick={onBack} />
+      <AppBackButton onClick={onBack} />
       <h2>{title}</h2>
-      {onClose ? <CloseButton onClick={onClose} /> : <span />}
+      {onClose ? <CloseButton onClick={onClose} /> : <span className="app-screen-title-spacer" />}
     </header>
   );
 }
