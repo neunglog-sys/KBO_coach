@@ -59,6 +59,7 @@ jobs:
             --region asia-northeast3 \
             --allow-unauthenticated \
             --timeout 900 \
+            --min-instances 1 \
             --service-account firebase-adminsdk-fbsvc@kboai-5dea0.iam.gserviceaccount.com \
             --env-vars-file services/api/env.yaml
 

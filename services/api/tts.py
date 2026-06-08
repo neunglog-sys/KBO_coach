@@ -12,6 +12,7 @@ viseme = 발화 중 입모양 타이밍 [{offset(ms), id}] → 프론트에서 3
 """
 import base64
 import os
+import re
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -21,6 +22,15 @@ router = APIRouter(tags=["tts"])
 AZURE_KEY = os.environ.get("AZURE_SPEECH_KEY")
 AZURE_REGION = os.environ.get("AZURE_SPEECH_REGION")
 DEFAULT_VOICE = os.environ.get("AZURE_TTS_VOICE", "ko-KR-SunHiNeural")
+
+# 숫자 → 한자어 한글(한 글자=한 글자, 길이 보존). "1번"을 "한번"이 아닌 "일번"으로 읽게.
+# 길이가 보존돼야 단어경계 textOffset이 화면 텍스트와 그대로 맞아 자막 싱크가 안 깨진다.
+_SINO_DIGIT = {"0": "영", "1": "일", "2": "이", "3": "삼", "4": "사",
+               "5": "오", "6": "육", "7": "칠", "8": "팔", "9": "구"}
+
+
+def _read_numbers(s: str) -> str:
+    return re.sub(r"\d", lambda m: _SINO_DIGIT[m.group()], s)
 
 
 class TtsIn(BaseModel):
@@ -88,7 +98,8 @@ def tts(body: TtsIn):
         })
     )
 
-    result = synthesizer.speak_text_async(text).get()
+    # 숫자만 한글로 치환해 합성(표시 텍스트는 그대로). 길이 보존이라 viseme·단어경계 오프셋 유지.
+    result = synthesizer.speak_text_async(_read_numbers(text)).get()
 
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
         audio_b64 = base64.b64encode(result.audio_data).decode("ascii")

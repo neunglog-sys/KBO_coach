@@ -38,7 +38,7 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 고DPI에서 픽셀 수 과다 → GPU 절약
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     // 톤매핑 + 노출: 칙칙함 줄이고 밝고 자연스러운 색감으로.
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -74,6 +74,8 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
     let mouseBasic: THREE.Object3D | null = null;
     let mouseHalf: THREE.Object3D | null = null;
     let mixer: THREE.AnimationMixer | null = null;
+    let introRunning = false;       // 인트로 모션 재생 중에만 렌더
+    let renderQuietUntil = 0;       // 로드·리사이즈·발화 직후 잠깐 렌더 유지(정착)용
     // 입모양 shape key(morph target)를 가진 메시들.
     // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
     const mouthMeshes: THREE.Mesh[] = [];
@@ -106,14 +108,22 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
 
         root.add(model);
 
-        // "hi" 모션 재생 (없으면 첫 번째 클립으로 폴백)
+        // "hi" 모션 재생 (없으면 첫 번째 클립으로 폴백) — 1회만(무한루프 X)
         if (gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(model);
           const clip =
             THREE.AnimationClip.findByName(gltf.animations, MOTION_NAME) ??
             gltf.animations[0];
-          mixer.clipAction(clip).play();
+          const action = mixer.clipAction(clip);
+          action.setLoop(THREE.LoopOnce, 1);
+          action.clampWhenFinished = true;
+          action.play();
+          introRunning = true;
+          mixer.addEventListener("finished", () => {
+            introRunning = false;
+          });
         }
+        renderQuietUntil = performance.now() + 1500; // 로드 직후 모델 표시·입모양 정착 위해 잠깐 렌더
       },
       undefined,
       (err) => console.error("[Character3D] 모델 로드 실패", err)
@@ -129,6 +139,11 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       const now = performance.now();
       const dt = now - last;
       last = now;
+
+      // 유휴(말 안 함 + 인트로 끝 + 정착 끝)면 렌더·업데이트 스킵 → GPU/팬 절약. 발화 중엔 정착 여유 400ms.
+      if (speakingRef.current) renderQuietUntil = now + 400;
+      const active = speakingRef.current || introRunning || now < renderQuietUntil;
+      if (!active) return;
 
       if (mixer) mixer.update(dt / 1000); // 모션 클립 진행
 
@@ -179,6 +194,7 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      renderQuietUntil = performance.now() + 200; // 리사이즈 후 한 번 다시 그림
     });
     resizeObserver.observe(mount);
 
