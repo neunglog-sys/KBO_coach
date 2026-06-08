@@ -14,6 +14,10 @@ const PREFERENCE_CACHE = "baseball-coach-push-preference";
 const PREFERENCE_URL = "/__notification-preference__";
 const messaging = firebase.messaging();
 
+// 새 SW를 즉시 활성화·장악 → fix 이전 버전 SW가 남아 알림을 중복 표시하는 문제 방지.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "NOTIFICATION_PREFERENCE") return;
   event.waitUntil(

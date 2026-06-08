@@ -25,6 +25,8 @@ for _parent in pathlib.Path(__file__).resolve().parents:
 
 # URL을 파싱해 keyword 인자로 연결 (비번 특수문자 안전)
 _u = urlparse(os.environ["DATABASE_URL"])
+# 타임존: DB 기본값을 KST로 설정함(ALTER DATABASE/ROLE ... SET timezone='Asia/Seoul', docs/fix-timezone-kst.sql).
+# Supabase 풀러가 startup의 options=-c timezone 을 무시해서, 세션 옵션 대신 DB 기본값으로 처리.
 _PARAMS = dict(host=_u.hostname, port=_u.port or 5432,
                user=_u.username, password=_u.password, dbname=_u.path.lstrip("/"))
 
