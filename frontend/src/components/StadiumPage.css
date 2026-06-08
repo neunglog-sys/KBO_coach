@@ -109,16 +109,16 @@
 .stadium-page-menu-icon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   color: #1670ff;
   background: #eaf6ff;
 }
 
 .stadium-page-menu-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
 }
 
 .stadium-page-top-menu strong {
@@ -554,13 +554,13 @@
   }
 
   .stadium-page-menu-icon {
-    width: 39px;
-    height: 39px;
+    width: 36px;
+    height: 36px;
   }
 
   .stadium-page-menu-icon svg {
-    width: 23px;
-    height: 23px;
+    width: 36px;
+    height: 36px;
   }
 
   .stadium-page-top-menu strong {
