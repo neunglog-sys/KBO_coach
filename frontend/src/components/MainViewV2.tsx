@@ -14,6 +14,9 @@ import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import { WeatherFx, type WeatherCondition } from "./WeatherFx";
 import "./MainViewV2.css";
 
+// 인사말 감지용 (안녕/안뇽/하이/헬로/hi/hello/hey/반가). 소문자로 매칭.
+const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가)/;
+
 // 팀 코드 → 홈 구장 (weather.py STADIUMS 키와 일치)
 const TEAM_HOME_STADIUM: Record<string, string> = {
   OB: "잠실야구장",
@@ -36,6 +39,7 @@ interface MainViewV2Props {
   darkModeEnabled: boolean;
   onNotificationEnabledChange: (enabled: boolean) => void;
   onDarkModeEnabledChange: (enabled: boolean) => void;
+  onFavTeamChange?: (code: string) => void;
   onLogout: () => void;
 }
 
@@ -121,6 +125,8 @@ export function MainViewV2({
   darkModeEnabled,
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
+  onFavTeamChange,
+  onLogout,
 }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
@@ -128,6 +134,8 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
+  const [greetSignal, setGreetSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
@@ -135,6 +143,11 @@ export function MainViewV2({
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>(null);
+
+  // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
+  useEffect(() => {
+    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => {});
+  }, []);
 
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
   useEffect(() => {
@@ -217,7 +230,10 @@ export function MainViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function speakWithAzure(text: string): Promise<boolean> {
+  async function speakWithAzure(
+    text: string,
+    onReveal?: (revealed: string) => void,
+  ): Promise<boolean> {
     try {
       if (ttsAudioRef.current) {
         ttsAudioRef.current.pause();
@@ -237,6 +253,8 @@ export function MainViewV2({
       const visemes: Array<{ offset: number; id: number }> = Array.isArray(data.visemes)
         ? data.visemes
         : [];
+      const boundaries: Array<{ offset: number; textOffset: number; length: number }> =
+        Array.isArray(data.boundaries) ? data.boundaries : [];
       const audio = new Audio(`data:${data.mime || "audio/mpeg"};base64,${data.audio}`);
       ttsAudioRef.current = audio;
 
@@ -252,6 +270,22 @@ export function MainViewV2({
             else break;
           }
           setActiveViseme(activeId);
+          // 음성 진행에 맞춰 텍스트를 드러냄 — 단어경계 우선, 없으면 시간 비례로 폴백
+          if (onReveal) {
+            let revealed = "";
+            if (boundaries.length) {
+              let end = 0;
+              for (let i = 0; i < boundaries.length; i++) {
+                if (boundaries[i].offset <= tMs) end = Math.max(end, boundaries[i].textOffset + boundaries[i].length);
+                else break;
+              }
+              revealed = text.slice(0, end);
+            } else if (audio.duration) {
+              const ratio = Math.min(1, audio.currentTime / audio.duration);
+              revealed = text.slice(0, Math.floor(text.length * ratio));
+            }
+            if (revealed) onReveal(revealed);
+          }
           lipRaf = requestAnimationFrame(driveLipSync);
         };
 
@@ -262,6 +296,7 @@ export function MainViewV2({
           clearMouth();
           setIsSpeaking(false);
           if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+          if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
           resolve(ok);
         };
 
@@ -279,8 +314,10 @@ export function MainViewV2({
     }
   }
 
-  async function speakAnswer(text: string) {
-    if (await speakWithAzure(text)) return;
+  async function speakAnswer(text: string, onReveal?: (revealed: string) => void) {
+    if (await speakWithAzure(text, onReveal)) return;
+
+    onReveal?.(text);   // Azure 실패 → 정밀 타이밍 불가하니 전체 텍스트 즉시 표시
 
     if (Capacitor.isNativePlatform()) {
       setIsSpeaking(true);
@@ -314,25 +351,23 @@ export function MainViewV2({
     window.speechSynthesis.speak(utterance);
   }
 
-  async function askCoach(question: string): Promise<string> {
+  // 응원팀(team_code) 페르소나로 답변 전체를 받아옴. (표시는 음성에 맞춰 speakAnswer가 드러냄)
+  async function fetchAnswer(question: string): Promise<string> {
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (authToken) headers.Authorization = `Bearer ${authToken}`;
-
-      const response = await fetch(apiUrl("/chat"), {
+      const r = await fetch(apiUrl("/chat"), {
         method: "POST",
         headers,
-        body: JSON.stringify({ question, session_id: "frontend-demo" }),
+        body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.answer && !isPlaceholderAnswer(data.answer)) return data.answer as string;
+      if (r.ok) {
+        const d = await r.json();
+        if (d.answer && !isPlaceholderAnswer(d.answer)) return d.answer as string;
       }
     } catch (err) {
-      console.warn("[MainViewV2] /chat unavailable; using local fallback", err);
+      console.warn("[MainViewV2] /chat failed; using local fallback", err);
     }
-
     return buildLocalFallbackAnswer(question);
   }
 
@@ -341,12 +376,32 @@ export function MainViewV2({
     if (!question) return;
 
     const baseId = Date.now();
+    const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
     setInput("");
+    setMessages((prev) => [...prev, { id: botId, type: "bot", text: "…" }]); // 답변 준비 중 표시
+    const setBot = (text: string) =>
+      setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
-    const answer = await askCoach(question);
-    setMessages((prev) => [...prev, { id: baseId + 1, type: "bot", text: answer }]);
-    void speakAnswer(answer);
+    const answer = await fetchAnswer(question);
+
+    // 인사말이 "말로 나오는 순간"에 손을 흔들도록 준비.
+    // onReveal 은 음성 진행도에 맞춰 앞에서부터 누적된 텍스트를 준다.
+    // 인사말 단어의 끝 위치를 텍스트가 지나가면 그때 1회 흔든다.
+    const greetMatch = answer.toLowerCase().match(GREET_RE);
+    const greetEndIdx = greetMatch ? (greetMatch.index ?? 0) + greetMatch[0].length : -1;
+    let greeted = false;
+    const revealWithGreet = (revealed: string) => {
+      setBot(revealed);
+      if (!greeted && greetEndIdx >= 0 && revealed.length >= greetEndIdx) {
+        greeted = true;
+        setGreetSignal((n) => n + 1);
+      }
+    };
+
+    // 음성 재생과 동시에 단어 단위로 텍스트를 드러냄(동기화). 음성 실패 시 speakAnswer가 전체를 한 번에 표시.
+    await speakAnswer(answer, revealWithGreet);
+    setBot(answer); // 안전장치: 종료 후 전체 텍스트 보장
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -425,7 +480,7 @@ export function MainViewV2({
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />
@@ -545,6 +600,10 @@ export function MainViewV2({
               darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
               onDarkModeEnabledChange={onDarkModeEnabledChange}
+              authToken={authToken}
+              favTeamCode={favTeamCode}
+              onFavTeamChange={onFavTeamChange}
+              onLogout={onLogout}
               onNavigate={(target) => {
                 setIsSettingsOpen(false);
                 window.setTimeout(() => handleNav(target), 0);

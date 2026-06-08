@@ -67,7 +67,11 @@
       "Bash(grep -vE \"android/app/build|frontend/dist|frontend/android/app/src/main/assets|\\\\.glb$\")",
       "Bash(python -)",
       "Bash(PYTHONIOENCODING=utf-8 C:/Users/82102_asozp43/anaconda3/envs/project2/python.exe -c ' *)",
-      "Bash(curl -s -m 2 -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5000)"
+      "Bash(curl -s -m 2 -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:5000)",
+      "Bash(mkdir -p \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android/frontend/public/img/kbo_character_no_outline_pngs\" && cp \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android/img/kbo_character_no_outline_pngs/\"*.png \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android/frontend/public/img/kbo_character_no_outline_pngs/\" && echo \"--- 복사됨 ---\" && ls \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android/frontend/public/img/kbo_character_no_outline_pngs/\")",
+      "Bash(npx --yes @gltf-transform/cli@latest inspect model_260608.glb)",
+      "Bash(npx --yes @gltf-transform/cli@latest optimize model_260608.glb model_260608_opt.glb --compress draco --simplify-error 0.001 --texture-compress webp)",
+      "Bash(npx --yes @gltf-transform/cli@latest inspect model_260608_opt.glb)"
     ]
   }
 }

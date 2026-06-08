@@ -159,6 +159,8 @@ export function App() {
   function handleLogout() {
     window.speechSynthesis?.cancel();
     sessionStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem("myTeamCode");
     setAuthToken("");
     setFavTeamCode("");
     setNickname("");
@@ -167,6 +169,14 @@ export function App() {
     setLoginNotice("");
     setRegisterError("");
     setAuthMode("login");
+    window.history.replaceState(null, "", window.location.pathname);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  // 응원구단 변경: 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗이 같은 팀 값을 봄
+  function handleFavTeamChange(code: string) {
+    setFavTeamCode(code);
+    saveAuthSession(authToken, code, nickname);
   }
 
   return (
@@ -184,6 +194,7 @@ export function App() {
           onDarkModeEnabledChange={(darkModeEnabled) =>
             setAppSettings((current) => ({ ...current, darkModeEnabled }))
           }
+          onFavTeamChange={handleFavTeamChange}
           onLogout={handleLogout}
         />
       ) : authMode === "register" ? (

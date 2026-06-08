@@ -56,6 +56,15 @@ class LoginIn(BaseModel):
     password: str
 
 
+class UpdateFavTeamIn(BaseModel):
+    fav_team_code: str
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ---- 엔드포인트 ----
 @router.post("/register")
 def register(body: RegisterIn):
@@ -106,3 +115,67 @@ def me(user_id: int = Depends(current_user_id)):
         return user
     finally:
         conn.close()
+
+
+@router.patch("/me")
+def update_fav_team(body: UpdateFavTeamIn, user_id: int = Depends(current_user_id)):
+    """응원구단(fav_team_code) 변경. 성공 시 갱신된 유저 정보 반환."""
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET fav_team_code = %s WHERE user_id = %s "
+                "RETURNING user_id, email, nickname, fav_team_code, created_at",
+                (body.fav_team_code, user_id))
+            user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return user
+    finally:
+        conn.close()
+
+
+@router.patch("/me/password")
+def change_password(body: ChangePasswordIn, user_id: int = Depends(current_user_id)):
+    """현재 비밀번호 검증 후 새 비밀번호로 변경."""
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="새 비밀번호는 6자 이상이어야 합니다")
+
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("SELECT password_hash FROM users WHERE user_id = %s", (user_id,))
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=404, detail="유저 없음")
+            if not verify_pw(body.current_password, user["password_hash"]):
+                raise HTTPException(status_code=401, detail="현재 비밀번호가 틀렸습니다")
+
+            cur.execute(
+                "UPDATE users SET password_hash = %s WHERE user_id = %s",
+                (hash_pw(body.new_password), user_id),
+            )
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@router.delete("/me")
+def delete_me(user_id: int = Depends(current_user_id)):
+    """현재 로그인 유저 삭제. FK가 설정된 관련 데이터는 DB cascade 정책을 따른다."""
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM users WHERE user_id = %s RETURNING user_id", (user_id,))
+            deleted = cur.fetchone()
+        if not deleted:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@router.post("/logout")
+def logout(_: int = Depends(current_user_id)):
+    """JWT는 서버 저장 세션이 아니므로 클라이언트 저장 토큰 삭제로 로그아웃한다."""
+    return {"ok": True}
