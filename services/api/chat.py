@@ -12,6 +12,9 @@
 """
 import os
 import json
+import threading
+from collections import OrderedDict
+
 import requests
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -22,6 +25,32 @@ from embeddings import embed_text, to_pgvector
 
 router = APIRouter(tags=["chat"])
 SESSION = requests.Session()   # keep-alive 연결 재사용 → 반복 호출 TLS 핸드셰이크 절약(콜드 완화)
+
+# 응답 캐시(팀+질문) — 반복/공통 질문은 Gemini·임베딩 호출 없이 즉시 응답 → 지연 스파이크 회피.
+_CACHE_MAX = 500
+_cache: "OrderedDict[tuple, dict]" = OrderedDict()
+_cache_lock = threading.Lock()
+
+
+def _cache_key(body: "ChatIn"):
+    q = " ".join((body.question or "").split())   # 공백 정규화
+    return (body.team_code or "", q)
+
+
+def _cache_get(key):
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit is not None:
+            _cache.move_to_end(key)
+        return hit
+
+
+def _cache_put(key, value):
+    with _cache_lock:
+        _cache[key] = value
+        _cache.move_to_end(key)
+        while len(_cache) > _CACHE_MAX:
+            _cache.popitem(last=False)
 
 CHUNK_MIN_SCORE = 0.45   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외
 
@@ -232,6 +261,13 @@ def _prepare(body: ChatIn):
 @router.post("/chat")
 def chat(body: ChatIn):
     key = os.environ.get("GEMINI_API_KEY")
+    # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
+    cache_key = None if body.personal_context else _cache_key(body)
+    if cache_key is not None:
+        hit = _cache_get(cache_key)
+        if hit is not None:   # 캐시 적중 → Gemini·임베딩 호출 없이 즉시 응답
+            return {"answer": hit["answer"], "context": {**hit["used"], "cached": True}}
+
     payload, used = _prepare(body)
     if not key:
         return {"answer": "(아직 LLM 미연결) GEMINI_API_KEY를 .env에 넣으면 동작합니다.",
@@ -244,6 +280,9 @@ def chat(body: ChatIn):
         raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {e.response.text[:200]}")
     except (KeyError, IndexError):
         raise HTTPException(status_code=502, detail="Gemini 응답 형식 오류(차단되었거나 빈 응답)")
+
+    if cache_key is not None:
+        _cache_put(cache_key, {"answer": answer, "used": used})
     return {"answer": answer, "context": used}
 
 
