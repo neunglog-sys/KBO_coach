@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { getTargetWeights, type MouthShape } from "../lipSync";
 
 interface Character3DProps {
@@ -9,7 +10,7 @@ interface Character3DProps {
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/mouth_test2.glb";
+const MODEL_URL = "/model/3d/260607_ballonly.glb";
 const FRONT_ROTATION_DEG = 0; // mouth_test2는 정면(+Z) 제작 → 보정 불필요. 옆으로 보이면 조정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 재생할 애니메이션(모션) 클립 이름
@@ -38,18 +39,33 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // 톤매핑 + 노출: 칙칙함 줄이고 밝고 자연스러운 색감으로.
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
     renderer.domElement.style.width = "100%";
     renderer.domElement.style.height = "100%";
     renderer.domElement.style.display = "block";
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+    // 환경맵: PBR 재질에 부드러운 반사광을 줘서 입체감/광택을 살린다. (칙칙함 해소 핵심)
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTexture;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    // 위쪽 하늘색 / 아래쪽 바닥색 그라데이션 조명 → 자연스러운 음영.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4d0, 0.8));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
     keyLight.position.set(3, 5, 4);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
     fillLight.position.set(-3, 2, -2);
     scene.add(fillLight);
+    // 뒤쪽 림라이트: 윤곽을 살짝 띄워 배경과 분리.
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    rimLight.position.set(0, 3, -5);
+    scene.add(rimLight);
 
     const root = new THREE.Group();
     root.rotation.y = THREE.MathUtils.degToRad(FRONT_ROTATION_DEG);
@@ -170,6 +186,8 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       disposed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
+      envTexture.dispose();
+      pmrem.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);

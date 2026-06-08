@@ -83,8 +83,13 @@
   padding: 20px;
   border-radius: 22px;
   color: #fff;
-  background: linear-gradient(135deg, #8b5cf6, #c084fc 55%, #f0abfc);
-  box-shadow: 0 14px 30px rgba(139, 92, 246, 0.32);
+  background: linear-gradient(
+    135deg,
+    var(--streak-c0, #8b5cf6),
+    var(--streak-c1, #c084fc) 55%,
+    var(--streak-c2, #f0abfc)
+  );
+  box-shadow: 0 14px 30px var(--streak-shadow, rgba(139, 92, 246, 0.32));
 }
 .streak-card-head {
   display: flex;
@@ -105,6 +110,12 @@
 .streak-flame {
   font-size: 2.4rem;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+.streak-char {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .streak-goalrow {
   display: flex;

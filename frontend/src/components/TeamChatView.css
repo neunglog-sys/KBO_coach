@@ -111,6 +111,24 @@
   font-weight: 800;
   color: #6b7280;
 }
+.chat-search-close {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: #eef1f6;
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.chat-search-close:active {
+  background: #dfe3ea;
+}
 
 /* 팀 전환 시트 */
 .chat-switch {
