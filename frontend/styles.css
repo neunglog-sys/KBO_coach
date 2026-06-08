@@ -2604,8 +2604,9 @@ html.theme-dark .app-shell {
   border-color: #33435b;
 }
 
+/* 다크모드에서도 배경(하늘·경기장)은 원래 밝기 유지 — 채팅 영역만 어둡게. */
 .theme-dark .stage-bg {
-  filter: brightness(0.38) saturate(0.72);
+  filter: none;
 }
 
 .theme-dark .stage-white-fade {

@@ -231,7 +231,7 @@
 
 .stage-inputbar {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
   align-items: center;
   align-self: center;
   gap: 8px;
@@ -263,10 +263,28 @@
 }
 
 .stage-mic,
+.stage-stop,
 .stage-send {
   min-height: 46px;
   border: 0;
   font-weight: 900;
+}
+
+.stage-stop {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #16345a;
+  background: #eef1f6;
+  box-shadow: inset 0 0 0 1px rgba(42, 83, 130, 0.08);
+  font-size: 1.05rem;
+}
+
+.stage-stop:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .stage-mic {
@@ -324,11 +342,12 @@
   }
 
   .stage-inputbar {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto auto;
     gap: 6px;
   }
 
-  .stage-mic {
+  .stage-mic,
+  .stage-stop {
     width: 42px;
     height: 42px;
   }
