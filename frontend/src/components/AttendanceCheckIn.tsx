@@ -326,9 +326,16 @@ export default function AttendanceCheckIn({
   }
 
   function handlePickGender(picked: Gender) {
-    saveGender(picked);
+    saveGender(picked);   // localStorage 즉시(빠른 UX)
     setGender(picked);
     setImgFailed(false);
+    if (picked && authToken) {   // 서버에도 저장 → 계정에 묶여 기기 바꿔도 유지
+      void fetch(apiUrl("/auth/me/gender"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ gender: picked }),
+      }).catch(() => undefined);
+    }
   }
 
   const authHeaders = (extra?: Record<string, string>) =>
@@ -374,6 +381,25 @@ export default function AttendanceCheckIn({
       ignore = true;
     };
   }, [authToken, initialNickname]);
+
+  // 서버에 저장된 캐릭터 성별 불러오기(로그인 시) → 기기 바꿔도 유지. 없으면 localStorage 값 유지.
+  useEffect(() => {
+    if (!authToken) return;
+    let ignore = false;
+    fetch(apiUrl("/auth/me"), { headers: { Authorization: `Bearer ${authToken}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((user) => {
+        if (ignore || !user) return;
+        if (user.gender === "man" || user.gender === "girl") {
+          setGender(user.gender);
+          saveGender(user.gender);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
+  }, [authToken]);
 
   useEffect(() => {
     let ignore = false;
