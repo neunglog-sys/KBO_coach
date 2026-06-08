@@ -76,7 +76,8 @@
       "WebSearch",
       "WebFetch(domain:api.ncloud-docs.com)",
       "Bash(grep -n \"^\\\\.env$\\\\|^\\\\.env\\\\b\\\\|/\\\\.env\" .gitignore)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git fetch *)"
     ]
   }
 }
