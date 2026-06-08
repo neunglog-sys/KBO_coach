@@ -278,11 +278,11 @@ export default function AttendanceCheckIn({
     [status.xp],
   );
 
-  const displayLevel = status.level || 3;
-  const displayProgress = progress || 60;
-
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
+
+  const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 3);
+  const displayProgress = SHOW_TEST_PANEL ? 0 : (progress || 60);
   const characterSrc = useMemo(
     () => getCharacterImage(charLevel, charTeam, gender),
     [charLevel, charTeam, gender],
@@ -610,7 +610,33 @@ export default function AttendanceCheckIn({
         </div>
       </section>
 
-      <section className="tamagotchi-field-card" aria-label="캐릭터 영역">
+      <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
+        {/* 좌측 보유 아이템 컬렉션 (레벨업 보상으로 획득한 장비) */}
+        {ownedItems.length > 0 ? (
+          <div
+            style={{
+              position: "absolute", left: 10, top: 10,
+              display: "flex", flexDirection: "column", gap: 8, zIndex: 2,
+            }}
+          >
+            {ownedItems.map((item) => (
+              <img
+                key={item.src}
+                src={item.src}
+                alt={item.name}
+                title={item.name}
+                style={{
+                  width: 56, height: 56, objectFit: "contain",
+                  background: "rgba(255,255,255,0.85)",
+                  border: "1px solid #e2e8f0", borderRadius: 12, padding: 5,
+                  animation: "itemPopIn 0.3s ease",
+                }}
+                onError={(e) => { (e.currentTarget.style.display = "none"); }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         <div className="tamagotchi-speech-bubble">
           {dailyState.speechText}
         </div>
@@ -621,6 +647,64 @@ export default function AttendanceCheckIn({
           onError={() => setImgFailed(true)}
         />
       </section>
+
+      {/* ===== 테스트 패널 (SHOW_TEST_PANEL=true 일 때만 보임 / 배포 시 false) ===== */}
+      {SHOW_TEST_PANEL ? (
+        <section
+          aria-label="테스트 패널"
+          style={{
+            margin: "12px 0",
+            padding: "12px 14px",
+            border: "1px dashed #c084fc",
+            borderRadius: 12,
+            background: "#faf5ff",
+            fontSize: 13,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#9333ea", marginBottom: 10 }}>
+            🧪 테스트 패널 (배포 시 SHOW_TEST_PANEL=false)
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>레벨</span>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={testLevel}
+              onChange={(e) => setTestLevel(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <strong style={{ width: 24, textAlign: "right" }}>{testLevel}</strong>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>구단</span>
+            <select
+              value={testTeam}
+              onChange={(e) => setTestTeam(e.target.value)}
+              style={{ flex: 1, padding: "4px 6px", borderRadius: 6 }}
+            >
+              <option value="">무소속(default)</option>
+              <option value="HT">KIA (HT)</option>
+              <option value="SS">삼성 (SS)</option>
+              <option value="HH">한화 (HH)</option>
+              <option value="LT">롯데 (LT)</option>
+              <option value="LG">LG (LG)</option>
+              <option value="OB">두산 (OB)</option>
+              <option value="SK">SSG (SK)</option>
+              <option value="NC">NC (NC)</option>
+              <option value="KT">KT (KT)</option>
+              <option value="WO">키움 (WO)</option>
+            </select>
+          </div>
+
+          <div style={{ marginTop: 10, color: "#6b7280", fontSize: 12 }}>
+            단계: {charLevel <= 1 ? "default(1레벨)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
+            {" · "}경로: <code>{characterSrc}</code>
+          </div>
+        </section>
+      ) : null}
 
       <div className="tamagotchi-actions">
         <button
@@ -750,6 +834,71 @@ export default function AttendanceCheckIn({
         <strong>연속 출석:</strong>
         <b>3일째</b>
       </div>
+
+      {/* ===== 레벨업 보상 획득 팝업 ===== */}
+      {rewardPopup ? (
+        <div
+          role="dialog"
+          aria-label="아이템 획득"
+          onClick={dismissReward}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 20, padding: "28px 32px",
+              textAlign: "center", maxWidth: "80vw",
+              animation: "rewardPop 0.4s ease",
+            }}
+          >
+            <div style={{ fontSize: 14, color: "#9333ea", fontWeight: 700, marginBottom: 12 }}>
+              🎉 새 아이템 획득!
+            </div>
+            <img
+              src={rewardPopup.src}
+              alt={rewardPopup.name}
+              style={{ width: 120, height: 120, objectFit: "contain", animation: "rewardSpin 0.6s ease" }}
+              onError={(e) => { (e.currentTarget.style.display = "none"); }}
+            />
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12 }}>
+              {rewardPopup.name}
+            </div>
+            <div style={{ fontSize: 15, color: "#374151", marginTop: 4 }}>
+              획득하셨어요!
+            </div>
+            <button
+              type="button"
+              onClick={dismissReward}
+              style={{
+                marginTop: 18, padding: "8px 24px", border: "none",
+                borderRadius: 999, background: "#9333ea", color: "#fff",
+                fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <style>{`
+        @keyframes rewardPop {
+          0% { transform: scale(0.6); opacity: 0; }
+          60% { transform: scale(1.08); opacity: 1; }
+          100% { transform: scale(1); }
+        }
+        @keyframes rewardSpin {
+          0% { transform: rotate(-12deg) scale(0.7); }
+          100% { transform: rotate(0deg) scale(1); }
+        }
+        @keyframes itemPopIn {
+          0% { transform: scale(0); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </section>
   );
 }
