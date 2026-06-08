@@ -56,9 +56,14 @@ interface AttendanceCheckInProps {
   onNavigate?: (target: TopMenuTarget) => void;
   favTeamCode?: string | null;
   nickname?: string;
+  buddyNickname?: string;
+  onBuddyNicknameChange?: (nickname: string) => void;
 }
 
 const STORAGE_KEY = "baseballCoachAttendance";
+const BUDDY_NICKNAME_STORAGE_KEY = "baseballCoachBuddyNickname";
+const DEFAULT_BUDDY_NICKNAME = "야구짝꿍";
+const MAX_BUDDY_NICKNAME_LENGTH = 10;
 const GENDER_STORAGE_KEY = "baseballCoachGender"; // 성별 임시 저장(브라우저)
 const CHECKIN_XP = 20;
 const XP_PER_LEVEL = 100;
@@ -131,13 +136,34 @@ const LEVEL_SEEN_KEY = "baseballCoachLevelSeen"; // 마지막으로 본 레벨(�
 //   - saveGender: fetch("/me/gender", {method:"POST"...}) 로 서버에 쓰기
 //  화면/선택/캐릭터 코드는 그대로 두고 이 두 함수만 교체하면 됩니다.
 // =====================================================================
-function loadGender(): Gender {
-  const saved = localStorage.getItem(GENDER_STORAGE_KEY);
+function profileStorageSuffix(authToken: string) {
+  return authToken ? authToken.slice(-16) : "guest";
+}
+
+function genderStorageKey(authToken: string) {
+  return `${GENDER_STORAGE_KEY}:${profileStorageSuffix(authToken)}`;
+}
+
+function buddyNicknameStorageKey(authToken: string) {
+  return `${BUDDY_NICKNAME_STORAGE_KEY}:${profileStorageSuffix(authToken)}`;
+}
+
+function loadGender(authToken: string): Gender {
+  const saved = localStorage.getItem(genderStorageKey(authToken)) || localStorage.getItem(GENDER_STORAGE_KEY);
   return saved === "man" || saved === "girl" ? saved : null;
 }
 
-function saveGender(gender: Gender) {
-  if (gender) localStorage.setItem(GENDER_STORAGE_KEY, gender);
+function saveGender(authToken: string, gender: Gender) {
+  if (gender) localStorage.setItem(genderStorageKey(authToken), gender);
+}
+
+function loadBuddyNickname(authToken: string, initialBuddyNickname?: string) {
+  const saved = localStorage.getItem(buddyNicknameStorageKey(authToken)) || "";
+  return (initialBuddyNickname || saved || "").trim();
+}
+
+function saveBuddyNickname(authToken: string, nickname: string) {
+  localStorage.setItem(buddyNicknameStorageKey(authToken), nickname);
 }
 
 function getDifficultyColor(difficulty?: string) {
@@ -248,16 +274,27 @@ export default function AttendanceCheckIn({
   onNavigate,
   favTeamCode,
   nickname: initialNickname,
+  buddyNickname: initialBuddyNickname,
+  onBuddyNicknameChange,
 }: AttendanceCheckInProps) {
   const [status, setStatus] = useState<AttendanceStatus>(() => fallbackStatus());
-  const [gender, setGender] = useState<Gender>(() => loadGender());
+  const [gender, setGender] = useState<Gender>(() => loadGender(authToken));
+  const [pendingGender, setPendingGender] = useState<Gender>(() => loadGender(authToken));
+  const [buddyNickname, setBuddyNickname] = useState(() =>
+    loadBuddyNickname(authToken, initialBuddyNickname)
+  );
+  const [buddyNicknameInput, setBuddyNicknameInput] = useState(() =>
+    loadBuddyNickname(authToken, initialBuddyNickname)
+  );
+  const [buddyProfileError, setBuddyProfileError] = useState("");
+  const [isBuddyProfileSaving, setIsBuddyProfileSaving] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [nickname, setNickname] = useState(initialNickname || "");
   const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
   const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
-    loadDailyState(stateStorageKey, initialNickname)
+    loadDailyState(stateStorageKey, initialBuddyNickname || initialNickname)
   );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
@@ -280,6 +317,7 @@ export default function AttendanceCheckIn({
 
   const displayLevel = status.level || 3;
   const displayProgress = progress || 60;
+  const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
@@ -291,6 +329,14 @@ export default function AttendanceCheckIn({
   useEffect(() => {
     setImgFailed(false);
   }, [characterSrc]);
+
+  useEffect(() => {
+    setGender(loadGender(authToken));
+    setPendingGender(loadGender(authToken));
+    const nextBuddyNickname = loadBuddyNickname(authToken, initialBuddyNickname);
+    setBuddyNickname(nextBuddyNickname);
+    setBuddyNicknameInput(nextBuddyNickname);
+  }, [authToken, initialBuddyNickname]);
 
   const ownedItems = useMemo(() => getOwnedItems(charLevel), [charLevel]);
 
@@ -327,15 +373,57 @@ export default function AttendanceCheckIn({
 
   function handlePickGender(picked: Gender) {
     if (!picked) return;
-    saveGender(picked);
-    setGender(picked);
+    setPendingGender(picked);
     setImgFailed(false);
-    if (picked && authToken) {
-      void fetch(apiUrl("/auth/me/gender"), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ gender: picked }),
-      }).catch(() => undefined);
+  }
+
+  async function handleSaveBuddyProfile() {
+    const nextBuddyNickname = buddyNicknameInput.trim();
+    setBuddyProfileError("");
+
+    if (!pendingGender) {
+      setBuddyProfileError("야구짝꿍 성별을 선택해주세요.");
+      return;
+    }
+    if (!nextBuddyNickname) {
+      setBuddyProfileError("야구짝꿍 닉네임을 입력해주세요.");
+      return;
+    }
+    if (nextBuddyNickname.length > MAX_BUDDY_NICKNAME_LENGTH) {
+      setBuddyProfileError(`닉네임은 ${MAX_BUDDY_NICKNAME_LENGTH}자 이하로 입력해주세요.`);
+      return;
+    }
+
+    setIsBuddyProfileSaving(true);
+    try {
+      if (authToken) {
+        const response = await fetch(apiUrl("/auth/me/buddy"), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            gender: pendingGender,
+            buddy_nickname: nextBuddyNickname,
+          }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.detail || "야구짝꿍 설정 저장에 실패했습니다.");
+        }
+      }
+
+      setGender(pendingGender);
+      setBuddyNickname(nextBuddyNickname);
+      saveGender(authToken, pendingGender);
+      saveBuddyNickname(authToken, nextBuddyNickname);
+      onBuddyNicknameChange?.(nextBuddyNickname);
+      updateDailyState((current) => ({
+        ...current,
+        speechText: randomSpeech(DEFAULT_SPEECHES, nextBuddyNickname),
+      }));
+    } catch (error) {
+      setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
+    } finally {
+      setIsBuddyProfileSaving(false);
     }
   }
 
@@ -393,7 +481,15 @@ export default function AttendanceCheckIn({
         if (ignore || !user) return;
         if (user.gender === "man" || user.gender === "girl") {
           setGender(user.gender);
-          saveGender(user.gender);
+          setPendingGender(user.gender);
+          saveGender(authToken, user.gender);
+        }
+        if (user.buddy_nickname) {
+          const nextBuddyNickname = String(user.buddy_nickname).trim();
+          setBuddyNickname(nextBuddyNickname);
+          setBuddyNicknameInput(nextBuddyNickname);
+          saveBuddyNickname(authToken, nextBuddyNickname);
+          onBuddyNicknameChange?.(nextBuddyNickname);
         }
       })
       .catch(() => undefined);
@@ -479,13 +575,13 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(data);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(status);
       setStatus(next);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } finally {
@@ -545,7 +641,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    const speech = randomSpeech(CHEER_SPEECHES, nickname);
+    const speech = randomSpeech(CHEER_SPEECHES, displayBuddyNickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
     setNotice(speech);
   }
@@ -561,20 +657,20 @@ export default function AttendanceCheckIn({
   const totalQuizXp = Object.values(quizResults).reduce((sum, result) => sum + result.xp_earned, 0);
 
   // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
-  if (!gender) {
+  if (!gender || !buddyNickname.trim()) {
     return (
-      <section className="attendance-panel" aria-label="\uce90\ub9ad\ud130 \uc131\ubcc4 \uc120\ud0dd">
-        <div style={{ textAlign: "center", padding: "12px 0" }}>
+      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정">
+        <div className="tamagotchi-setup-card">
           <p className="eyebrow">Start</p>
-          <h2 style={{ margin: "4px 0 4px" }}>{"\uce90\ub9ad\ud130\ub97c \uc120\ud0dd\ud558\uc138\uc694"}</h2>
-          <p className="attendance-message" style={{ marginBottom: 16 }}>
-            {"\ud568\uaed8 \uc131\uc7a5\ud560 \ub098\ub9cc\uc758 \uc57c\uad6c \uc120\uc218\ub97c \uace8\ub77c\uc8fc\uc138\uc694."}
+          <h2>야구짝꿍을 설정해주세요</h2>
+          <p className="attendance-message">
+            함께 성장할 야구짝꿍의 성별과 닉네임을 정해주세요.
           </p>
-          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+          <div className="tamagotchi-gender-options" role="group" aria-label="성별 선택">
             <button
               type="button"
               onClick={() => handlePickGender("man")}
-              style={genderCardStyle}
+              className={`tamagotchi-gender-card ${pendingGender === "man" ? "is-selected" : ""}`}
             >
               <img
                 src="/character/default_man.png"
@@ -582,12 +678,12 @@ export default function AttendanceCheckIn({
                 style={{ width: 96, height: 96, objectFit: "contain" }}
                 onError={(e) => { (e.currentTarget.style.display = "none"); }}
               />
-              <span style={{ marginTop: 8, fontWeight: 700 }}>{"\ub0a8\uc790"}</span>
+              <span>남자</span>
             </button>
             <button
               type="button"
               onClick={() => handlePickGender("girl")}
-              style={genderCardStyle}
+              className={`tamagotchi-gender-card ${pendingGender === "girl" ? "is-selected" : ""}`}
             >
               <img
                 src="/character/default_girl.png"
@@ -595,9 +691,31 @@ export default function AttendanceCheckIn({
                 style={{ width: 96, height: 96, objectFit: "contain" }}
                 onError={(e) => { (e.currentTarget.style.display = "none"); }}
               />
-              <span style={{ marginTop: 8, fontWeight: 700 }}>{"\uc5ec\uc790"}</span>
+              <span>여자</span>
             </button>
           </div>
+          <label className="tamagotchi-nickname-field">
+            <span>야구짝꿍 닉네임</span>
+            <input
+              type="text"
+              value={buddyNicknameInput}
+              maxLength={MAX_BUDDY_NICKNAME_LENGTH}
+              placeholder="예: 동아"
+              onChange={(event) => setBuddyNicknameInput(event.target.value)}
+            />
+            <small>{buddyNicknameInput.trim().length} / {MAX_BUDDY_NICKNAME_LENGTH}</small>
+          </label>
+          {buddyProfileError ? (
+            <p className="tamagotchi-setup-error" role="alert">{buddyProfileError}</p>
+          ) : null}
+          <button
+            type="button"
+            className="tamagotchi-setup-submit"
+            disabled={isBuddyProfileSaving}
+            onClick={() => void handleSaveBuddyProfile()}
+          >
+            {isBuddyProfileSaving ? "저장 중..." : "시작하기"}
+          </button>
         </div>
       </section>
     );
@@ -615,7 +733,7 @@ export default function AttendanceCheckIn({
         <div className="tamagotchi-status-top">
           <h2>
             <span>Lv.{displayLevel}</span>
-            김동아
+            {displayBuddyNickname}
           </h2>
           <div className="tamagotchi-exp">
             <strong>EXP</strong>

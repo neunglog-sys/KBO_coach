@@ -35,11 +35,13 @@ interface MainViewV2Props {
   authToken: string;
   favTeamCode?: string;
   nickname?: string;
+  buddyNickname?: string;
   notificationEnabled: boolean;
   darkModeEnabled: boolean;
   onNotificationEnabledChange: (enabled: boolean) => void;
   onDarkModeEnabledChange: (enabled: boolean) => void;
   onFavTeamChange?: (code: string) => void;
+  onBuddyNicknameChange?: (nickname: string) => void;
   onLogout: () => void;
 }
 
@@ -121,11 +123,13 @@ export function MainViewV2({
   authToken,
   favTeamCode,
   nickname,
+  buddyNickname,
   notificationEnabled,
   darkModeEnabled,
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
   onFavTeamChange,
+  onBuddyNicknameChange,
   onLogout,
 }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -546,7 +550,9 @@ export function MainViewV2({
             <AttendanceCheckIn
               authToken={authToken}
               nickname={nickname}
+              buddyNickname={buddyNickname}
               favTeamCode={favTeamCode}
+              onBuddyNicknameChange={onBuddyNicknameChange}
               onCheckedTodayChange={setAttendanceCheckedToday}
               onRequestClose={() => setIsAttendanceOpen(false)}
               onNavigate={(target) => {
