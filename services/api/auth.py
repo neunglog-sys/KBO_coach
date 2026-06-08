@@ -60,6 +60,10 @@ class UpdateFavTeamIn(BaseModel):
     fav_team_code: str
 
 
+class UpdateGenderIn(BaseModel):
+    gender: str   # 'man' | 'girl'
+
+
 class ChangePasswordIn(BaseModel):
     current_password: str
     new_password: str
@@ -107,12 +111,30 @@ def me(user_id: int = Depends(current_user_id)):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id, email, nickname, fav_team_code, created_at FROM users WHERE user_id = %s",
-                        (user_id,))
+            cur.execute("SELECT user_id, email, nickname, fav_team_code, gender, created_at "
+                        "FROM users WHERE user_id = %s", (user_id,))
             user = cur.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="유저 없음")
         return user
+    finally:
+        conn.close()
+
+
+@router.patch("/me/gender")
+def update_gender(body: UpdateGenderIn, user_id: int = Depends(current_user_id)):
+    """캐릭터 성별(man/girl) 저장 — 계정에 묶여 기기 바꿔도 유지."""
+    if body.gender not in ("man", "girl"):
+        raise HTTPException(status_code=400, detail="gender는 man 또는 girl이어야 합니다")
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("UPDATE users SET gender = %s WHERE user_id = %s RETURNING gender",
+                        (body.gender, user_id))
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return {"gender": row["gender"]}
     finally:
         conn.close()
 
