@@ -17,7 +17,7 @@ interface TopMenuProps {
 const MENU_ITEMS = [
   { target: "chat", icon: "💬", label: "채팅방" },
   { target: "record", icon: "📒", label: "나만의 기록" },
-  { target: "tamagotchi", icon: "🥕", label: "다마고치" },
+  { target: "tamagotchi", icon: "🥕", label: "야구짝꿍" },
   { target: "stadium", icon: "🏟️", label: "구장정보" },
   { target: "settings", icon: "⚙️", label: "설정" },
 ] as const;
