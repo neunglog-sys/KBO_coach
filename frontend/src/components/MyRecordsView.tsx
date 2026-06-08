@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiUrl } from "../api";
 import "./MyRecordsView.css";
 
@@ -23,17 +23,18 @@ interface ScheduleGame {
   gameId: string | null;
 }
 
+const CHAR_DIR = "/img/kbo_character_no_outline_pngs";
 const TEAMS = [
-  { code: "OB", name: "두산 베어스", short: "두산", color: "#131230" },
-  { code: "LT", name: "롯데 자이언츠", short: "롯데", color: "#041E42" },
-  { code: "SS", name: "삼성 라이온즈", short: "삼성", color: "#074CA1" },
-  { code: "SK", name: "SSG 랜더스", short: "SSG", color: "#CE0E2D" },
-  { code: "LG", name: "LG 트윈스", short: "LG", color: "#C30452" },
-  { code: "NC", name: "NC 다이노스", short: "NC", color: "#315288" },
-  { code: "WO", name: "키움 히어로즈", short: "키움", color: "#570514" },
-  { code: "KT", name: "KT 위즈", short: "KT", color: "#333333" },
-  { code: "HT", name: "KIA 타이거즈", short: "KIA", color: "#EA0029" },
-  { code: "HH", name: "한화 이글스", short: "한화", color: "#FC4E00" },
+  { code: "OB", name: "두산 베어스", short: "두산", color: "#131230", char: `${CHAR_DIR}/Doosan_character_no_outline.png` },
+  { code: "LT", name: "롯데 자이언츠", short: "롯데", color: "#041E42", char: `${CHAR_DIR}/Lotte_character_no_outline.png` },
+  { code: "SS", name: "삼성 라이온즈", short: "삼성", color: "#074CA1", char: `${CHAR_DIR}/Samsung_character_no_outline.png` },
+  { code: "SK", name: "SSG 랜더스", short: "SSG", color: "#CE0E2D", char: `${CHAR_DIR}/SSG_character_no_outline.png` },
+  { code: "LG", name: "LG 트윈스", short: "LG", color: "#C30452", char: `${CHAR_DIR}/LG_character_no_outline.png` },
+  { code: "NC", name: "NC 다이노스", short: "NC", color: "#315288", char: `${CHAR_DIR}/NC_character_no_outline.png` },
+  { code: "WO", name: "키움 히어로즈", short: "키움", color: "#570514", char: `${CHAR_DIR}/Kiwoom_character_no_outline.png` },
+  { code: "KT", name: "KT 위즈", short: "KT", color: "#333333", char: `${CHAR_DIR}/KT_character_no_outline.png` },
+  { code: "HT", name: "KIA 타이거즈", short: "KIA", color: "#EA0029", char: `${CHAR_DIR}/KIA_character_no_outline.png` },
+  { code: "HH", name: "한화 이글스", short: "한화", color: "#FC4E00", char: `${CHAR_DIR}/Hanwha_character_no_outline.png` },
 ];
 
 const MOODS = [
@@ -45,6 +46,15 @@ const MOODS = [
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const GOAL_KEY = "myRecordGoalDays";
 const MYTEAM_KEY = "myTeamCode";
+
+// 헥스 색을 흰색 쪽으로 amt(0~1)만큼 밝게 보정. (어두운 팀 색을 그라데이션용으로 띄움)
+function lighten(hex: string, amt: number): string {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full, 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * amt);
+  return `rgb(${mix((n >> 16) & 255)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
+}
 
 const teamByCode = (code: string | null) => TEAMS.find((t) => t.code === code);
 const teamByShort = (short: string) => TEAMS.find((t) => t.short === short);
@@ -156,6 +166,16 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
   const myTeamObj = teamByCode(myTeam);
   const myShort = myTeamObj?.short;
 
+  // 스트릭 카드 색: 내 팀 색 기반 그라데이션(팀 미설정이면 CSS 기본 보라색).
+  const streakStyle = myTeamObj
+    ? ({
+        "--streak-c0": myTeamObj.color,
+        "--streak-c1": lighten(myTeamObj.color, 0.28),
+        "--streak-c2": lighten(myTeamObj.color, 0.55),
+        "--streak-shadow": `${myTeamObj.color}52`,
+      } as CSSProperties)
+    : undefined;
+
   // 날짜 → 내 팀 경기(상대/홈원정) 매핑
   const scheduleByDate = useMemo(() => {
     const map = new Map<string, ScheduleGame>();
@@ -243,15 +263,23 @@ export function MyRecordsView({ authToken, onBack }: MyRecordsViewProps) {
         <span className="records-top-spacer" />
       </header>
 
-      <div className="streak-card">
+      <div className="streak-card" style={streakStyle}>
         <div className="streak-card-head">
           <div>
             <p className="streak-eyebrow">연속 기록 도전</p>
             <h2>{streak}일째 도전 중!</h2>
           </div>
-          <div className="streak-flame" aria-hidden="true">
-            🔥
-          </div>
+          {myTeamObj ? (
+            <img
+              className="streak-char"
+              src={myTeamObj.char}
+              alt={`${myTeamObj.name} 캐릭터`}
+            />
+          ) : (
+            <div className="streak-flame" aria-hidden="true">
+              🔥
+            </div>
+          )}
         </div>
         <div className="streak-goalrow">
           <span>목표 일수 {goalDays}일</span>

@@ -239,6 +239,17 @@ export function TeamChatView({ authToken, onBack }: TeamChatViewProps) {
             autoFocus
           />
           {query ? <span className="chat-search-count">{matchIds.size}건</span> : null}
+          <button
+            type="button"
+            className="chat-search-close"
+            aria-label="검색 닫기"
+            onClick={() => {
+              setQuery("");
+              setSearchOpen(false);
+            }}
+          >
+            ✕
+          </button>
         </div>
       ) : null}
 
