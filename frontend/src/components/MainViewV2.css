@@ -111,10 +111,10 @@
 
 .stage-nav-icon {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  font-size: 1.32rem;
+  font-size: 36px;
   line-height: 1;
 }
 

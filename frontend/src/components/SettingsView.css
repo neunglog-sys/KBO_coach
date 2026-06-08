@@ -100,7 +100,8 @@
   text-shadow: 0 2px 0 rgba(255, 255, 255, 0.55);
 }
 
-.settings-back-button {
+.settings-back-button,
+.settings-close-button {
   position: relative;
   z-index: 2;
   display: grid;
@@ -112,9 +113,14 @@
   background: rgba(255, 255, 255, 0.24);
 }
 
-.settings-back-button svg {
+.settings-back-button svg,
+.settings-close-button svg {
   width: 38px;
   height: 38px;
+}
+
+.settings-close-button {
+  justify-self: end;
 }
 
 .settings-top-menu,
@@ -185,8 +191,8 @@
 }
 
 .settings-menu-icon {
-  width: 68px;
-  height: 68px;
+  width: 36px;
+  height: 36px;
 }
 
 .settings-top-menu button.is-active .settings-menu-icon {
@@ -372,6 +378,91 @@
   font-weight: 900;
 }
 
+.settings-primary-button:disabled,
+.settings-secondary-button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.settings-primary-button.is-danger {
+  background: #ef4444;
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22);
+}
+
+.settings-secondary-button {
+  min-height: 58px;
+  border-radius: 16px;
+  color: #101a36;
+  background: #eef4fb;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.settings-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 12, 32, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.settings-confirm-modal {
+  display: grid;
+  gap: 18px;
+  width: min(420px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 28px;
+  padding: 28px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 70px rgba(4, 12, 32, 0.28);
+}
+
+.settings-confirm-modal h3 {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.settings-confirm-modal p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.settings-confirm-modal p strong {
+  color: #ef4444;
+}
+
+.settings-confirm-input {
+  min-height: 54px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 16px;
+  padding: 0 16px;
+  color: #101a36;
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.settings-confirm-input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
+}
+
+.settings-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .settings-team-card {
   display: grid;
   gap: 24px;
@@ -531,12 +622,14 @@
     font-size: 1.75rem;
   }
 
-  .settings-back-button {
+  .settings-back-button,
+  .settings-close-button {
     width: 44px;
     height: 44px;
   }
 
-  .settings-back-button svg {
+  .settings-back-button svg,
+  .settings-close-button svg {
     width: 31px;
     height: 31px;
   }
@@ -564,8 +657,8 @@
   }
 
   .settings-menu-icon {
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
   }
 
   .settings-row-text strong {
@@ -648,6 +741,24 @@
   .settings-form-card input,
   .settings-primary-button {
     min-height: 58px;
+  }
+
+  .settings-confirm-backdrop {
+    padding: 16px;
+  }
+
+  .settings-confirm-modal {
+    gap: 14px;
+    border-radius: 24px;
+    padding: 22px;
+  }
+
+  .settings-confirm-modal h3 {
+    font-size: 1.28rem;
+  }
+
+  .settings-confirm-actions {
+    gap: 10px;
   }
 
   .settings-radio-row {

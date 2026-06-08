@@ -123,6 +123,7 @@ export function MainViewV2({
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
   onFavTeamChange,
+  onLogout,
 }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
@@ -582,6 +583,7 @@ export function MainViewV2({
               authToken={authToken}
               favTeamCode={favTeamCode}
               onFavTeamChange={onFavTeamChange}
+              onLogout={onLogout}
               onNavigate={(target) => {
                 setIsSettingsOpen(false);
                 window.setTimeout(() => handleNav(target), 0);

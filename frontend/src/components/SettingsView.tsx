@@ -3,11 +3,13 @@ import {
   ArrowLeft,
   Bell,
   ChevronRight,
+  LogOut,
   LockKeyhole,
   Moon,
   Trophy,
   User,
   UserX,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
@@ -27,6 +29,7 @@ interface SettingsViewProps {
   authToken?: string;
   favTeamCode?: string;
   onFavTeamChange?: (code: string) => void;
+  onLogout?: () => void;
 }
 
 const TEAMS = [
@@ -80,17 +83,28 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function CloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="settings-close-button" type="button" aria-label="메인화면으로 이동" onClick={onClick}>
+      <X aria-hidden="true" strokeWidth={2.8} />
+    </button>
+  );
+}
+
 function SettingsHeader({
   title,
   onBack,
+  onClose,
 }: {
   title: string;
   onBack: () => void;
+  onClose?: () => void;
 }) {
   return (
     <header className="settings-header">
       <BackButton onClick={onBack} />
       <h2>{title}</h2>
+      {onClose ? <CloseButton onClick={onClose} /> : <span />}
     </header>
   );
 }
@@ -166,6 +180,7 @@ export default function SettingsView({
   authToken,
   favTeamCode,
   onFavTeamChange,
+  onLogout = () => {},
 }: SettingsViewProps) {
   const [screen, setScreen] = useState<SettingsScreen>("main");
   const [fallbackSettings, setFallbackSettings] = useState(loadAppSettings);
@@ -173,6 +188,14 @@ export default function SettingsView({
     CODE_TO_TEAM[favTeamCode ?? ""] ?? "삼성 라이온즈",
   );
   const [notice, setNotice] = useState("");
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [confirmAction, setConfirmAction] = useState<"logout" | "delete" | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const notificationEnabled =
     controlledNotificationEnabled ?? fallbackSettings.notificationEnabled;
   const darkModeEnabled = controlledDarkModeEnabled ?? fallbackSettings.darkModeEnabled;
@@ -218,6 +241,105 @@ export default function SettingsView({
   function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("비밀번호 변경 요청이 준비되었습니다.");
+  }
+
+  async function handlePasswordChangeSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice("");
+
+    if (!authToken) {
+      setNotice("로그인 후 비밀번호를 변경할 수 있습니다.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setNotice("새 비밀번호와 새 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setNotice("새 비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(apiUrl("/auth/me/password"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          current_password: passwordForm.currentPassword,
+          new_password: passwordForm.newPassword,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail || "비밀번호 변경에 실패했습니다.");
+
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setNotice("비밀번호가 변경되었습니다.");
+      window.setTimeout(() => {
+        setNotice("");
+        setScreen("myInfo");
+      }, 900);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "비밀번호 변경에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleLogoutConfirm() {
+    setNotice("");
+    if (authToken) {
+      try {
+        await fetch(apiUrl("/auth/logout"), {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      } catch {
+        // JWT logout is completed by clearing client-side session state.
+      }
+    }
+    setConfirmAction(null);
+    onLogout();
+  }
+
+  async function handleDeleteAccountConfirm() {
+    setNotice("");
+
+    if (deleteConfirmText.trim() !== "탈퇴") {
+      setNotice("회원탈퇴를 진행하려면 확인 문구에 '탈퇴'를 입력해주세요.");
+      return;
+    }
+
+    if (!authToken) {
+      setNotice("로그인 후 회원탈퇴를 진행할 수 있습니다.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(apiUrl("/auth/me"), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail || "회원탈퇴에 실패했습니다.");
+
+      setConfirmAction(null);
+      setDeleteConfirmText("");
+      onLogout();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "회원탈퇴에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function closeConfirmModal() {
+    if (isSubmitting) return;
+    setConfirmAction(null);
+    setDeleteConfirmText("");
   }
 
   async function handleTeamSubmit(event: FormEvent<HTMLFormElement>) {
@@ -290,11 +412,28 @@ export default function SettingsView({
 
       {screen === "myInfo" ? (
         <>
-          <SettingsHeader title="내 정보" onBack={goBack} />
+          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} />
           <div className="settings-card-list">
             <MenuCard icon={LockKeyhole} title="비밀번호 변경" onClick={() => setScreen("password")} />
             <MenuCard icon={Trophy} title="응원구단 변경" onClick={() => setScreen("team")} />
-            <MenuCard icon={UserX} title="회원탈퇴" danger onClick={() => setNotice("회원탈퇴 기능은 준비 중입니다.")} />
+            <MenuCard
+              icon={LogOut}
+              title="로그아웃"
+              onClick={() => {
+                setNotice("");
+                setConfirmAction("logout");
+              }}
+            />
+            <MenuCard
+              icon={UserX}
+              title="회원탈퇴"
+              danger
+              onClick={() => {
+                setNotice("");
+                setDeleteConfirmText("");
+                setConfirmAction("delete");
+              }}
+            />
           </div>
           {notice ? <p className="settings-notice">{notice}</p> : null}
         </>
@@ -302,21 +441,45 @@ export default function SettingsView({
 
       {screen === "password" ? (
         <>
-          <SettingsHeader title="비밀번호 변경" onBack={goBack} />
-          <form className="settings-form-card" onSubmit={handlePasswordSubmit}>
+          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} />
+          <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
             <label>
               <span>현재 비밀번호</span>
-              <input type="password" autoComplete="current-password" required />
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={passwordForm.currentPassword}
+                onChange={(event) =>
+                  setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                }
+                required
+              />
             </label>
             <label>
               <span>새로운 비밀번호</span>
-              <input type="password" autoComplete="new-password" required />
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={passwordForm.newPassword}
+                onChange={(event) =>
+                  setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                }
+                required
+              />
             </label>
             <label>
               <span>새로운 비밀번호 확인</span>
-              <input type="password" autoComplete="new-password" required />
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={passwordForm.confirmPassword}
+                onChange={(event) =>
+                  setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                }
+                required
+              />
             </label>
-            <button className="settings-primary-button" type="submit">
+            <button className="settings-primary-button" type="submit" disabled={isSubmitting}>
               변경하기
             </button>
             {notice ? <p className="settings-notice">{notice}</p> : null}
@@ -326,7 +489,7 @@ export default function SettingsView({
 
       {screen === "team" ? (
         <>
-          <SettingsHeader title="응원구단 변경" onBack={goBack} />
+          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} />
           <form className="settings-team-card" onSubmit={handleTeamSubmit}>
             <fieldset>
               <legend className="hidden">응원구단 선택</legend>
@@ -356,6 +519,67 @@ export default function SettingsView({
         <span />
         <span />
       </div>
+
+      {confirmAction ? (
+        <div className="settings-confirm-backdrop" role="presentation" onClick={closeConfirmModal}>
+          <section
+            className="settings-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={confirmAction === "logout" ? "로그아웃 확인" : "회원탈퇴 확인"}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {confirmAction === "logout" ? (
+              <>
+                <h3>로그아웃 하시겠습니까?</h3>
+                <p>현재 로그인 세션이 삭제되고 로그인 화면으로 이동합니다.</p>
+                <div className="settings-confirm-actions">
+                  <button type="button" className="settings-secondary-button" onClick={closeConfirmModal}>
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="settings-primary-button"
+                    disabled={isSubmitting}
+                    onClick={() => void handleLogoutConfirm()}
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>정말 회원탈퇴 하시겠습니까?</h3>
+                <p>
+                  탈퇴 후 계정 정보는 복구할 수 없습니다. 계속하려면 아래 입력칸에
+                  <strong> 탈퇴</strong>를 입력해주세요.
+                </p>
+                <input
+                  className="settings-confirm-input"
+                  value={deleteConfirmText}
+                  onChange={(event) => setDeleteConfirmText(event.target.value)}
+                  placeholder="탈퇴"
+                  disabled={isSubmitting}
+                />
+                <div className="settings-confirm-actions">
+                  <button type="button" className="settings-secondary-button" onClick={closeConfirmModal}>
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="settings-primary-button is-danger"
+                    disabled={isSubmitting || deleteConfirmText.trim() !== "탈퇴"}
+                    onClick={() => void handleDeleteAccountConfirm()}
+                  >
+                    {isSubmitting ? "탈퇴 처리 중..." : "회원탈퇴"}
+                  </button>
+                </div>
+              </>
+            )}
+            {notice ? <p className="settings-notice">{notice}</p> : null}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

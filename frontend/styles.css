@@ -10,12 +10,28 @@
   --blue: #126dff;
   --danger: #b42318;
   font-family:
-    Pretendard,
+    "Pretendard",
     "Noto Sans KR",
     "Apple SD Gothic Neo",
     "Malgun Gothic",
     system-ui,
     sans-serif;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("/fonts/Pretendard-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mona";
+  src: url("/fonts/Mona10x12.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 * {
@@ -36,7 +52,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -1704,7 +1721,9 @@ select:focus {
 }
 
 .attendance-window:has(.tamagotchi-dashboard) {
-  width: min(480px, 100%);
+  width: min(960px, calc(100vw - 32px));
+  min-width: min(360px, 100%);
+  max-height: min(920px, calc(100dvh - 16px));
   border-radius: 28px;
   background: #dff5ff;
 }
@@ -1752,6 +1771,14 @@ select:focus {
 
 .tamagotchi-dashboard {
   display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.1fr);
+  grid-template-areas:
+    "nav nav"
+    "status status"
+    "field actions"
+    "field quiz"
+    "field streak"
+    "notice notice";
   gap: 14px;
   min-height: min(920px, calc(100vh - 40px));
   overflow-x: hidden;
@@ -1774,10 +1801,11 @@ select:focus {
 }
 
 .tamagotchi-nav {
+  grid-area: nav;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
-  gap: 2px;
+  gap: clamp(4px, 1vw, 10px);
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -1787,58 +1815,61 @@ select:focus {
 
 .tamagotchi-nav button {
   position: relative;
-  display: grid;
-  gap: 2px;
-  justify-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
-  min-height: 48px;
+  min-height: 52px;
   border: 0;
-  border-radius: 10px;
-  padding: 0 2px;
+  border-radius: 14px;
+  padding: 6px 8px;
   color: #143159;
   background: transparent;
   text-shadow: 0 1px 4px rgba(255, 255, 255, 0.8);
   text-align: center;
 }
 
-.tamagotchi-nav .tamagotchi-nav-icon {
+.tamagotchi-nav .tamagotchi-nav-icon,
+.tamagotchi-nav .app-top-menu-icon {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 0;
   color: inherit;
   background: transparent;
   box-shadow: none;
-  font-size: 1.32rem;
+  font-size: 36px;
   line-height: 1;
 }
 
 .tamagotchi-nav .tamagotchi-nav-label {
   display: block;
-  max-width: 68px;
+  max-width: 100%;
   min-height: 0;
   color: #10243c;
-  font-size: 0.7rem;
+  font-size: clamp(0.7rem, 0.9vw, 0.84rem);
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0;
   text-align: center;
   word-break: keep-all;
-  overflow-wrap: normal;
+  overflow-wrap: break-word;
 }
 
 .tamagotchi-nav button.is-active {
-  min-height: 48px;
+  min-height: 52px;
   margin: 0;
   color: #126dff;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 4px 12px rgba(20, 49, 89, 0.12);
 }
 
-.tamagotchi-nav button.is-active .tamagotchi-nav-icon {
-  width: 30px;
-  height: 30px;
+.tamagotchi-nav button.is-active .tamagotchi-nav-icon,
+.tamagotchi-nav button.is-active .app-top-menu-icon {
+  width: 36px;
+  height: 36px;
   color: inherit;
   background: transparent;
 }
@@ -1850,8 +1881,8 @@ select:focus {
 }
 
 .tamagotchi-nav button svg {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
 }
 
 .tamagotchi-nav button.has-badge i {
@@ -1870,6 +1901,7 @@ select:focus {
 }
 
 .tamagotchi-status-card {
+  grid-area: status;
   display: grid;
   gap: 12px;
   padding: 18px 20px 16px;
@@ -1877,7 +1909,7 @@ select:focus {
 
 .tamagotchi-status-top {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(170px, 1fr);
+  grid-template-columns: minmax(170px, max-content) minmax(220px, 1fr);
   gap: 12px;
   align-items: center;
 }
@@ -1889,15 +1921,15 @@ select:focus {
   margin: 0;
   min-width: 0;
   color: #101a36;
-  font-size: 1.75rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
   font-weight: 900;
   line-height: 1;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .tamagotchi-status-top h2 span {
   color: #126dff;
-  font-size: 1.95rem;
+  font-size: clamp(1.55rem, 2.6vw, 1.95rem);
 }
 
 .tamagotchi-exp {
@@ -1927,6 +1959,7 @@ select:focus {
 
 .tamagotchi-status-bottom {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   border-top: 1px dashed rgba(15, 23, 42, 0.14);
@@ -1936,6 +1969,7 @@ select:focus {
 .tamagotchi-status-bottom p {
   display: inline-flex;
   align-items: center;
+  flex: 1 1 220px;
   gap: 8px;
   margin: 0;
   color: #101a36;
@@ -1956,8 +1990,9 @@ select:focus {
 }
 
 .tamagotchi-field-card {
+  grid-area: field;
   position: relative;
-  min-height: 310px;
+  min-height: clamp(320px, 44vw, 460px);
   overflow: hidden;
   background-image: url("/img/background.png");
   background-size: cover;
@@ -1974,17 +2009,20 @@ select:focus {
   z-index: 1;
   left: 12px;
   top: 12px;
-  max-width: min(158px, 46%);
+  width: min(260px, calc(100% - 24px));
+  max-width: none;
   border: 2px solid #10265f;
   border-radius: 16px;
   padding: 10px 12px;
   color: #101a36;
   background: #fff;
+  font-family: "Mona", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-size: 0.86rem;
-  font-weight: 900;
-  line-height: 1.38;
+  font-weight: 400;
+  font-synthesis: none;
+  line-height: 1.45;
   word-break: keep-all;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   white-space: normal;
   box-shadow: 0 5px 12px rgba(16, 38, 95, 0.12);
 }
@@ -2007,7 +2045,7 @@ select:focus {
   z-index: 2;
   left: 50%;
   bottom: 14px;
-  width: min(210px, 48vw);
+  width: clamp(150px, 46%, 240px);
   max-height: 70%;
   object-fit: contain;
   transform: translateX(-50%);
@@ -2015,9 +2053,12 @@ select:focus {
 }
 
 .tamagotchi-actions {
+  grid-area: actions;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
   gap: 12px;
+  align-self: start;
+  min-width: 0;
 }
 
 .tamagotchi-action {
@@ -2032,7 +2073,7 @@ select:focus {
   color: #101a36;
   background: #fff;
   box-shadow: 0 8px 18px rgba(25, 86, 144, 0.11);
-  font-size: 1.28rem;
+  font-size: clamp(1.05rem, 1.8vw, 1.28rem);
   font-weight: 900;
   text-align: left;
 }
@@ -2099,6 +2140,7 @@ select:focus {
 }
 
 .tamagotchi-notice {
+  grid-area: notice;
   margin: -2px 0;
   border-radius: 14px;
   padding: 10px 12px;
@@ -2109,13 +2151,18 @@ select:focus {
 }
 
 .tamagotchi-quiz-section {
+  grid-area: quiz;
+  grid-column: auto;
+  min-width: 0;
   margin: 0;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
 }
 
 .tamagotchi-streak-card {
+  grid-area: streak;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-height: 64px;
@@ -2147,6 +2194,7 @@ select:focus {
 @media (max-width: 720px) {
   .attendance-window:has(.tamagotchi-dashboard) {
     width: 100%;
+    min-width: 0;
     height: 100dvh;
     max-height: none;
     border: 0;
@@ -2154,28 +2202,37 @@ select:focus {
   }
 
   .tamagotchi-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "nav"
+      "status"
+      "field"
+      "actions"
+      "notice"
+      "quiz"
+      "streak";
     min-height: 100dvh;
     padding: 70px 12px 16px;
   }
 
   .tamagotchi-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     border-radius: 0;
     padding: 0;
   }
 
   .tamagotchi-nav button {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
     min-height: 48px;
     border-radius: 10px;
-  }
-
-  .tamagotchi-nav button svg {
-    width: 22px;
-    height: 22px;
+    padding: 0 2px;
   }
 
   .tamagotchi-nav button.is-active {
-    min-height: 48px;
+    min-height: 62px;
   }
 
   .tamagotchi-status-card {
@@ -2198,10 +2255,12 @@ select:focus {
   }
 
   .tamagotchi-status-bottom {
+    flex-wrap: wrap;
     gap: 8px;
   }
 
   .tamagotchi-status-bottom p {
+    flex: 1 1 150px;
     font-size: 0.88rem;
   }
 
@@ -2218,7 +2277,7 @@ select:focus {
   .tamagotchi-speech-bubble {
     left: 10px;
     top: 10px;
-    max-width: min(145px, 44%);
+    width: min(210px, calc(100% - 20px));
     padding: 9px 11px;
     font-size: 0.8rem;
   }
@@ -2228,6 +2287,7 @@ select:focus {
   }
 
   .tamagotchi-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
