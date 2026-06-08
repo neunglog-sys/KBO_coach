@@ -476,6 +476,7 @@ export function MainViewV2({
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
+      <div className="stage-nav-overlay" aria-hidden="true" />
 
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
@@ -531,7 +532,7 @@ export function MainViewV2({
             className="attendance-window"
             role="dialog"
             aria-modal="true"
-            aria-label="다마고치"
+            aria-label="야구짝꿍"
             onClick={(event) => event.stopPropagation()}
           >
             <button

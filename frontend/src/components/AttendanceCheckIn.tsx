@@ -326,10 +326,11 @@ export default function AttendanceCheckIn({
   }
 
   function handlePickGender(picked: Gender) {
-    saveGender(picked);   // localStorage 즉시(빠른 UX)
+    if (!picked) return;
+    saveGender(picked);
     setGender(picked);
     setImgFailed(false);
-    if (picked && authToken) {   // 서버에도 저장 → 계정에 묶여 기기 바꿔도 유지
+    if (picked && authToken) {
       void fetch(apiUrl("/auth/me/gender"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
@@ -603,7 +604,7 @@ export default function AttendanceCheckIn({
   }
 
   return (
-    <section className="tamagotchi-dashboard" aria-label="다마고치">
+    <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
       <TopMenu
         active="tamagotchi"
         className="tamagotchi-nav"
@@ -643,7 +644,7 @@ export default function AttendanceCheckIn({
         <img
           className="tamagotchi-character-img"
           src={imgFailed ? FALLBACK_CHARACTER_SRC : characterSrc}
-          alt="야구 다마고치 캐릭터"
+          alt="야구짝꿍 캐릭터"
           onError={() => setImgFailed(true)}
         />
       </section>
