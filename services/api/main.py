@@ -20,6 +20,7 @@ from internal import router as internal_router
 from attendance import router as attendance_router
 from quiz import router as quiz_router
 from tts import router as tts_router
+from tamagotchi import router as tamagotchi_router
 
 app = FastAPI(title="KBO Baseball Helper API", version="0.1.0")
 
@@ -36,7 +37,7 @@ app.add_middleware(
 
 for r in (auth_router, info_router, visits_router, chat_router, weather_router,
           board_router, my_records_router, push_router, internal_router, attendance_router,
-          quiz_router, tts_router):
+          quiz_router, tts_router, tamagotchi_router):
     app.include_router(r)
 
 
