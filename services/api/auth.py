@@ -56,6 +56,10 @@ class LoginIn(BaseModel):
     password: str
 
 
+class UpdateFavTeamIn(BaseModel):
+    fav_team_code: str
+
+
 # ---- 엔드포인트 ----
 @router.post("/register")
 def register(body: RegisterIn):
@@ -100,6 +104,24 @@ def me(user_id: int = Depends(current_user_id)):
         with conn.cursor() as cur:
             cur.execute("SELECT user_id, email, nickname, fav_team_code, created_at FROM users WHERE user_id = %s",
                         (user_id,))
+            user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return user
+    finally:
+        conn.close()
+
+
+@router.patch("/me")
+def update_fav_team(body: UpdateFavTeamIn, user_id: int = Depends(current_user_id)):
+    """응원구단(fav_team_code) 변경. 성공 시 갱신된 유저 정보 반환."""
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET fav_team_code = %s WHERE user_id = %s "
+                "RETURNING user_id, email, nickname, fav_team_code, created_at",
+                (body.fav_team_code, user_id))
             user = cur.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="유저 없음")

@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
+import { apiUrl } from "../api";
 import "./SettingsView.css";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 
@@ -23,6 +24,9 @@ interface SettingsViewProps {
   darkModeEnabled?: boolean;
   onNotificationEnabledChange?: (enabled: boolean) => void;
   onDarkModeEnabledChange?: (enabled: boolean) => void;
+  authToken?: string;
+  favTeamCode?: string;
+  onFavTeamChange?: (code: string) => void;
 }
 
 const TEAMS = [
@@ -37,6 +41,22 @@ const TEAMS = [
   "NC 다이노스",
   "키움 히어로즈",
 ];
+
+const TEAM_CODE: Record<string, string> = {
+  "KIA 타이거즈": "HT",
+  "삼성 라이온즈": "SS",
+  "LG 트윈스": "LG",
+  "두산 베어스": "OB",
+  "KT 위즈": "KT",
+  "SSG 랜더스": "SK",
+  "롯데 자이언츠": "LT",
+  "한화 이글스": "HH",
+  "NC 다이노스": "NC",
+  "키움 히어로즈": "WO",
+};
+const CODE_TO_TEAM: Record<string, string> = Object.fromEntries(
+  Object.entries(TEAM_CODE).map(([name, code]) => [code, name]),
+);
 
 function IconCircle({
   icon: Icon,
@@ -143,10 +163,15 @@ export default function SettingsView({
   darkModeEnabled: controlledDarkModeEnabled,
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
+  authToken,
+  favTeamCode,
+  onFavTeamChange,
 }: SettingsViewProps) {
   const [screen, setScreen] = useState<SettingsScreen>("main");
   const [fallbackSettings, setFallbackSettings] = useState(loadAppSettings);
-  const [selectedTeam, setSelectedTeam] = useState("삼성 라이온즈");
+  const [selectedTeam, setSelectedTeam] = useState(
+    CODE_TO_TEAM[favTeamCode ?? ""] ?? "삼성 라이온즈",
+  );
   const [notice, setNotice] = useState("");
   const notificationEnabled =
     controlledNotificationEnabled ?? fallbackSettings.notificationEnabled;
@@ -195,9 +220,32 @@ export default function SettingsView({
     setNotice("비밀번호 변경 요청이 준비되었습니다.");
   }
 
-  function handleTeamSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleTeamSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice(`${selectedTeam}으로 응원구단을 변경했습니다.`);
+    const code = TEAM_CODE[selectedTeam];
+    if (!code) {
+      setNotice("알 수 없는 팀입니다.");
+      return;
+    }
+    if (!authToken) {   // 비로그인/데모: 전역 상태만 갱신
+      onFavTeamChange?.(code);
+      setNotice(`${selectedTeam}으로 응원구단을 변경했습니다.`);
+      return;
+    }
+    try {
+      const res = await fetch(apiUrl("/auth/me"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ fav_team_code: code }),
+      });
+      if (!res.ok) throw new Error("update failed");
+      onFavTeamChange?.(code);   // 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗 동기화
+      setNotice(`${selectedTeam}으로 응원구단을 변경했습니다.`);
+      return;
+    } catch {
+      setNotice("응원구단 변경에 실패했어요. 잠시 후 다시 시도해주세요.");
+      return;
+    }
   }
 
   return (
