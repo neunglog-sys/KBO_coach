@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { getTargetWeights, type MouthShape } from "../lipSync";
 
@@ -10,7 +11,7 @@ interface Character3DProps {
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/260607_ballonly.glb";
+const MODEL_URL = "/model/3d/model_260608_opt.glb";
 const FRONT_ROTATION_DEG = 0; // mouth_test2는 정면(+Z) 제작 → 보정 불필요. 옆으로 보이면 조정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 재생할 애니메이션(모션) 클립 이름
@@ -81,6 +82,10 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
     const mouthMeshes: THREE.Mesh[] = [];
 
     const loader = new GLTFLoader();
+    // Draco 압축 모델 디코딩용. 디코더는 public/draco/ 에 번들(오프라인 동작).
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath("/draco/");
+    loader.setDRACOLoader(dracoLoader);
     loader.load(
       MODEL_URL,
       (gltf) => {
@@ -204,6 +209,7 @@ export default function Character3D({ isSpeaking, className }: Character3DProps)
       resizeObserver.disconnect();
       envTexture.dispose();
       pmrem.dispose();
+      dracoLoader.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
