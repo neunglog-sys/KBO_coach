@@ -12,8 +12,8 @@
       <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.18"/>
     </filter>
   </defs>
-  <rect x="8" y="8" width="104" height="104" rx="26" fill="url(#bg_darkmode)" filter="url(#ds_darkmode)"/>
-  <rect x="8" y="8" width="104" height="60" rx="26" fill="url(#gloss_darkmode)"/>
+  <rect x="8" y="8" width="104" height="104" rx="30" fill="url(#bg_darkmode)" filter="url(#ds_darkmode)"/>
+  <rect x="8" y="8" width="104" height="60" rx="30" fill="url(#gloss_darkmode)"/>
   <g transform="translate(60,60)">
   <path d="M10,-20 a22,22 0 1 0 12,34 a17,17 0 0 1 -12,-34 z" fill="#ffffff"/>
   <path d="M16,-22 l1.6,3.4 l3.6,0.4 l-2.6,2.6 l0.7,3.6 l-3.3,-1.8 l-3.3,1.8 l0.7,-3.6 l-2.6,-2.6 l3.6,-0.4 z" fill="#ffe27a"/>
