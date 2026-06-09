@@ -29,24 +29,29 @@ const TEAMS = [
   { code: "HT", name: "KIA 타이거즈", color: "#C8102E" },
   { code: "HH", name: "한화 이글스", color: "#FA5C1E" },
 ];
+
 const MYTEAM_KEY = "myTeamCode";
 const teamByCode = (c: string | null) => TEAMS.find((t) => t.code === c);
-
-/** message_id 기준으로 이미 있는 건 빼고 합침 — 낙관적 추가와 폴링이 같은 메시지를 중복 추가하는 것 방지. */
-function mergeMessages(prev: BoardMessage[], incoming: BoardMessage[]): BoardMessage[] {
-  if (!incoming.length) return prev;
-  const seen = new Set(prev.map((m) => m.message_id));
-  const add = incoming.filter((m) => !seen.has(m.message_id));
-  return add.length ? [...prev, ...add] : prev;
-}
 
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+
 function rgba(hex: string, a: number): string {
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function mixWithWhite(hex: string, whiteAmount: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const mix = (v: number) => Math.round(v + (255 - v) * whiteAmount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
+function teamBubbleTone(hex: string, messageId: number): string {
+  const tones = [0.82, 0.72, 0.62, 0.52];
+  return mixWithWhite(hex, tones[Math.abs(messageId) % tones.length]);
 }
 
 /** 팀+오늘 날짜 기반 일관된 방문수(프론트 표시용; 진짜 집계는 추후 백엔드). */
@@ -91,12 +96,11 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
   const logRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
-  const sendingRef = useRef(false);   // 전송 재진입 가드(더블탭/중복 제출 시 POST 두 번 방지)
   const msgRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const teamObj = teamByCode(team);
+  const chatSideSpace = 12;
 
-  // 응원팀 자동 (로그인 계정 fav_team)
   useEffect(() => {
     if (!authToken) return;
     (async () => {
@@ -115,7 +119,6 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     })();
   }, [authToken]);
 
-  // 방 정보(공지) + 메시지 폴링
   useEffect(() => {
     if (!team) return;
     let alive = true;
@@ -131,36 +134,34 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     async function poll(initial: boolean) {
       if (!authToken) return;
       try {
-        const url = initial
-          ? `/board/${team}/messages`
-          : `/board/${team}/messages?after=${lastIdRef.current}`;
+        const url = initial ? `/board/${team}/messages` : `/board/${team}/messages?after=${lastIdRef.current}`;
         const r = await fetch(apiUrl(url), { headers: { Authorization: `Bearer ${authToken}` } });
         if (!r.ok || !alive) return;
         const d = await r.json();
         const fresh: BoardMessage[] = Array.isArray(d.messages) ? d.messages : [];
         if (fresh.length) {
           lastIdRef.current = fresh[fresh.length - 1].message_id;
-          setMessages((prev) => (initial ? fresh : mergeMessages(prev, fresh)));
+          setMessages((prev) => (initial ? fresh : [...prev, ...fresh]));
         }
       } catch {
         /* 무시 */
       }
     }
+
     poll(true);
     const timer = setInterval(() => poll(false), 3000);
+
     return () => {
       alive = false;
       clearInterval(timer);
     };
   }, [team, authToken]);
 
-  // 새 메시지 → 부드럽게 맨 아래로 (검색 중엔 유지)
   useEffect(() => {
     if (query) return;
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, query]);
 
-  // 검색: 입력한 텍스트가 있는 마지막 메시지로 스크롤
   const matchIds = useMemo(() => {
     if (!query.trim()) return new Set<number>();
     const q = query.trim().toLowerCase();
@@ -175,27 +176,24 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   }, [matchIds, query]);
 
   async function send() {
-    if (sendingRef.current) return;   // 진행 중인 전송이 있으면 무시(중복 POST 방지)
     const text = input.trim();
     if (!text || !authToken || !team) return;
-    sendingRef.current = true;
     setInput("");
+
     try {
       const r = await fetch(apiUrl(`/board/${team}/messages`), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ content: text }),
       });
+
       if (r.ok) {
         const msg: BoardMessage = await r.json();
         lastIdRef.current = Math.max(lastIdRef.current, msg.message_id);
-        // message_id 기준 중복 제거 — 폴링이 이미 가져왔으면 또 안 붙임.
-        setMessages((prev) => mergeMessages(prev, [{ ...msg, is_mine: true }]));
+        setMessages((prev) => [...prev, { ...msg, is_mine: true }]);
       }
     } catch {
       /* 무시 */
-    } finally {
-      sendingRef.current = false;
     }
   }
 
@@ -210,6 +208,23 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   }
 
   const headerColor = teamObj?.color ?? "#444";
+  const bubbleBaseColor = team === "OB" ? "#7AB6E8" : headerColor;
+
+  function bubbleStyle(m: BoardMessage): React.CSSProperties {
+    if (m.is_mine) {
+      return {
+        background: "#fff",
+        color: "#1c2330",
+        border: `1.5px solid ${rgba(bubbleBaseColor, 0.9)}`,
+        boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+      };
+    }
+
+    return {
+      background: teamBubbleTone(bubbleBaseColor, m.message_id),
+      color: "#1c2330",
+    };
+  }
 
   return (
     <section
@@ -222,34 +237,44 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         if (closing && e.target === e.currentTarget) onBack();
       }}
     >
-      {/* 헤더 (팀색) */}
       <header className="chat-header" style={{ background: headerColor }}>
-        <button className="chat-back" type="button" onClick={handleBack} aria-label="뒤로">
-          ←
-        </button>
+        <div className="chat-header-top">
+          <button className="chat-back" type="button" onClick={handleBack} aria-label="뒤로">
+            ←
+          </button>
+
+          <div className="chat-header-actions">
+            <button
+              className="chat-iconbtn"
+              type="button"
+              onClick={() => {
+                setSearchOpen((v) => !v);
+                setSwitchOpen(false);
+              }}
+              aria-label="검색"
+            >
+              🔍
+            </button>
+
+            <button
+              className="chat-iconbtn"
+              type="button"
+              onClick={() => {
+                setSwitchOpen((v) => !v);
+                setSearchOpen(false);
+                setQuery("");
+              }}
+              aria-label="팀 변경"
+            >
+              ☰
+            </button>
+          </div>
+        </div>
+
         <div className="chat-title">
           <strong>{teamObj?.name ?? "응원톡"}</strong>
-          <span>{teamObj ? `${visitCount(teamObj.code).toLocaleString()}명 방문` : "응원팀 미설정"}</span>
         </div>
-        <button
-          className="chat-iconbtn"
-          type="button"
-          onClick={() => setSearchOpen((v) => !v)}
-          aria-label="검색"
-        >
-          🔍
-        </button>
-        <button
-          className="chat-iconbtn"
-          type="button"
-          onClick={() => setSwitchOpen((v) => !v)}
-          aria-label="팀 변경"
-        >
-          ☰
-        </button>
       </header>
-
-      <TopMenu active="chat" className="chat-top-menu" onNavigate={handleTopMenuNavigate} />
 
       {searchOpen ? (
         <div className="chat-search">
@@ -283,7 +308,11 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
               key={t.code}
               type="button"
               className={t.code === team ? "on" : ""}
-              style={{ borderColor: t.color, color: t.code === team ? "#fff" : t.color, background: t.code === team ? t.color : "#fff" }}
+              style={{
+                borderColor: t.color,
+                color: t.code === team ? "#fff" : t.color,
+                background: t.code === team ? t.color : "#fff",
+              }}
               onClick={() => {
                 setTeam(t.code);
                 setSwitchOpen(false);
@@ -295,71 +324,90 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         </div>
       ) : null}
 
-      {notice ? <div className="chat-notice">📢 {notice}</div> : null}
+      <section className={`chat-panel ${searchOpen ? "search-open" : ""}`}>
+        {notice ? (
+          <div className="chat-notice" style={{ marginLeft: chatSideSpace, marginRight: chatSideSpace }}>
+            📢 {notice}
+          </div>
+        ) : null}
 
-      {/* 메시지 */}
-      <div className="chat-log" ref={logRef}>
-        {!authToken ? (
-          <p className="chat-empty">로그인하면 응원톡에 참여할 수 있어요.</p>
-        ) : messages.length === 0 ? (
-          <p className="chat-empty">아직 메시지가 없어요. 첫 응원을 남겨보세요! ⚾</p>
-        ) : (
-          messages.flatMap((m, i) => {
-            const items: React.ReactNode[] = [];
-            const prevKey = i > 0 ? dateKey(messages[i - 1].created_at) : null;
-            const curKey = dateKey(m.created_at);
-            if (curKey !== prevKey) {
+        <div className="chat-log" ref={logRef} style={{ paddingLeft: chatSideSpace, paddingRight: chatSideSpace }}>
+          {!authToken ? (
+            <p className="chat-empty">로그인하면 응원톡에 참여할 수 있어요.</p>
+          ) : messages.length === 0 ? (
+            <p className="chat-empty">아직 메시지가 없어요. 첫 응원을 남겨보세요! ⚾</p>
+          ) : (
+            messages.flatMap((m, i) => {
+              const items: React.ReactNode[] = [];
+              const prevKey = i > 0 ? dateKey(messages[i - 1].created_at) : null;
+              const curKey = dateKey(m.created_at);
+
+              if (curKey !== prevKey) {
+                items.push(
+                  <div key={`date-${curKey}`} className="chat-date-divider">
+                    <span>{dateLabel(m.created_at)}</span>
+                  </div>
+                );
+              }
+
               items.push(
-                <div key={`date-${curKey}`} className="chat-date-divider">
-                  <span>{dateLabel(m.created_at)}</span>
+                <div
+                  key={m.message_id}
+                  ref={(el) => {
+                    if (el) msgRefs.current.set(m.message_id, el);
+                  }}
+                  className={`chat-msg ${m.is_mine ? "mine" : ""} ${matchIds.has(m.message_id) ? "match" : ""}`}
+                >
+                  {!m.is_mine ? <span className="chat-nick">{m.nickname}</span> : null}
+                  <div className="chat-row">
+                    <span className="chat-bubble" style={bubbleStyle(m)}>
+                      {m.content}
+                    </span>
+                    <span className="chat-time">{hhmm(m.created_at)}</span>
+                  </div>
                 </div>
               );
-            }
-            items.push(
-              <div
-                key={m.message_id}
-                ref={(el) => {
-                  if (el) msgRefs.current.set(m.message_id, el);
-                }}
-                className={`chat-msg ${m.is_mine ? "mine" : ""} ${matchIds.has(m.message_id) ? "match" : ""}`}
-              >
-                {!m.is_mine ? <span className="chat-nick">{m.nickname}</span> : null}
-                <div className="chat-row">
-                  <span
-                    className="chat-bubble"
-                    style={m.is_mine ? { background: rgba(headerColor, 0.9) } : undefined}
-                  >
-                    {m.content}
-                  </span>
-                  <span className="chat-time">{hhmm(m.created_at)}</span>
-                </div>
-              </div>
-            );
-            return items;
-          })
-        )}
-      </div>
 
-      {/* 입력 */}
-      <form
-        className="chat-inputbar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={authToken ? "응원 메시지 입력" : "로그인 후 이용해주세요"}
-          disabled={!authToken || !team}
-          aria-label="메시지 입력"
-        />
-        <button type="submit" className="chat-send" disabled={!authToken || !team || !input.trim()}>
-          전송
-        </button>
-      </form>
+              return items;
+            })
+          )}
+        </div>
+
+        <form
+          className="chat-inputbar"
+          style={{
+            borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.68)}`,
+            background: "#fff",
+          }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={authToken ? "응원 메시지 입력" : "로그인 후 이용해주세요"}
+            disabled={!authToken || !team}
+            aria-label="메시지 입력"
+            style={{
+              background: mixWithWhite(bubbleBaseColor, 0.9),
+            }}
+          />
+          <button
+            type="submit"
+            className="chat-send"
+            disabled={!authToken || !team || !input.trim()}
+            style={{
+              background: bubbleBaseColor,
+              color: "#fff",
+            }}
+          >
+            전송
+          </button>
+        </form>
+      </section>
     </section>
   );
 }
