@@ -64,18 +64,6 @@
   font-size: 1.15rem;
   font-weight: 900;
 }
-.records-back {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 12px;
-  background: #fff;
-  font-size: 1.3rem;
-  box-shadow: 0 2px 8px rgba(28, 37, 54, 0.1);
-}
-.records-top-spacer {
-  width: 40px;
-}
 
 /* 연속 기록 도전 카드 */
 .records-top-menu {

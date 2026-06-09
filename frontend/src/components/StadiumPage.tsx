@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { AppBackButton } from "./AppBackButton";
 import { fetchStadiums, type Stadium } from "../data/stadiumData";
 import { matchesStadiumSearch } from "../data/stadiumMapper";
 import { StadiumFoodTab } from "./StadiumFoodTab";
@@ -68,10 +68,9 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   return (
     <section className="stadium-page" aria-label="구장정보">
       <header className="stadium-page-header">
-        <button type="button" aria-label="뒤로가기" onClick={onClose}>
-          <ArrowLeft aria-hidden="true" strokeWidth={2.8} />
-        </button>
+        <AppBackButton onClick={onClose} />
         <h2>구장정보</h2>
+        <span className="app-screen-title-spacer" />
       </header>
 
       <StadiumTopMenu onNavigate={handleNavigate} />
