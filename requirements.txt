@@ -10,5 +10,6 @@ email-validator
 requests
 firebase-admin
 azure-cognitiveservices-speech
+google-genai
 pandas
 lxml
