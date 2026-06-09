@@ -28,7 +28,7 @@
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: max(22px, env(safe-area-inset-top)) 18px calc(118px + env(safe-area-inset-bottom));
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px calc(118px + env(safe-area-inset-bottom));
   color: #0a1732;
   background:
     radial-gradient(circle at 12% 4%, rgba(255, 255, 255, 0.64) 0 42px, transparent 43px),
@@ -43,36 +43,20 @@
 }
 
 .stadium-page-header {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 54px;
-  margin-bottom: 14px;
-}
-
-.stadium-page-header button {
-  position: absolute;
-  left: 0;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 0;
-  border-radius: 50%;
-  color: #0a1732;
-  background: rgba(255, 255, 255, 0.34);
-}
-
-.stadium-page-header button svg {
-  width: 28px;
-  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-bottom: 8px;
 }
 
 .stadium-page-header h2 {
+  flex: 1;
   margin: 0;
   font-size: 2rem;
   line-height: 1;
   letter-spacing: 0;
+  text-align: center;
 }
 
 .stadium-page-top-menu {

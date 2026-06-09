@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiUrl } from "../api";
+import { AppBackButton } from "./AppBackButton";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import "./MyRecordsView.css";
 
@@ -263,11 +264,9 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
       }}
     >
       <header className="records-top">
-        <button className="records-back" type="button" onClick={handleBack} aria-label="뒤로">
-          ←
-        </button>
+        <AppBackButton onClick={handleBack} />
         <h1>나만의 야구기록</h1>
-        <span className="records-top-spacer" />
+        <span className="app-screen-title-spacer" />
       </header>
 
       <TopMenu active="record" className="records-top-menu" onNavigate={handleTopMenuNavigate} />
