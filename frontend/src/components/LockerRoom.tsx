@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   getCharacterImage,
+  getRewardSrc,
   LEVEL_REWARDS,
   type Gender,
 } from "./AttendanceCheckIn";
@@ -12,13 +13,21 @@ interface LockerRoomProps {
   onClose: () => void;
 }
 
-// 라커룸 배경 (frontend/public/img/locker_room.png)
-const LOCKER_BG = "/img/locker_room.png";
+// 팀별 라커룸 배경 (frontend/public/locker/{팀코드}.png)
+// 응원 팀이 없으면(무소속) 기본 라커룸(/img/locker_room.png) 사용
+const TEAM_LOCKER_CODES = ["HH", "HT", "KT", "LG", "LT", "NC", "OB", "SK", "SS", "WO"];
+
+function getLockerBg(teamCode?: string | null): string {
+  if (teamCode && TEAM_LOCKER_CODES.includes(teamCode)) {
+    return `/locker/${teamCode}.png`;
+  }
+  return "/img/locker_room.png";
+}
 
 // 장비별 한 줄 설명 (LEVEL_REWARDS의 레벨 키 기준)
 const ITEM_DESC: Record<number, string> = {
-  3: "어떤 공도 척척 받아낼 것 같은 든든한 글러브예요.",
-  4: "휘두르기 편한, 입문자에게 딱 맞는 야구배트예요.",
+  3: "내가 응원하는 팀의 응원 수건이에요. 경기장에서 흔들며 응원해보세요!",
+  4: "내가 응원하는 팀의 멋진 모자예요. 팀마다 다른 모자를 모아보세요!",
   7: "실밥 하나하나가 살아있는 고급 야구공이에요.",
   8: "초보자도 휘두르면 잘 치는 느낌이 드는 고급 야구배트예요.",
   9: "프로의 손맛이 느껴지는 최고급 글러브예요.",
@@ -26,15 +35,30 @@ const ITEM_DESC: Record<number, string> = {
 
 // 도감 슬롯: 5개 장비를 각각 한 칸씩. 자기 레벨에 도달하면 영구히 열린다(대체 없음).
 const ALL_SLOTS: Array<{ level: number; label: string }> = [
-  { level: 3, label: "글러브" },
-  { level: 4, label: "배트" },
+  { level: 3, label: "응원 수건" },
+  { level: 4, label: "야구 모자" },
   { level: 7, label: "야구공" },
   { level: 8, label: "고급 배트" },
   { level: 9, label: "고급 글러브" },
 ];
 
+// 빈 라커 이미지 (frontend/public/equipment/locker.png)
+const EMPTY_LOCKER_BG = "/equipment/locker.png";
+
+// 라커 안 물건 배치: 레벨 키별 위치/크기 + 레이어 순서(zIndex)
+// 레이어(뒤→앞): 수건(3) → 고급배트(8) → 고급글러브(9) → 모자(4) → 야구공(7)
+const LOCKER_ITEM_POS: Record<number, { left: string; top: string; width: string; rotate: number; z: number }> = {
+  3: { left: "45%",   top: "40.6%", width: "36%",   rotate: 0,   z: 1 }, // 수건
+  8: { left: "66.2%", top: "63.1%", width: "57%",   rotate: 148, z: 2 }, // 고급배트
+  9: { left: "48.8%", top: "75.9%", width: "37%",   rotate: 0,   z: 3 }, // 고급글러브
+  4: { left: "48.8%", top: "25%",   width: "26%",   rotate: 11,  z: 4 }, // 모자
+  7: { left: "32.9%", top: "78.8%", width: "18%",   rotate: 0,   z: 5 }, // 야구공
+};
+
 export default function LockerRoom({ level, teamCode, gender, onClose }: LockerRoomProps) {
   const characterSrc = getCharacterImage(level, teamCode, gender);
+  // 응원 팀에 따라 라커룸 배경 선택 (무소속이면 기본 라커룸)
+  const lockerBg = getLockerBg(teamCode);
   // 클릭한 장비 슬롯의 레벨 키 (null이면 설명창 닫힘)
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -111,11 +135,52 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             position: "relative",
             flex: 1,
             minHeight: 0,
-            backgroundImage: `url(${LOCKER_BG})`,
+            backgroundImage: `url(${lockerBg})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
+          {/* 왼쪽: 빈 라커 + 획득한 물건 연출 (레벨업 시 하나씩 채워짐) */}
+          <div
+            style={{
+              position: "absolute",
+              left: "-8%",
+              bottom: "2%",
+              height: "82%",
+              aspectRatio: "1024 / 1536",
+              backgroundImage: `url(${EMPTY_LOCKER_BG})`,
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "bottom center",
+            }}
+          >
+            {ALL_SLOTS.map((slot) => {
+              const pos = LOCKER_ITEM_POS[slot.level];
+              const isOwned = level >= slot.level;
+              // 아직 획득 못 한 물건은 라커에 안 보임
+              if (!pos || !isOwned) return null;
+              const item = LEVEL_REWARDS[slot.level];
+              return (
+                <img
+                  key={slot.level}
+                  src={getRewardSrc(item, teamCode)}
+                  alt={item.name}
+                  style={{
+                    position: "absolute",
+                    left: pos.left,
+                    top: pos.top,
+                    width: pos.width,
+                    transform: `translate(-50%, -50%) rotate(${pos.rotate}deg)`,
+                    zIndex: pos.z,
+                    objectFit: "contain",
+                    filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.35))",
+                  }}
+                  onError={(e) => { (e.currentTarget.style.visibility = "hidden"); }}
+                />
+              );
+            })}
+          </div>
+
           {/* 캐릭터: 우측 아래, 하단 도감보다 위에 서 있도록 배치 */}
           <img
             src={characterSrc}
@@ -127,7 +192,11 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
               position: "absolute",
               left: "78%",
               bottom: "2%",
-              transform: "translateX(-50%)",
+              // 여자 이미지가 더 작게 그려져 있어 여자를 더 키워 남자와 크기를 맞춤
+              transform: gender === "girl"
+                ? "translateX(-50%) scale(1.22)"
+                : "translateX(-50%) scale(1.08)",
+              transformOrigin: "bottom center",
               height: "58%",
               objectFit: "contain",
               filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
@@ -168,7 +237,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
                 }}
               >
                 <img
-                  src={item.src}
+                  src={getRewardSrc(item, teamCode)}
                   alt={item.name}
                   style={{
                     width: "100%",
@@ -229,7 +298,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
                   }}
                 >
                   <img
-                    src={item.src}
+                    src={getRewardSrc(item, teamCode)}
                     alt={item.name}
                     style={{
                       width: 220, height: 220, objectFit: "contain",
