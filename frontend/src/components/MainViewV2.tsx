@@ -4,7 +4,7 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
-import { clearMouth, setActiveViseme } from "../lipSync";
+import { clearMouth, setActiveSyllable, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
 import SettingsView from "./SettingsView";
@@ -300,89 +300,269 @@ export function MainViewV2({
     setShowChat(key === "chat");
   }
 
+  // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
+  // visemes는 '미스케일'(Azure 타임라인). 재생 길이(effDurMs)가 잡히면 scale로 보정한다.
+  //   - 스트리밍: 재생 중 audio.duration이 Infinity → azEndMs/estMs로 추정, 끝나면 실측으로 정확.
+  //   - 블로킹: 서버가 이미 el길이로 스케일 → azEndMs=마지막offset이라 scale≈1(이중스케일 X).
+  function playTtsAudio(
+    audio: HTMLAudioElement,
+    text: string,
+    visemes: Array<{ offset: number; id: number }>,
+    azEndMs: number,
+    estMs: number,
+    onReveal?: (revealed: string) => void,
+  ): Promise<{ ok: boolean; started: boolean }> {
+    ttsAudioRef.current = audio;
+    return new Promise((resolve) => {
+      let settled = false;
+      let started = false;
+      let lipRaf = 0;
+      const clamp = (v: number) => Math.min(2.5, Math.max(0.5, v));
+
+      const drive = () => {
+        const tMs = audio.currentTime * 1000;
+        const dur = audio.duration;
+        const effDurMs =
+          isFinite(dur) && dur > 0 ? dur * 1000 : azEndMs > 0 ? azEndMs : estMs;
+        const scale = azEndMs > 0 && effDurMs > 0 ? clamp(effDurMs / azEndMs) : 1;
+        let activeId = 0;
+        for (let i = 0; i < visemes.length; i++) {
+          if (visemes[i].offset * scale <= tMs) activeId = visemes[i].id;
+          else break;
+        }
+        setActiveViseme(activeId);
+        // 자막은 재생 중인 실제 오디오의 진행률에 묶는다(시간비례).
+        if (onReveal && effDurMs > 0) {
+          const ratio = Math.min(1, tMs / effDurMs);
+          const revealed = text.slice(0, Math.ceil(text.length * ratio));
+          if (revealed) onReveal(revealed);
+        }
+        lipRaf = requestAnimationFrame(drive);
+      };
+
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(lipRaf);
+        clearMouth();
+        setIsSpeaking(false);
+        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
+        resolve({ ok, started });
+      };
+
+      audio.onplay = () => {
+        started = true;
+        setIsSpeaking(true);
+        lipRaf = requestAnimationFrame(drive);
+      };
+      audio.onended = () => finish(true);
+      audio.onerror = () => finish(false);
+      audio.play().catch(() => finish(false));
+    });
+  }
+
+  // 타임스탬프 스트리밍 재생(구단 보이스). MediaSource로 mp3 청크를 먹여 progressive 재생하고,
+  // ElevenLabs 글자 타임스탬프(c=글자, t=시작초)로 자막·입모양을 '실제 음성' 기준 정확히 맞춘다.
+  //   - 자막: 발음된 글자 수/정제길이(cleanLen) 비율을 원본 텍스트에 적용(원본 표시 유지).
+  //   - 입모양: 지금 발음 중인 글자의 모음으로 setActiveSyllable.
+  // MSE 미지원/빈 응답이면 {ok:false, started:false} → 호출부가 블로킹으로 폴백.
+  function playTimestampedStream(
+    streamUrl: string,
+    text: string,
+    cleanLen: number,
+    onReveal?: (revealed: string) => void,
+  ): Promise<{ ok: boolean; started: boolean }> {
+    return new Promise((resolve) => {
+      if (typeof MediaSource === "undefined" || !MediaSource.isTypeSupported("audio/mpeg")) {
+        resolve({ ok: false, started: false });   // MSE 미지원 → 블로킹 폴백
+        return;
+      }
+      const chars: string[] = [];
+      const starts: number[] = [];
+      const queue: ArrayBuffer[] = [];
+      const ms = new MediaSource();
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(ms);
+      ttsAudioRef.current = audio;
+
+      let sb: SourceBuffer | null = null;
+      let streamDone = false;
+      let settled = false;
+      let started = false;
+      let lipRaf = 0;
+      const ac = new AbortController();
+
+      const pump = () => {
+        if (!sb || sb.updating) return;
+        if (queue.length) {
+          try {
+            sb.appendBuffer(queue.shift()!);
+          } catch {
+            /* QuotaExceeded 등 — 다음 updateend에서 재시도 */
+          }
+        } else if (streamDone && ms.readyState === "open") {
+          try {
+            ms.endOfStream();
+          } catch {
+            /* noop */
+          }
+        }
+      };
+
+      const drive = () => {
+        const t = audio.currentTime;
+        let spoken = 0;
+        for (let i = 0; i < starts.length; i++) {
+          if (starts[i] <= t) spoken = i + 1;
+          else break;
+        }
+        setActiveSyllable(spoken > 0 ? chars[spoken - 1] : "");
+        if (onReveal && cleanLen > 0) {
+          const frac = Math.min(1, spoken / cleanLen);
+          const revealed = text.slice(0, Math.ceil(text.length * frac));
+          if (revealed) onReveal(revealed);
+        }
+        lipRaf = requestAnimationFrame(drive);
+      };
+
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(lipRaf);
+        ac.abort();
+        clearMouth();
+        setIsSpeaking(false);
+        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        try {
+          URL.revokeObjectURL(audio.src);
+        } catch {
+          /* noop */
+        }
+        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
+        resolve({ ok, started });
+      };
+
+      audio.onplay = () => {
+        started = true;
+        setIsSpeaking(true);
+        lipRaf = requestAnimationFrame(drive);
+      };
+      audio.onended = () => finish(true);
+      audio.onerror = () => finish(started);   // 일부 재생됐으면 폴백 막음(true)
+
+      ms.addEventListener("sourceopen", () => {
+        try {
+          sb = ms.addSourceBuffer("audio/mpeg");
+        } catch {
+          finish(false);
+          return;
+        }
+        sb.addEventListener("updateend", pump);
+        void readStream();
+      });
+
+      async function readStream() {
+        try {
+          const resp = await fetch(streamUrl, { signal: ac.signal });
+          if (!resp.ok || !resp.body) {
+            finish(false);
+            return;
+          }
+          const reader = resp.body.getReader();
+          const dec = new TextDecoder();
+          let acc = "";
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            acc += dec.decode(value, { stream: true });
+            let nl: number;
+            while ((nl = acc.indexOf("\n")) >= 0) {
+              const line = acc.slice(0, nl).trim();
+              acc = acc.slice(nl + 1);
+              if (!line) continue;
+              const obj = JSON.parse(line) as { a?: string; c?: string[]; t?: number[] };
+              if (Array.isArray(obj.c) && Array.isArray(obj.t)) {
+                for (let i = 0; i < obj.c.length; i++) {
+                  chars.push(obj.c[i]);
+                  starts.push(obj.t[i]);
+                }
+              }
+              if (obj.a) {
+                const bin = atob(obj.a);
+                const ab = new ArrayBuffer(bin.length);
+                const u8 = new Uint8Array(ab);
+                for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                queue.push(ab);
+                pump();
+                if (!started) audio.play().catch(() => {});   // 첫 청크 도착하면 재생 시작
+              }
+            }
+          }
+          streamDone = true;
+          pump();
+          if (!started && chars.length === 0) finish(false);   // 빈 응답(합성 실패) → 폴백
+        } catch {
+          if (!started) finish(false);   // 시작 전 끊김 → 폴백 (중단이면 onerror가 처리)
+        }
+      }
+    });
+  }
+
   async function speakWithAzure(
     text: string,
     onReveal?: (revealed: string) => void,
     isCancelled?: () => boolean,
   ): Promise<boolean> {
-    try {
-      if (ttsAudioRef.current) {
-        ttsAudioRef.current.pause();
-        ttsAudioRef.current = null;
-      }
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
 
+    // 1) 타임스탬프 스트리밍(구단 보이스) — 통문장 1콜 그대로(사투리 유지), 첫 소리까지 대기 최소화.
+    //    prepare: 토큰+정제길이 / stream: 오디오+글자타임스탬프(NDJSON)를 MSE로 progressive 재생.
+    try {
+      const pr = await fetch(apiUrl("/tts/prepare"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, team_code: favTeamCode || null }),
+      });
+      if (pr.ok) {
+        const pd = await pr.json();
+        if (isCancelled?.()) return true;
+        if (pd.token && !pd.fallback) {
+          const url = apiUrl(`/tts/stream?token=${encodeURIComponent(pd.token)}`);
+          const r = await playTimestampedStream(url, text, pd.cleanLen || text.length, onReveal);
+          // 정상종료 or 일부라도 재생됨 → 디바이스 음성으로 중복 재생하지 않음.
+          if (r.ok || r.started) return true;
+          // 재생 전 실패(빈 응답·MSE 미지원 등)만 → 아래 블로킹으로 폴백.
+        }
+      }
+    } catch (err) {
+      console.warn("[TTS] stream prepare failed; trying blocking", err);
+    }
+
+    // 2) 블로킹 경로 — 표준어팀(Azure 단독) 또는 스트리밍 실패 시(ElevenLabs 통째 base64).
+    try {
+      if (isCancelled?.()) return true;
       const resp = await fetch(apiUrl("/tts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, team_code: favTeamCode || null }),
       });
       if (!resp.ok) return false;
-
       const data = await resp.json();
       if (!data.audio) return false;
-      // 응답을 받는 사이 중단됐으면 재생하지 않음(폴백도 막기 위해 처리완료로 반환).
       if (isCancelled?.()) return true;
-
       const visemes: Array<{ offset: number; id: number }> = Array.isArray(data.visemes)
         ? data.visemes
         : [];
-      const boundaries: Array<{ offset: number; textOffset: number; length: number }> =
-        Array.isArray(data.boundaries) ? data.boundaries : [];
+      const azEndMs = visemes.length ? visemes[visemes.length - 1].offset : 0;
       const audio = new Audio(`data:${data.mime || "audio/mpeg"};base64,${data.audio}`);
-      ttsAudioRef.current = audio;
-
-      return await new Promise<boolean>((resolve) => {
-        let settled = false;
-        let lipRaf = 0;
-
-        const driveLipSync = () => {
-          const tMs = audio.currentTime * 1000;
-          let activeId = 0;
-          for (let i = 0; i < visemes.length; i++) {
-            if (visemes[i].offset <= tMs) activeId = visemes[i].id;
-            else break;
-          }
-          setActiveViseme(activeId);
-          // 음성 진행에 맞춰 텍스트를 드러냄 — 단어경계 우선, 없으면 시간 비례로 폴백
-          if (onReveal) {
-            let revealed = "";
-            if (boundaries.length) {
-              let end = 0;
-              for (let i = 0; i < boundaries.length; i++) {
-                if (boundaries[i].offset <= tMs) end = Math.max(end, boundaries[i].textOffset + boundaries[i].length);
-                else break;
-              }
-              revealed = text.slice(0, end);
-            } else if (audio.duration) {
-              const ratio = Math.min(1, audio.currentTime / audio.duration);
-              revealed = text.slice(0, Math.floor(text.length * ratio));
-            }
-            if (revealed) onReveal(revealed);
-          }
-          lipRaf = requestAnimationFrame(driveLipSync);
-        };
-
-        const finish = (ok: boolean) => {
-          if (settled) return;
-          settled = true;
-          cancelAnimationFrame(lipRaf);
-          clearMouth();
-          setIsSpeaking(false);
-          if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
-          if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
-          resolve(ok);
-        };
-
-        audio.onplay = () => {
-          setIsSpeaking(true);
-          lipRaf = requestAnimationFrame(driveLipSync);
-        };
-        audio.onended = () => finish(true);
-        audio.onerror = () => finish(false);
-        audio.play().catch(() => finish(false));
-      });
+      const r = await playTtsAudio(audio, text, visemes, azEndMs, 0, onReveal);
+      return r.ok || r.started;
     } catch (err) {
-      console.warn("[TTS] Azure failed; falling back to device speech", err);
+      console.warn("[TTS] blocking failed; falling back to device speech", err);
       return false;
     }
   }
@@ -647,14 +827,8 @@ export function MainViewV2({
       }
     };
 
-    // 1) 스트리밍 음성 파이프라인 — 첫 문장부터 바로 재생(대기 최소화)
-    const streamed = await speakAnswerStream(question, revealWithGreet);
-    if (streamed.ok) {
-      setBot(streamed.text);
-      return;
-    }
-
-    // 2) 폴백 — 스트림 실패 시 기존 경로(전체 답변 받고 한 번에 음성)
+    // 통문장 — 답변 전체를 한 번에 합성해야 ElevenLabs가 문맥을 보고 사투리 억양을 살린다.
+    // (청킹은 문장마다 따로 합성돼 억양이 평평해져 표준어처럼 들림 → 사용 안 함)
     const answer = await fetchAnswer(question);
     await speakAnswer(answer, revealWithGreet);
     setBot(answer);
