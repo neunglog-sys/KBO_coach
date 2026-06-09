@@ -202,6 +202,9 @@ export function MainViewV2({
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio 스트리밍 재생 정지 핸들 — stopSpeaking이 즉시 멈추도록.
+  const audioStopRef = useRef<(() => void) | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const overlayCloseTimerRef = useRef<number | null>(null);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
@@ -369,59 +372,82 @@ export function MainViewV2({
     });
   }
 
-  // 타임스탬프 스트리밍 재생(구단 보이스). MediaSource로 mp3 청크를 먹여 progressive 재생하고,
-  // ElevenLabs 글자 타임스탬프(c=글자, t=시작초)로 자막·입모양을 '실제 음성' 기준 정확히 맞춘다.
+  // 타임스탬프 스트리밍 재생(구단 보이스) — Web Audio API로 PCM 청크를 gapless 스케줄 재생.
+  // MSE(mp3)는 안드 WebView에서 안 먹혀서 Web Audio+PCM으로. ElevenLabs 글자 타임스탬프
+  // (c=글자, t=시작초)로 자막·입모양을 '실제 음성' 기준 정확히 맞춘다.
   //   - 자막: 발음된 글자 수/정제길이(cleanLen) 비율을 원본 텍스트에 적용(원본 표시 유지).
   //   - 입모양: 지금 발음 중인 글자의 모음으로 setActiveSyllable.
-  // MSE 미지원/빈 응답이면 {ok:false, started:false} → 호출부가 블로킹으로 폴백.
-  function playTimestampedStream(
+  // Web Audio 미지원/빈 응답이면 {ok:false, started:false} → 호출부가 블로킹으로 폴백.
+  function playWebAudioStream(
     streamUrl: string,
     text: string,
     cleanLen: number,
+    sampleRate: number,
     onReveal?: (revealed: string) => void,
+    isCancelled?: () => boolean,
   ): Promise<{ ok: boolean; started: boolean }> {
     return new Promise((resolve) => {
-      if (typeof MediaSource === "undefined" || !MediaSource.isTypeSupported("audio/mpeg")) {
-        resolve({ ok: false, started: false });   // MSE 미지원 → 블로킹 폴백
+      let ctx = audioCtxRef.current;
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AC) {
+          resolve({ ok: false, started: false });   // Web Audio 미지원 → 블로킹 폴백
+          return;
+        }
+        if (!ctx) {
+          ctx = new AC();
+          audioCtxRef.current = ctx;
+        }
+      } catch {
+        resolve({ ok: false, started: false });
         return;
       }
+      const audioCtx = ctx;
+      void audioCtx.resume().catch(() => {});   // 자동재생 정책: 제스처 후 재개
+
       const chars: string[] = [];
       const starts: number[] = [];
-      const queue: ArrayBuffer[] = [];
-      const ms = new MediaSource();
-      const audio = new Audio();
-      audio.src = URL.createObjectURL(ms);
-      ttsAudioRef.current = audio;
-
-      let sb: SourceBuffer | null = null;
+      const sources: AudioBufferSourceNode[] = [];
+      let leftover = new Uint8Array(0);   // 홀수바이트 경계 이월
+      let originTime = 0;                  // 재생 시작 ctx 시각(playbackTime 기준)
+      let nextTime = 0;                    // 다음 청크 스케줄 시각
+      let endTime = 0;                     // 마지막 청크 끝나는 시각
       let streamDone = false;
-      let settled = false;
       let started = false;
-      let lipRaf = 0;
+      let settled = false;
+      let raf = 0;
       const ac = new AbortController();
 
-      const pump = () => {
-        if (!sb || sb.updating) return;
-        if (queue.length) {
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(raf);
+        ac.abort();
+        for (const s of sources) {
           try {
-            sb.appendBuffer(queue.shift()!);
+            s.onended = null;
+            s.stop();
           } catch {
-            /* QuotaExceeded 등 — 다음 updateend에서 재시도 */
-          }
-        } else if (streamDone && ms.readyState === "open") {
-          try {
-            ms.endOfStream();
-          } catch {
-            /* noop */
+            /* 이미 끝남 */
           }
         }
+        audioStopRef.current = null;
+        clearMouth();
+        setIsSpeaking(false);
+        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
+        resolve({ ok, started });
       };
+      audioStopRef.current = () => finish(started);   // stopSpeaking이 즉시 호출
 
       const drive = () => {
-        const t = audio.currentTime;
+        if (isCancelled?.()) {
+          finish(started);
+          return;
+        }
+        const tt = started ? Math.max(0, audioCtx.currentTime - originTime) : 0;
         let spoken = 0;
         for (let i = 0; i < starts.length; i++) {
-          if (starts[i] <= t) spoken = i + 1;
+          if (starts[i] <= tt) spoken = i + 1;
           else break;
         }
         setActiveSyllable(spoken > 0 ? chars[spoken - 1] : "");
@@ -430,46 +456,49 @@ export function MainViewV2({
           const revealed = text.slice(0, Math.ceil(text.length * frac));
           if (revealed) onReveal(revealed);
         }
-        lipRaf = requestAnimationFrame(drive);
-      };
-
-      const finish = (ok: boolean) => {
-        if (settled) return;
-        settled = true;
-        cancelAnimationFrame(lipRaf);
-        ac.abort();
-        clearMouth();
-        setIsSpeaking(false);
-        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
-        try {
-          URL.revokeObjectURL(audio.src);
-        } catch {
-          /* noop */
-        }
-        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
-        resolve({ ok, started });
-      };
-
-      audio.onplay = () => {
-        started = true;
-        setIsSpeaking(true);
-        lipRaf = requestAnimationFrame(drive);
-      };
-      audio.onended = () => finish(true);
-      audio.onerror = () => finish(started);   // 일부 재생됐으면 폴백 막음(true)
-
-      ms.addEventListener("sourceopen", () => {
-        try {
-          sb = ms.addSourceBuffer("audio/mpeg");
-        } catch {
-          finish(false);
+        // 종료: 스트림 다 받았고 재생이 마지막 청크 끝을 지남
+        if (streamDone && started && audioCtx.currentTime >= endTime - 0.02) {
+          finish(true);
           return;
         }
-        sb.addEventListener("updateend", pump);
-        void readStream();
-      });
+        raf = requestAnimationFrame(drive);
+      };
 
-      async function readStream() {
+      const schedulePcm = (incoming: Uint8Array) => {
+        let data = incoming;
+        if (leftover.length) {   // 이전 홀수바이트와 합쳐 int16 경계 정렬
+          const merged = new Uint8Array(leftover.length + incoming.length);
+          merged.set(leftover, 0);
+          merged.set(incoming, leftover.length);
+          data = merged;
+          leftover = new Uint8Array(0);
+        }
+        const usable = data.length - (data.length % 2);
+        if (usable < data.length) leftover = data.slice(usable);
+        if (usable <= 0) return;
+        const n = usable / 2;
+        const dv = new DataView(data.buffer, data.byteOffset, usable);
+        const buf = audioCtx.createBuffer(1, n, sampleRate);
+        const chData = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) chData[i] = dv.getInt16(i * 2, true) / 32768;
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        if (!started) {
+          started = true;
+          setIsSpeaking(true);
+          originTime = audioCtx.currentTime + 0.08;   // 약간의 리드(과거 스케줄 방지)
+          nextTime = originTime;
+          raf = requestAnimationFrame(drive);
+        }
+        const startAt = Math.max(nextTime, audioCtx.currentTime);
+        src.start(startAt);
+        nextTime = startAt + buf.duration;
+        endTime = nextTime;
+        sources.push(src);
+      };
+
+      (async () => {
         try {
           const resp = await fetch(streamUrl, { signal: ac.signal });
           if (!resp.ok || !resp.body) {
@@ -497,22 +526,18 @@ export function MainViewV2({
               }
               if (obj.a) {
                 const bin = atob(obj.a);
-                const ab = new ArrayBuffer(bin.length);
-                const u8 = new Uint8Array(ab);
+                const u8 = new Uint8Array(bin.length);
                 for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-                queue.push(ab);
-                pump();
-                if (!started) audio.play().catch(() => {});   // 첫 청크 도착하면 재생 시작
+                schedulePcm(u8);
               }
             }
           }
           streamDone = true;
-          pump();
-          if (!started && chars.length === 0) finish(false);   // 빈 응답(합성 실패) → 폴백
+          if (!started) finish(false);   // 빈 응답(합성 실패) → 폴백. started면 drive가 종료 처리.
         } catch {
-          if (!started) finish(false);   // 시작 전 끊김 → 폴백 (중단이면 onerror가 처리)
+          if (!started) finish(false);   // 시작 전 끊김 → 폴백
         }
-      }
+      })();
     });
   }
 
@@ -525,9 +550,10 @@ export function MainViewV2({
       ttsAudioRef.current.pause();
       ttsAudioRef.current = null;
     }
+    audioStopRef.current?.();   // 이전 Web Audio 스트림 정지
 
     // 1) 타임스탬프 스트리밍(구단 보이스) — 통문장 1콜 그대로(사투리 유지), 첫 소리까지 대기 최소화.
-    //    prepare: 토큰+정제길이 / stream: 오디오+글자타임스탬프(NDJSON)를 MSE로 progressive 재생.
+    //    prepare: 토큰+정제길이 / stream: PCM+글자타임스탬프(NDJSON)를 Web Audio로 progressive 재생.
     try {
       const pr = await fetch(apiUrl("/tts/prepare"), {
         method: "POST",
@@ -539,10 +565,12 @@ export function MainViewV2({
         if (isCancelled?.()) return true;
         if (pd.token && !pd.fallback) {
           const url = apiUrl(`/tts/stream?token=${encodeURIComponent(pd.token)}`);
-          const r = await playTimestampedStream(url, text, pd.cleanLen || text.length, onReveal);
+          const r = await playWebAudioStream(
+            url, text, pd.cleanLen || text.length, pd.sampleRate || 24000, onReveal, isCancelled,
+          );
           // 정상종료 or 일부라도 재생됨 → 디바이스 음성으로 중복 재생하지 않음.
           if (r.ok || r.started) return true;
-          // 재생 전 실패(빈 응답·MSE 미지원 등)만 → 아래 블로킹으로 폴백.
+          // 재생 전 실패(빈 응답·Web Audio 미지원 등)만 → 아래 블로킹으로 폴백.
         }
       }
     } catch (err) {
@@ -814,6 +842,19 @@ export function MainViewV2({
 
     setChatCollapsed(false); // 메시지 보내면 접혀있어도 펼쳐서 답변을 보이게
 
+    // Web Audio 잠금 해제 — 제스처(전송) 시점에 AudioContext 생성·재개해 두면
+    // 안드 WebView 자동재생 정책으로 스트리밍 음성이 suspended로 멈추는 것 방지.
+    try {
+      const AC = window.AudioContext
+        || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AC) {
+        if (!audioCtxRef.current) audioCtxRef.current = new AC();
+        void audioCtxRef.current.resume().catch(() => {});
+      }
+    } catch {
+      /* Web Audio 미지원 — 블로킹 폴백이 받음 */
+    }
+
     const baseId = Date.now();
     const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
@@ -851,6 +892,7 @@ export function MainViewV2({
   // 모든 TTS(오디오 엘리먼트 / 네이티브 / 웹 음성)를 즉시 중단 + 입모양 정리.
   function stopSpeaking() {
     speakTokenRef.current++; // 진행 중/예정된 발화를 무효화 (폴백 음성 race 방지)
+    audioStopRef.current?.(); // Web Audio 스트리밍 재생 즉시 중단
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
       ttsAudioRef.current.src = "";
