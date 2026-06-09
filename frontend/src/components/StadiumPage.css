@@ -60,13 +60,15 @@
 }
 
 .stadium-page-top-menu {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 5px;
   margin-bottom: 14px;
   border-radius: 22px;
   padding: 12px 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--color-card, #fff);
   box-shadow: 0 10px 28px rgba(39, 103, 158, 0.13);
 }
 
@@ -131,17 +133,20 @@
 }
 
 .stadium-page-search {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 68px 76px;
   gap: 8px;
   margin-bottom: 14px;
   border-radius: 18px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-card, #fff);
   box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
 }
 
 .stadium-page-search label {
+  position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -149,6 +154,42 @@
   border-radius: 12px;
   padding: 0 10px;
   background: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* focus 시 border 색상 유지, 파란 outline/ring 제거 */
+.stadium-page-search label:focus-within {
+  border-color: #d7e5f2 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* focus 시 전체 문장을 오른쪽→왼쪽으로 흘려 보여주는 marquee 플레이스홀더 */
+.stadium-search-marquee {
+  position: absolute;
+  top: 0;
+  /* label 좌측 padding(10px) + 검색 아이콘(22px) + input 좌측 padding(8px) */
+  left: 40px;
+  right: 10px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stadium-search-marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--color-placeholder, #888);
+  font-size: 0.86rem;
+  animation: stadium-search-marquee-scroll 6s ease-in-out infinite;
+}
+
+@keyframes stadium-search-marquee-scroll {
+  0%       { transform: translateX(0); }       /* 즉시 시작 */
+  40%, 68% { transform: translateX(-180px); }  /* 전체 문장 노출, 잠시 유지 */
+  100%     { transform: translateX(0); }        /* 처음으로 복귀 */
 }
 
 .stadium-page-search label svg {
@@ -162,11 +203,21 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  outline: 0;
+  outline: none !important;
+  box-shadow: none !important;
   padding: 13px 8px;
   color: #0a1732;
   background: transparent;
   font-size: 0.86rem;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stadium-page-search input:focus,
+.stadium-page-search input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .stadium-page-search button {
@@ -192,13 +243,15 @@
 }
 
 .stadium-page-team-list {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: -5px 0 14px;
   border-radius: 18px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--color-card, #fff);
   box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
 }
 
@@ -219,6 +272,8 @@
 }
 
 .stadium-page-notice {
+  position: relative;
+  z-index: 1;
   margin: -4px 4px 12px;
   color: #1267e8;
   font-size: 0.78rem;
@@ -228,13 +283,15 @@
 }
 
 .stadium-page-tabs {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   margin-bottom: 14px;
   border-radius: 18px;
   padding: 5px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-card, #fff);
   box-shadow: 0 8px 22px rgba(39, 103, 158, 0.1);
 }
 

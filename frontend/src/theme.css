@@ -844,6 +844,10 @@ html.theme-dark .attendance-window:has(.tamagotchi-setup-panel) .attendance-pane
   border-color: var(--color-border);
 }
 
+html.theme-dark .tamagotchi-page-title h1 {
+  color: var(--color-text);
+}
+
 html.theme-dark .tamagotchi-setup-card h2,
 html.theme-dark .tamagotchi-gender-card,
 html.theme-dark .tamagotchi-nickname-field span,
