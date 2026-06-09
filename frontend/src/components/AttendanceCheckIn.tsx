@@ -78,7 +78,7 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 //   true  = 테스트 패널 표시(레벨·구단을 직접 바꿔 캐릭터 확인) → 팀원 확인용
 //   false = 패널 숨김, 실제 레벨·응원팀으로 동작 → 발표·배포용
 //   git에 올릴 땐 false 권장. 테스트할 때만 true 로 바꾸세요.
-const SHOW_TEST_PANEL = false;
+const SHOW_TEST_PANEL = true;
 
 // =====================================================================
 // 캐릭터 이미지 경로 만들기
