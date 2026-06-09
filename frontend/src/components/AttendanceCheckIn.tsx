@@ -24,6 +24,7 @@ import {
 } from "../data/tamagotchiState";
 import { AppBackButton } from "./AppBackButton";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
   level: number;
@@ -50,7 +51,7 @@ interface QuizResult {
 }
 
 // 'man' = 남자, 'girl' = 여자. 아직 안 고르면 null.
-type Gender = "man" | "girl" | null;
+export type Gender = "man" | "girl" | null;
 
 interface AttendanceCheckInProps {
   authToken: string;
@@ -83,18 +84,19 @@ const SHOW_TEST_PANEL = false;
 // =====================================================================
 // 캐릭터 이미지 경로 만들기
 //  규칙: /character/{팀}_{단계}_{성별}.png
-//   - 1레벨(무소속): default_{성별}.png   ← 예외(팀·단계 없음)
-//   - 2~4레벨: {팀}_child_{성별}.png  (팀 없으면 default_child_{성별}.png)
-//   - 5레벨↑: {팀}_adult_{성별}.png  (팀 없으면 default_adult_{성별}.png)
+//   - 무소속(구단 없음): 레벨과 무관하게 default_{성별}.png  ← 무소속은 단계 이미지 없음
+//   - 구단 있음 2~4레벨: {팀}_child_{성별}.png
+//   - 구단 있음 5레벨↑: {팀}_adult_{성별}.png
 //  ※ 파일이 아직 없으면 <img onError>에서 default로 대체합니다.
 // =====================================================================
-function getCharacterImage(level: number, teamCode: string | null | undefined, gender: Gender): string {
+export function getCharacterImage(level: number, teamCode: string | null | undefined, gender: Gender): string {
   const g = gender === "girl" ? "girl" : "man";
-  if (level <= 1) {
-    return `/character/default_${g}.png`; // 1레벨 예외 처리
+  const team = teamCode && teamCode.trim() !== "" ? teamCode.trim() : "";
+  // 무소속(구단 없음)이거나 1레벨이면 기본 캐릭터 사용
+  if (!team || level <= 1) {
+    return `/character/default_${g}.png`;
   }
   const stage = level >= 5 ? "adult" : "child"; // 2~4=child, 5↑=adult
-  const team = teamCode && teamCode.trim() !== "" ? teamCode.trim() : "default";
   return `/character/${team}_${stage}_${g}.png`;
 }
 
@@ -105,9 +107,9 @@ function getCharacterImage(level: number, teamCode: string | null | undefined, g
 //    레벨3: 글러브(normal) / 레벨4: 배트(normal) / 레벨7: 야구공(high)
 //    레벨8: 배트(high, 4레벨 배트 교체) / 레벨9: 글러브(high, 3레벨 글러브 교체)
 // =====================================================================
-interface RewardItem { src: string; name: string; }
+export interface RewardItem { src: string; name: string; }
 
-const LEVEL_REWARDS: Record<number, RewardItem> = {
+export const LEVEL_REWARDS: Record<number, RewardItem> = {
   3: { src: "/equipment/glove_normal_level.png", name: "글러브" },
   4: { src: "/equipment/bat_normal_level.png", name: "배트" },
   7: { src: "/equipment/ball_high_level.png", name: "고급 야구공" },
@@ -116,7 +118,7 @@ const LEVEL_REWARDS: Record<number, RewardItem> = {
 };
 
 // 현재 레벨 기준으로 보유 중인 아이템(슬롯별 최상위 버전)을 계산
-function getOwnedItems(level: number): RewardItem[] {
+export function getOwnedItems(level: number): RewardItem[] {
   const items: RewardItem[] = [];
   // 야구공
   if (level >= 7) items.push(LEVEL_REWARDS[7]);
@@ -358,6 +360,10 @@ export default function AttendanceCheckIn({
   // 테스트 패널용 값 (SHOW_TEST_PANEL=true 일 때만 사용)
   const [testLevel, setTestLevel] = useState(1);
   const [testTeam, setTestTeam] = useState(""); // "" = 무소속(default)
+  const [testGender, setTestGender] = useState<Gender>("man"); // 테스트용 성별
+
+  // 꾸미기(라커룸) 오버레이 열림 여부
+  const [showLocker, setShowLocker] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -367,15 +373,18 @@ export default function AttendanceCheckIn({
     [status.xp],
   );
 
-  const displayLevel = status.level || 1;
-  const displayProgress = progress;
+  // 짝꿍 별명 (dev에서 추가됨)
   const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
   const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
+  const charGender = SHOW_TEST_PANEL ? testGender : gender;
+
+  const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 3);
+  const displayProgress = SHOW_TEST_PANEL ? 0 : (progress || 60);
   const characterSrc = useMemo(
-    () => getCharacterImage(charLevel, charTeam, gender),
-    [charLevel, charTeam, gender],
+    () => getCharacterImage(charLevel, charTeam, charGender),
+    [charLevel, charTeam, charGender],
   );
 
   useEffect(() => {
@@ -734,7 +743,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleDecorate() {
-    setNotice("꾸미기는 준비 중이에요.");
+    setShowLocker(true);
   }
 
   const currentQuestion = quizQuestions[currentQuizIdx] ?? null;
@@ -848,7 +857,33 @@ export default function AttendanceCheckIn({
         </div>
       </section>
 
-      <section className="tamagotchi-field-card" aria-label="캐릭터 영역">
+      <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
+        {/* 좌측 보유 아이템 컬렉션 (레벨업 보상으로 획득한 장비) */}
+        {ownedItems.length > 0 ? (
+          <div
+            style={{
+              position: "absolute", left: 10, top: 10,
+              display: "flex", flexDirection: "column", gap: 8, zIndex: 2,
+            }}
+          >
+            {ownedItems.map((item) => (
+              <img
+                key={item.src}
+                src={item.src}
+                alt={item.name}
+                title={item.name}
+                style={{
+                  width: 56, height: 56, objectFit: "contain",
+                  background: "rgba(255,255,255,0.85)",
+                  border: "1px solid #e2e8f0", borderRadius: 12, padding: 5,
+                  animation: "itemPopIn 0.3s ease",
+                }}
+                onError={(e) => { (e.currentTarget.style.display = "none"); }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         <div className="tamagotchi-speech-bubble">
           {dailyState.speechText}
         </div>
@@ -859,6 +894,122 @@ export default function AttendanceCheckIn({
           onError={() => setImgFailed(true)}
         />
       </section>
+
+      {/* ===== 테스트 패널 (SHOW_TEST_PANEL=true 일 때만 보임 / 배포 시 false) ===== */}
+      {SHOW_TEST_PANEL ? (
+        <section
+          aria-label="테스트 패널"
+          style={{
+            margin: "12px 0",
+            padding: "12px 14px",
+            border: "1px dashed #c084fc",
+            borderRadius: 12,
+            background: "#faf5ff",
+            fontSize: 13,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#9333ea", marginBottom: 10 }}>
+            🧪 테스트 패널 (배포 시 SHOW_TEST_PANEL=false)
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>레벨</span>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={testLevel}
+              onChange={(e) => setTestLevel(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <strong style={{ width: 24, textAlign: "right" }}>{testLevel}</strong>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>구단</span>
+            <select
+              value={testTeam}
+              onChange={(e) => setTestTeam(e.target.value)}
+              style={{ flex: 1, padding: "4px 6px", borderRadius: 6 }}
+            >
+              <option value="">무소속(default)</option>
+              <option value="HT">KIA (HT)</option>
+              <option value="SS">삼성 (SS)</option>
+              <option value="HH">한화 (HH)</option>
+              <option value="LT">롯데 (LT)</option>
+              <option value="LG">LG (LG)</option>
+              <option value="OB">두산 (OB)</option>
+              <option value="SK">SSG (SK)</option>
+              <option value="NC">NC (NC)</option>
+              <option value="KT">KT (KT)</option>
+              <option value="WO">키움 (WO)</option>
+            </select>
+          </div>
+
+          {/* 성별 선택: 남/녀 캐릭터가 잘 뜨는지 확인 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>성별</span>
+            <div style={{ display: "flex", gap: 8, flex: 1 }}>
+              <button
+                type="button"
+                onClick={() => setTestGender("man")}
+                style={{
+                  flex: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer",
+                  border: testGender === "man" ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                  background: testGender === "man" ? "#dbeafe" : "#fff",
+                  fontWeight: testGender === "man" ? 700 : 400,
+                }}
+              >
+                👦 남자
+              </button>
+              <button
+                type="button"
+                onClick={() => setTestGender("girl")}
+                style={{
+                  flex: 1, padding: "6px 0", borderRadius: 8, cursor: "pointer",
+                  border: testGender === "girl" ? "2px solid #db2777" : "1px solid #cbd5e1",
+                  background: testGender === "girl" ? "#fce7f3" : "#fff",
+                  fontWeight: testGender === "girl" ? 700 : 400,
+                }}
+              >
+                👧 여자
+              </button>
+            </div>
+          </div>
+
+          {/* 5레벨 성인 전환 빠른 확인: child(4레벨) ↔ adult(5레벨) 토글 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+            <span style={{ width: 32, color: "#6b7280" }}>단계</span>
+            <button
+              type="button"
+              onClick={() => setTestLevel(1)}
+              style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel <= 1 ? "#ede9fe" : "#fff" }}
+            >
+              1레벨(default)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTestLevel(4)}
+              style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: (charLevel >= 2 && charLevel <= 4) ? "#ede9fe" : "#fff" }}
+            >
+              4레벨(child)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTestLevel(5)}
+              style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel >= 5 ? "#ede9fe" : "#fff" }}
+            >
+              5레벨(adult)
+            </button>
+          </div>
+
+          <div style={{ marginTop: 10, color: "#6b7280", fontSize: 12 }}>
+            성별: {charGender === "girl" ? "여자(girl)" : "남자(man)"}
+            {" · "}단계: {(!charTeam || charLevel <= 1) ? "default(기본)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
+            {" · "}경로: <code>{characterSrc}</code>
+          </div>
+        </section>
+      ) : null}
 
       <div className="tamagotchi-actions">
         <button
@@ -988,6 +1139,81 @@ export default function AttendanceCheckIn({
         <strong>연속 출석:</strong>
         <b>{status.streak}일째</b>
       </div>
+
+      {/* ===== 꾸미기: 라커룸 도감 오버레이 ===== */}
+      {showLocker ? (
+        <LockerRoom
+          level={charLevel}
+          teamCode={charTeam}
+          gender={charGender}
+          onClose={() => setShowLocker(false)}
+        />
+      ) : null}
+
+      {/* ===== 레벨업 보상 획득 팝업 ===== */}
+      {rewardPopup ? (
+        <div
+          role="dialog"
+          aria-label="아이템 획득"
+          onClick={dismissReward}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 20, padding: "28px 32px",
+              textAlign: "center", maxWidth: "80vw",
+              animation: "rewardPop 0.4s ease",
+            }}
+          >
+            <div style={{ fontSize: 14, color: "#9333ea", fontWeight: 700, marginBottom: 12 }}>
+              🎉 새 아이템 획득!
+            </div>
+            <img
+              src={rewardPopup.src}
+              alt={rewardPopup.name}
+              style={{ width: 120, height: 120, objectFit: "contain", animation: "rewardSpin 0.6s ease" }}
+              onError={(e) => { (e.currentTarget.style.display = "none"); }}
+            />
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12 }}>
+              {rewardPopup.name}
+            </div>
+            <div style={{ fontSize: 15, color: "#374151", marginTop: 4 }}>
+              획득하셨어요!
+            </div>
+            <button
+              type="button"
+              onClick={dismissReward}
+              style={{
+                marginTop: 18, padding: "8px 24px", border: "none",
+                borderRadius: 999, background: "#9333ea", color: "#fff",
+                fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <style>{`
+        @keyframes rewardPop {
+          0% { transform: scale(0.6); opacity: 0; }
+          60% { transform: scale(1.08); opacity: 1; }
+          100% { transform: scale(1); }
+        }
+        @keyframes rewardSpin {
+          0% { transform: rotate(-12deg) scale(0.7); }
+          100% { transform: rotate(0deg) scale(1); }
+        }
+        @keyframes itemPopIn {
+          0% { transform: scale(0); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </section>
   );
 }
