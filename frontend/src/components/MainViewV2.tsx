@@ -141,6 +141,8 @@ export function MainViewV2({
   const [isListening, setIsListening] = useState(false);
   // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
   const [inputFocused, setInputFocused] = useState(false);
+  // 채팅 시트 접힘 여부 — 손잡이를 아래로 끌면 메시지 영역을 접어 캐릭터를 더 보이게 한다.
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
   const [greetSignal, setGreetSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
@@ -203,6 +205,8 @@ export function MainViewV2({
   const overlayCloseTimerRef = useRef<number | null>(null);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
+  // 채팅 시트 손잡이 드래그 시작 Y좌표 (아래로 끌면 접기 / 위로 끌면 펼치기)
+  const chatDragStartY = useRef<number | null>(null);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -808,6 +812,8 @@ export function MainViewV2({
     const question = raw.trim();
     if (!question) return;
 
+    setChatCollapsed(false); // 메시지 보내면 접혀있어도 펼쳐서 답변을 보이게
+
     const baseId = Date.now();
     const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
@@ -914,7 +920,35 @@ export function MainViewV2({
 
       <WeatherFx condition={weatherCondition} />
 
-      <section className="stage-chat" aria-label="야구 코치 채팅">
+      <section
+        className={`stage-chat ${chatCollapsed ? "is-collapsed" : ""}`}
+        aria-label="야구 코치 채팅"
+      >
+        {/* 손잡이: 아래로 끌면 접기 / 위로 끌면 펼치기 / 탭이면 토글 */}
+        <div
+          className="stage-chat-handle"
+          role="button"
+          tabIndex={0}
+          aria-label={chatCollapsed ? "채팅창 올리기" : "채팅창 내리기"}
+          onPointerDown={(e) => {
+            chatDragStartY.current = e.clientY;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerUp={(e) => {
+            const start = chatDragStartY.current;
+            chatDragStartY.current = null;
+            if (start == null) return;
+            const dy = e.clientY - start;
+            if (dy > 24) setChatCollapsed(true);
+            else if (dy < -24) setChatCollapsed(false);
+            else setChatCollapsed((v) => !v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setChatCollapsed((v) => !v);
+          }}
+        >
+          <span className="stage-chat-grip" aria-hidden="true" />
+        </div>
         <div className="stage-chatlog" ref={chatLogRef} aria-live="polite">
           {messages.map((message) => (
             <div key={message.id} className={`stage-msg ${message.type}`}>

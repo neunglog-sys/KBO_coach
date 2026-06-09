@@ -218,6 +218,41 @@
   display: none;
 }
 
+/* 채팅 시트 손잡이 (드래그로 접기/펼치기) */
+.stage-chat-handle {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: -6px;
+  padding: 4px 0 2px;
+  cursor: grab;
+  touch-action: none; /* 드래그 제스처가 스크롤로 새지 않게 */
+}
+.stage-chat-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(22, 35, 56, 0.2);
+}
+.stage-chat-handle:active {
+  cursor: grabbing;
+}
+
+/* 접힘: 메시지 로그를 부드럽게 접음(손잡이+입력바만 남음) */
+.stage-chatlog {
+  transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
+}
+.stage-chat.is-collapsed .stage-chatlog {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .stage-chatlog {
   display: flex;
   flex: 0 1 auto;
