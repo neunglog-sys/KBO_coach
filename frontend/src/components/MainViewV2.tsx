@@ -647,14 +647,8 @@ export function MainViewV2({
       }
     };
 
-    // 1) 스트리밍 음성 파이프라인 — 첫 문장부터 바로 재생(대기 최소화)
-    const streamed = await speakAnswerStream(question, revealWithGreet);
-    if (streamed.ok) {
-      setBot(streamed.text);
-      return;
-    }
-
-    // 2) 폴백 — 스트림 실패 시 기존 경로(전체 답변 받고 한 번에 음성)
+    // 통문장 합성 — 답변 전체를 받아 한 번에 음성(v3가 문맥을 살려 자연스러운 사투리 억양).
+    // 문장별 스트리밍(청킹)은 v3가 문맥을 못 받아 밋밋해져서 통문장으로 통일.
     const answer = await fetchAnswer(question);
     await speakAnswer(answer, revealWithGreet);
     setBot(answer);
