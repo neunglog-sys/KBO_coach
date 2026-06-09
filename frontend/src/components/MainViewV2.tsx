@@ -156,7 +156,7 @@ export function MainViewV2({
 
   // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
   useEffect(() => {
-    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => {});
+    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => { });
   }, []);
 
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
@@ -208,6 +208,9 @@ export function MainViewV2({
   const overlayCloseTimerRef = useRef<number | null>(null);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
+  // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
+  // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
+  const submitQuestionRef = useRef<(raw: string) => void>(() => { });
   // 채팅 시트 손잡이 드래그 시작 Y좌표 (아래로 끌면 접기 / 위로 끌면 펼치기)
   const chatDragStartY = useRef<number | null>(null);
 
@@ -248,7 +251,7 @@ export function MainViewV2({
     recognition.addEventListener("result", (event) => {
       const transcript = event.results[0]?.[0]?.transcript?.trim() ?? "";
       setIsListening(false);
-      if (transcript) void submitQuestion(transcript);
+      if (transcript) void submitQuestionRef.current(transcript);   // 최신 submitQuestion 사용
     });
     recognition.addEventListener("end", () => setIsListening(false));
     recognition.addEventListener("error", () => setIsListening(false));
@@ -403,7 +406,7 @@ export function MainViewV2({
         return;
       }
       const audioCtx = ctx;
-      void audioCtx.resume().catch(() => {});   // 자동재생 정책: 제스처 후 재개
+      void audioCtx.resume().catch(() => { });   // 자동재생 정책: 제스처 후 재개
 
       const chars: string[] = [];
       const starts: number[] = [];
@@ -508,7 +511,7 @@ export function MainViewV2({
           const reader = resp.body.getReader();
           const dec = new TextDecoder();
           let acc = "";
-          for (;;) {
+          for (; ;) {
             const { done, value } = await reader.read();
             if (done) break;
             acc += dec.decode(value, { stream: true });
@@ -777,7 +780,7 @@ export function MainViewV2({
       let buf = "";
       while (true) {
         if (cancelled()) {
-          reader.cancel().catch(() => {});
+          reader.cancel().catch(() => { });
           break;
         }
         const { value, done } = await reader.read();
@@ -849,7 +852,7 @@ export function MainViewV2({
         || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (AC) {
         if (!audioCtxRef.current) audioCtxRef.current = new AC();
-        void audioCtxRef.current.resume().catch(() => {});
+        void audioCtxRef.current.resume().catch(() => { });
       }
     } catch {
       /* Web Audio 미지원 — 블로킹 폴백이 받음 */
@@ -889,6 +892,11 @@ export function MainViewV2({
     void submitQuestion(input);
   }
 
+  // 음성인식 리스너가 항상 최신 submitQuestion(최신 favTeamCode)을 쓰도록 매 렌더마다 갱신.
+  useEffect(() => {
+    submitQuestionRef.current = submitQuestion;
+  });
+
   // 모든 TTS(오디오 엘리먼트 / 네이티브 / 웹 음성)를 즉시 중단 + 입모양 정리.
   function stopSpeaking() {
     speakTokenRef.current++; // 진행 중/예정된 발화를 무효화 (폴백 음성 race 방지)
@@ -898,7 +906,7 @@ export function MainViewV2({
       ttsAudioRef.current.src = "";
       ttsAudioRef.current = null;
     }
-    TextToSpeech.stop().catch(() => {}); // 네이티브(Capacitor) 음성 중단
+    TextToSpeech.stop().catch(() => { }); // 네이티브(Capacitor) 음성 중단
     window.speechSynthesis?.cancel();    // 웹 음성 중단
     clearMouth();
     setIsSpeaking(false);
