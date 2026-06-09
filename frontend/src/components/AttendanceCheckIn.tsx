@@ -22,7 +22,6 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import { AppBackButton } from "./AppBackButton";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import LockerRoom from "./LockerRoom";
 
@@ -79,7 +78,7 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 //   true  = 테스트 패널 표시(레벨·구단을 직접 바꿔 캐릭터 확인) → 팀원 확인용
 //   false = 패널 숨김, 실제 레벨·응원팀으로 동작 → 발표·배포용
 //   git에 올릴 땐 false 권장. 테스트할 때만 true 로 바꾸세요.
-const SHOW_TEST_PANEL = false;
+const SHOW_TEST_PANEL = true;
 
 // =====================================================================
 // 캐릭터 이미지 경로 만들기
@@ -107,15 +106,30 @@ export function getCharacterImage(level: number, teamCode: string | null | undef
 //    레벨3: 글러브(normal) / 레벨4: 배트(normal) / 레벨7: 야구공(high)
 //    레벨8: 배트(high, 4레벨 배트 교체) / 레벨9: 글러브(high, 3레벨 글러브 교체)
 // =====================================================================
-export interface RewardItem { src: string; name: string; }
+// teamBased: true면 팀마다 다른 이미지(모자/수건 등). 이 경우 src는 팀 없을 때(무소속) 쓰는 기본 이미지.
+// teamSuffix: 팀별 이미지 파일명 접미사 (예: "cap" → /equipment/{팀코드}_cap.png, "towel" → _towel.png)
+export interface RewardItem { src: string; name: string; teamBased?: boolean; teamSuffix?: string; }
 
 export const LEVEL_REWARDS: Record<number, RewardItem> = {
-  3: { src: "/equipment/glove_normal_level.png", name: "글러브" },
-  4: { src: "/equipment/bat_normal_level.png", name: "배트" },
+  3: { src: "/equipment/HT_towel.png", name: "응원 수건", teamBased: true, teamSuffix: "towel" },
+  4: { src: "/equipment/HT_cap.png", name: "모자", teamBased: true, teamSuffix: "cap" },
   7: { src: "/equipment/ball_high_level.png", name: "고급 야구공" },
   8: { src: "/equipment/bat_high_level.png", name: "고급 배트" },
   9: { src: "/equipment/glove_high_level.png", name: "고급 글러브" },
 };
+
+// 팀별 아이템(모자·수건)이 있는 구단 코드
+const TEAM_ITEM_CODES = ["HH", "HT", "KT", "LG", "LT", "NC", "OB", "SK", "SS", "WO"];
+
+// 보상 아이템의 실제 이미지 경로를 구한다.
+// 팀별 아이템이면 응원 팀코드로 경로를 만들고(/equipment/{팀코드}_{접미사}.png),
+// 팀이 없으면(무소속) 기본 이미지(reward.src) 사용.
+export function getRewardSrc(reward: RewardItem, teamCode?: string | null): string {
+  if (reward.teamBased && reward.teamSuffix && teamCode && TEAM_ITEM_CODES.includes(teamCode)) {
+    return `/equipment/${teamCode}_${reward.teamSuffix}.png`;
+  }
+  return reward.src;
+}
 
 // 현재 레벨 기준으로 보유 중인 아이템(슬롯별 최상위 버전)을 계산
 export function getOwnedItems(level: number): RewardItem[] {
@@ -400,8 +414,6 @@ export default function AttendanceCheckIn({
     // 계정 바뀌면 출석 상태도 그 계정 기준으로 즉시 리셋(서버 응답 전까지 이전 계정값 노출 방지)
     setStatus(fallbackStatus(authToken));
   }, [authToken, initialBuddyNickname]);
-
-  const ownedItems = useMemo(() => getOwnedItems(charLevel), [charLevel]);
 
   const prevLevelRef = useRef<number | null>(null);
   useEffect(() => {
@@ -819,12 +831,6 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
-      <header className="tamagotchi-page-title">
-        <AppBackButton onClick={() => onRequestClose?.()} />
-        <h1>야구짝꿍</h1>
-        <span className="app-screen-title-spacer" />
-      </header>
-
       <TopMenu
         active="tamagotchi"
         className="tamagotchi-nav"
@@ -858,32 +864,6 @@ export default function AttendanceCheckIn({
       </section>
 
       <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
-        {/* 좌측 보유 아이템 컬렉션 (레벨업 보상으로 획득한 장비) */}
-        {ownedItems.length > 0 ? (
-          <div
-            style={{
-              position: "absolute", left: 10, top: 10,
-              display: "flex", flexDirection: "column", gap: 8, zIndex: 2,
-            }}
-          >
-            {ownedItems.map((item) => (
-              <img
-                key={item.src}
-                src={item.src}
-                alt={item.name}
-                title={item.name}
-                style={{
-                  width: 56, height: 56, objectFit: "contain",
-                  background: "rgba(255,255,255,0.85)",
-                  border: "1px solid #e2e8f0", borderRadius: 12, padding: 5,
-                  animation: "itemPopIn 0.3s ease",
-                }}
-                onError={(e) => { (e.currentTarget.style.display = "none"); }}
-              />
-            ))}
-          </div>
-        ) : null}
-
         <div className="tamagotchi-speech-bubble">
           {dailyState.speechText}
         </div>
@@ -900,6 +880,7 @@ export default function AttendanceCheckIn({
         <section
           aria-label="테스트 패널"
           style={{
+            gridColumn: "1 / -1",
             margin: "12px 0",
             padding: "12px 14px",
             border: "1px dashed #c084fc",
@@ -1173,7 +1154,7 @@ export default function AttendanceCheckIn({
               🎉 새 아이템 획득!
             </div>
             <img
-              src={rewardPopup.src}
+              src={getRewardSrc(rewardPopup, charTeam)}
               alt={rewardPopup.name}
               style={{ width: 120, height: 120, objectFit: "contain", animation: "rewardSpin 0.6s ease" }}
               onError={(e) => { (e.currentTarget.style.display = "none"); }}
