@@ -142,6 +142,90 @@ const FOOD_IMAGE_MAP: Record<string, Record<string, string>> = {
   },
 };
 
+// 메뉴별 설명 — 음식 이름 기준. (없으면 구장 먹거리 요약으로 폴백)
+const JAMSIL_FOOD_DESC: Record<string, string> = {
+  김치말이국수: "새콤시원한 육수의 김치말이국수. 더운 날 직관 인기 메뉴",
+  삼겹살도시락: "고기 가득 든든한 도시락. 잠실 대표 식사 메뉴",
+  "우이락 고추튀김": "바삭하게 튀긴 고추튀김. 생맥주 안주로 인기",
+  "보영만두 군만두/쫄면": "보영만두의 군만두에 쫄면을 곁들인 분식 세트",
+  "BHC 치킨": "바삭바삭 BHC 치킨",
+  "BBQ 치킨": "황금올리브로 유명한 치킨 맛집",
+  피자헛: "여럿이 나눠 먹기 좋은 피자",
+  도미노피자: "토핑 푸짐한 피자.",
+  죠스떡볶이: "매콤달콤 국물 떡볶이",
+  명인만두: "직접 빚은 전문 손만두 집",
+  "통밥/덮밥류": "한 그릇 뚝딱, 간편한 덮밥류",
+  KFC: "치킨과 버거를 한 번에",
+  맘스터치: "싸이버거로 유명한 맘스터치",
+  브뤼셀프라이: "벨기에식 두툼 감자튀김",
+  타코잇: "한 손에 즐기는 길거리 타코",
+  픽베이크: "달콤한 디저트·베이커리",
+  생맥주: "시원하게 들이켜는 생맥주",
+  "맥주보이 좌석 판매 생맥주": "자리에서 바로 받는 생맥주. 경기 흐름 놓치지 않고 즐기자!!",
+};
+
+const FOOD_DESC_MAP: Record<string, Record<string, string>> = {
+  LG: JAMSIL_FOOD_DESC,
+  OB: JAMSIL_FOOD_DESC,
+  HT: {
+    원샷치킨: "한입 사이즈로 즐기는 원샷치킨",
+    "스테이션 크림새우": "고소한 크림소스 새우튀김",
+    칠리새우: "매콤달콤 칠리소스 새우",
+    보영만두: "쫄깃한 만두 맛집",
+    감탄떡볶이: "감탄이 나오는 매콤 떡볶이",
+    스트릿츄러스: "겉바속촉 길거리 츄러스",
+    요아정: "요거트 아이스크림의 정석, 상큼한 디저트",
+    타코잇: "한 손에 즐기는 길거리 타코",
+    파파존스: "프리미엄 토핑의 피자 맛집",
+    프랭크버거: "두툼한 패티의 프랭크버거",
+    BHC: "바삭한 BHC 치킨",
+    XOXO핫도그: "겉바속촉 수제 핫도그",
+  },
+  NC: {
+    수내닭꼬치: "불맛 가득 수내닭꼬치",
+    "우이락 고추튀김": "바삭한 고추튀김, 맥주 안주로 딱",
+    "코아양과 버터떡": "고소한 버터떡 디저트",
+    단디밀셰: "진하고 달콤한 밀크셰이크",
+    "스테이션 새우류": "바삭한 새우튀김 모둠",
+    닭꼬치류: "다양한 맛의 닭꼬치",
+    치킨: "바삭한 후라이드 치킨",
+    분식류: "떡볶이·튀김 등 분식 모둠",
+    "카페/디저트류": "커피와 달콤한 디저트",
+  },
+  LT: {
+    "송헌집 숯불 소시지": "숯불에 구운 수제 소시지",
+    "박수식당 한우육회": "신선한 한우육회",
+    "박수식당 젓갈김밥": "감칠맛 가득 젓갈김밥",
+    상하이마라꼬치: "얼얼한 마라 향의 꼬치",
+    스탠브루: "사직의 수제맥주 맛집",
+    계란빵클럽: "따끈따끈 계란빵",
+    치킨: "바삭한 치킨",
+    밀면: "부산 대표 별미 밀면",
+    크림새우: "고소한 크림소스 새우",
+    파파존스: "프리미엄 토핑 피자",
+    크리스피크림: "달콤한 크리스피크림 도넛",
+    마라꼬치류: "얼얼·매콤 마라 꼬치",
+    "QR 스마트오더 가능 매장": "QR로 줄 안 서고 주문하는 매점",
+  },
+  SS: {
+    "강민호 Nice catch 미트 샌드위치": "강민호 추천, 푸짐한 미트 샌드위치",
+    "라이온즈 핫 블루치즈버거": "진한 블루치즈의 매콤 버거",
+    막창도시락: "대구 별미 막창 도시락",
+    "만두/분식류": "만두와 분식 모둠",
+    샤오마라: "얼얼한 마라 닭요리",
+    서문빙수: "대구 서문시장 스타일 빙수",
+    "아이스크림/빙수류": "시원한 아이스크림·빙수",
+    연막창: "불향 가득 연막창 구이",
+    "왕조재건 V9 플래터": "여럿이 즐기는 푸짐한 모둠 플래터",
+    "원태인 PICK 막창타코": "원태인 추천, 막창을 넣은 타코",
+    "자욱 스타우트": "묵직한 풍미의 흑맥주",
+    치킨: "바삭한 후라이드 치킨",
+    "하우스 오브 라이온즈": "라이온즈 시그니처 그릴 플래터",
+    핫도그: "겉바속촉 감자 핫도그",
+    "Blue Wave Mocktail": "상큼한 블루 레몬에이드 무알콜 칵테일",
+  },
+};
+
 function compact(values: Array<string | null | undefined>): string[] {
   return values.map((value) => value?.trim()).filter((value): value is string => Boolean(value));
 }
@@ -158,23 +242,29 @@ function normalizeFoodName(value: string) {
   return value
     .trim()
     .toLowerCase()
-    .replace(/[\s·ㆍ\-_/()]+/g, "");
+    // 공백·구분기호·따옴표(곧은/둥근) 제거 → 표기 차이에도 같은 메뉴로 매칭
+    .replace(/[\s·ㆍ\-_/()"'‘’“”]+/g, "");
 }
 
-function findFoodImageUrl(teamCode: string, foodName: string) {
-  const teamImages = FOOD_IMAGE_MAP[teamCode];
-  if (!teamImages) return "";
+// 음식 이름으로 맵(이미지/설명)에서 값 찾기 — 정확 일치 우선, 없으면 부분 포함(긴 이름 우선).
+function lookupFood(
+  map: Record<string, Record<string, string>>,
+  teamCode: string,
+  foodName: string,
+): string {
+  const teamMap = map[teamCode];
+  if (!teamMap) return "";
 
   const normalizedFoodName = normalizeFoodName(foodName);
 
   // 1) 정확히 일치하는 항목 우선 (예: "생맥주" vs "맥주보이…생맥주" 혼동 방지)
-  const exact = Object.entries(teamImages).find(
+  const exact = Object.entries(teamMap).find(
     ([name]) => normalizeFoodName(name) === normalizedFoodName,
   );
   if (exact) return exact[1];
 
   // 2) 부분 포함 매칭 — 더 구체적인(긴) 이름이 먼저 매칭되도록 정렬
-  const fuzzy = Object.entries(teamImages)
+  const fuzzy = Object.entries(teamMap)
     .sort((a, b) => normalizeFoodName(b[0]).length - normalizeFoodName(a[0]).length)
     .find(([name]) => {
       const n = normalizeFoodName(name);
@@ -183,6 +273,11 @@ function findFoodImageUrl(teamCode: string, foodName: string) {
 
   return fuzzy?.[1] ?? "";
 }
+
+const findFoodImageUrl = (teamCode: string, foodName: string) =>
+  lookupFood(FOOD_IMAGE_MAP, teamCode, foodName);
+const findFoodDescription = (teamCode: string, foodName: string) =>
+  lookupFood(FOOD_DESC_MAP, teamCode, foodName);
 
 function extractFoodItems(value: string | null, teamCode: string): Food[] {
   if (!value) return [];
@@ -199,7 +294,8 @@ function extractFoodItems(value: string | null, teamCode: string): Food[] {
   return names.map((name, index) => ({
     foodId: `${index}-${name}`,
     name,
-    description: summary,
+    // 메뉴별 설명 우선, 없으면 구장 먹거리 요약으로 폴백
+    description: findFoodDescription(teamCode, name) || summary,
     imageUrl: findFoodImageUrl(teamCode, name),
   }));
 }
@@ -250,15 +346,18 @@ function normalize(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
-export function matchesStadiumSearch(searchValue: string, stadium: Stadium) {
+// 검색 점수: 3=팀/구장명, 2=도시/주소, 1=주변지역, 0=불일치.
+// 점수가 높을수록 "더 직접적인" 매칭 → 예) "삼성"은 삼성(팀명 3점)이 잠실(숙박정보 1점)보다 우선.
+export function stadiumSearchScore(searchValue: string, stadium: Stadium): number {
   const query = normalize(searchValue);
-  if (!query) return true;
-  return [
-    stadium.teamCode,
-    stadium.teamName,
-    stadium.stadiumName,
-    stadium.address,
-    stadium.city,
-    ...stadium.regionInfo.nearbyAreas,
-  ].some((value) => normalize(value).includes(query));
+  if (!query) return 1;
+  const has = (values: Array<string>) => values.some((v) => normalize(v).includes(query));
+  if (has([stadium.teamCode, stadium.teamName, stadium.stadiumName])) return 3;
+  if (has([stadium.city, stadium.address])) return 2;
+  if (has(stadium.regionInfo.nearbyAreas)) return 1;
+  return 0;
+}
+
+export function matchesStadiumSearch(searchValue: string, stadium: Stadium) {
+  return stadiumSearchScore(searchValue, stadium) > 0;
 }
