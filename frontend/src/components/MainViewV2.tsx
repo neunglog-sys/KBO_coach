@@ -314,7 +314,7 @@ export function MainViewV2({
       const resp = await fetch(apiUrl("/tts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, team_code: favTeamCode || null }),
       });
       if (!resp.ok) return false;
 
@@ -435,6 +435,172 @@ export function MainViewV2({
     window.speechSynthesis.speak(utterance);
   }
 
+  // 스트리밍 음성 파이프라인: /chat/voice/stream(SSE)을 받아 문장이 도착하는 대로
+  // 큐에 넣고 순차 재생. 첫 음성이 ~2~3초에 시작(전체 답변 대기 없이). 각 문장은
+  // 자기 viseme로 립싱크 + 누적 텍스트로 자막. 음성 하나도 못 받으면 ok:false → 폴백.
+  type VoiceSeg = {
+    text: string;
+    audio: string;
+    mime?: string;
+    visemes?: Array<{ offset: number; id: number }>;
+    boundaries?: Array<{ offset: number; textOffset: number; length: number }>;
+  };
+
+  async function speakAnswerStream(
+    question: string,
+    onReveal?: (revealed: string) => void,
+  ): Promise<{ ok: boolean; text: string }> {
+    const myToken = ++speakTokenRef.current;
+    const cancelled = () => speakTokenRef.current !== myToken;
+
+    const queue: VoiceSeg[] = [];
+    let streamDone = false;
+    let gotAny = false;
+    let accumulated = ""; // 완성 재생된 문장들(자막 누적)
+
+    // 한 문장 재생 + 립싱크 + 자막(누적 + 현재 문장 진행분)
+    const playSegment = (seg: VoiceSeg) =>
+      new Promise<void>((resolve) => {
+        if (cancelled()) return resolve();
+        if (!seg.audio) {   // 합성 실패 문장 — 텍스트만 표시하고 잠깐 보여줌
+          onReveal?.(accumulated + seg.text);
+          setTimeout(resolve, 250);
+          return;
+        }
+        const visemes = seg.visemes ?? [];
+        const boundaries = seg.boundaries ?? [];
+        const audio = new Audio(`data:${seg.mime || "audio/wav"};base64,${seg.audio}`);
+        ttsAudioRef.current = audio;
+        let raf = 0;
+        let settled = false;
+        const drive = () => {
+          if (cancelled()) return finish();
+          const tMs = audio.currentTime * 1000;
+          let activeId = 0;
+          for (let i = 0; i < visemes.length; i++) {
+            if (visemes[i].offset <= tMs) activeId = visemes[i].id;
+            else break;
+          }
+          setActiveViseme(activeId);
+          if (onReveal) {
+            let inSeg = "";
+            if (boundaries.length) {
+              let end = 0;
+              for (let i = 0; i < boundaries.length; i++) {
+                if (boundaries[i].offset <= tMs)
+                  end = Math.max(end, boundaries[i].textOffset + boundaries[i].length);
+                else break;
+              }
+              inSeg = seg.text.slice(0, end);
+            } else if (audio.duration) {
+              const ratio = Math.min(1, audio.currentTime / audio.duration);
+              inSeg = seg.text.slice(0, Math.floor(seg.text.length * ratio));
+            }
+            onReveal(accumulated + inSeg);
+          }
+          raf = requestAnimationFrame(drive);
+        };
+        function finish() {
+          if (settled) return;
+          settled = true;
+          cancelAnimationFrame(raf);
+          clearMouth();
+          if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+          resolve();
+        }
+        audio.onplay = () => {
+          setIsSpeaking(true);
+          raf = requestAnimationFrame(drive);
+        };
+        audio.onended = finish;
+        audio.onerror = finish;
+        audio.play().catch(finish);
+      });
+
+    // 재생 루프: 큐가 비면 스트림 끝날 때까지 대기, 문장이 오면 순차 재생
+    const playLoop = (async () => {
+      while (true) {
+        if (cancelled()) return;
+        const seg = queue.shift();
+        if (!seg) {
+          if (streamDone) return;
+          await new Promise((r) => setTimeout(r, 25));
+          continue;
+        }
+        await playSegment(seg);
+        accumulated += seg.text + " ";
+        onReveal?.(accumulated);
+        // 문장 사이 자연스러운 텀(겹쳐 들리는 느낌 방지)
+        if (!cancelled()) await new Promise((r) => setTimeout(r, 130));
+      }
+    })();
+
+    const ctrl = new AbortController();
+    let watchdog = 0;
+    const resetWatchdog = () => {
+      window.clearTimeout(watchdog);
+      // 15초간 아무 이벤트도 안 오면 중단 → 폴백 (영구 멈춤 방지)
+      watchdog = window.setTimeout(() => ctrl.abort(), 15000);
+    };
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      resetWatchdog();
+      const resp = await fetch(apiUrl("/chat/voice/stream"), {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
+        signal: ctrl.signal,
+      });
+      if (!resp.ok || !resp.body) {
+        streamDone = true;
+        await playLoop;
+        return { ok: false, text: accumulated.trim() };
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        if (cancelled()) {
+          reader.cancel().catch(() => {});
+          break;
+        }
+        const { value, done } = await reader.read();
+        if (done) break;
+        resetWatchdog();
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const chunk = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const line = chunk.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          try {
+            const ev = JSON.parse(line.slice(5).trim());
+            if (ev.done) {
+              streamDone = true;
+            } else if (ev.error) {
+              streamDone = true; // 서버 에러 → 종료(가진 것까지 재생 후 폴백 판단)
+            } else if (typeof ev.text === "string") {
+              gotAny = true;        // 텍스트만 와도(합성 실패) 세그먼트로 — 자막은 보장
+              queue.push(ev as VoiceSeg);
+            }
+          } catch {
+            /* 부분 라인 무시 */
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[MainViewV2] voice stream failed/aborted", err);
+    } finally {
+      window.clearTimeout(watchdog);
+    }
+    streamDone = true;
+    await playLoop;
+    if (gotAny && onReveal) onReveal(accumulated.trim());
+    return { ok: gotAny, text: accumulated.trim() };
+  }
+
   // 응원팀(team_code) 페르소나로 답변 전체를 받아옴. (표시는 음성에 맞춰 speakAnswer가 드러냄)
   async function fetchAnswer(question: string): Promise<string> {
     try {
@@ -467,25 +633,31 @@ export function MainViewV2({
     const setBot = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
-    const answer = await fetchAnswer(question);
-
-    // 인사말이 "말로 나오는 순간"에 손을 흔들도록 준비.
-    // onReveal 은 음성 진행도에 맞춰 앞에서부터 누적된 텍스트를 준다.
-    // 인사말 단어의 끝 위치를 텍스트가 지나가면 그때 1회 흔든다.
-    const greetMatch = answer.toLowerCase().match(GREET_RE);
-    const greetEndIdx = greetMatch ? (greetMatch.index ?? 0) + greetMatch[0].length : -1;
+    // 인사말이 "말로 나오는 순간"에 손을 흔들도록 — 누적 텍스트가 인사말을 지나가면 1회.
+    // (스트리밍이라 답변 전체를 미리 모르므로, 드러난 텍스트에서 실시간 탐지)
     let greeted = false;
     const revealWithGreet = (revealed: string) => {
       setBot(revealed);
-      if (!greeted && greetEndIdx >= 0 && revealed.length >= greetEndIdx) {
-        greeted = true;
-        setGreetSignal((n) => n + 1);
+      if (!greeted) {
+        const m = revealed.toLowerCase().match(GREET_RE);
+        if (m && revealed.length >= (m.index ?? 0) + m[0].length) {
+          greeted = true;
+          setGreetSignal((n) => n + 1);
+        }
       }
     };
 
-    // 음성 재생과 동시에 단어 단위로 텍스트를 드러냄(동기화). 음성 실패 시 speakAnswer가 전체를 한 번에 표시.
+    // 1) 스트리밍 음성 파이프라인 — 첫 문장부터 바로 재생(대기 최소화)
+    const streamed = await speakAnswerStream(question, revealWithGreet);
+    if (streamed.ok) {
+      setBot(streamed.text);
+      return;
+    }
+
+    // 2) 폴백 — 스트림 실패 시 기존 경로(전체 답변 받고 한 번에 음성)
+    const answer = await fetchAnswer(question);
     await speakAnswer(answer, revealWithGreet);
-    setBot(answer); // 안전장치: 종료 후 전체 텍스트 보장
+    setBot(answer);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {

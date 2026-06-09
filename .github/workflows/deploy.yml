@@ -51,6 +51,7 @@ jobs:
           AZURE_SPEECH_KEY: "${{ secrets.AZURE_SPEECH_KEY }}"
           AZURE_SPEECH_REGION: "${{ secrets.AZURE_SPEECH_REGION }}"
           AZURE_TTS_VOICE: "ko-KR-SunHiNeural"
+          ELEVENLABS_KEY: "${{ secrets.ELEVENLABS_KEY }}"
           CRAWL_DIR: "/tmp/crawling"
           TZ: "Asia/Seoul"
           EOF
