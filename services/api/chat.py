@@ -10,21 +10,18 @@
 설정: .env에 GEMINI_API_KEY (선택: GEMINI_MODEL, 기본 gemini-2.0-flash)
 다음 단계: knowledge_chunks 임베딩(pgvector) 벡터검색으로 RAG 고도화.
 """
-import os
-import json
 import threading
 from collections import OrderedDict
 
-import requests
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from db_pg import get_conn
 from embeddings import embed_text, to_pgvector
+import llm
 
 router = APIRouter(tags=["chat"])
-SESSION = requests.Session()   # keep-alive 연결 재사용 → 반복 호출 TLS 핸드셰이크 절약(콜드 완화)
 
 # 응답 캐시(팀+질문) — 반복/공통 질문은 Gemini·임베딩 호출 없이 즉시 응답 → 지연 스파이크 회피.
 _CACHE_MAX = 500
@@ -53,11 +50,6 @@ def _cache_put(key, value):
             _cache.popitem(last=False)
 
 CHUNK_MIN_SCORE = 0.45   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외
-
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
-_GEMINI_BASE = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}"
-GEMINI_URL = f"{_GEMINI_BASE}:generateContent"
-GEMINI_STREAM_URL = f"{_GEMINI_BASE}:streamGenerateContent"
 
 
 class ChatIn(BaseModel):
@@ -217,7 +209,7 @@ def _format_context(terms, rules, chunks) -> str:
 
 
 def _prepare(body: ChatIn):
-    """RAG 수집 + 시스템/유저 프롬프트 → Gemini payload, used 메타 반환. (스트리밍/일반 공용)"""
+    """RAG 수집 + 시스템/유저 프롬프트 → (system, user, used) 반환. (스트리밍/일반 공용)"""
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -250,17 +242,11 @@ def _prepare(body: ChatIn):
     상투적인 마무리 격려 문장은 쓰지 않는다.
     DB의 글자 수 제한을 반드시 따른다.
     """
-    payload = {
-        "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
-        "generationConfig": {"temperature": 0.85, "maxOutputTokens": 250},
-    }
-    return payload, used
+    return system, user, used
 
 
 @router.post("/chat")
 def chat(body: ChatIn):
-    key = os.environ.get("GEMINI_API_KEY")
     # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
     cache_key = None if body.personal_context else _cache_key(body)
     if cache_key is not None:
@@ -268,17 +254,15 @@ def chat(body: ChatIn):
         if hit is not None:   # 캐시 적중 → Gemini·임베딩 호출 없이 즉시 응답
             return {"answer": hit["answer"], "context": {**hit["used"], "cached": True}}
 
-    payload, used = _prepare(body)
-    if not key:
-        return {"answer": "(아직 LLM 미연결) GEMINI_API_KEY를 .env에 넣으면 동작합니다.",
+    system, user, used = _prepare(body)
+    if not llm.llm_ready():
+        return {"answer": "(아직 LLM 미연결) Vertex(GOOGLE_CLOUD_PROJECT) 또는 GEMINI_API_KEY를 설정하세요.",
                 "context": used}
     try:
-        resp = SESSION.post(GEMINI_URL, params={"key": key}, json=payload, timeout=30)
-        resp.raise_for_status()
-        answer = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-    except requests.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {e.response.text[:200]}")
-    except (KeyError, IndexError):
+        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {str(e)[:200]}")
+    if not answer:
         raise HTTPException(status_code=502, detail="Gemini 응답 형식 오류(차단되었거나 빈 응답)")
 
     if cache_key is not None:
@@ -289,27 +273,16 @@ def chat(body: ChatIn):
 @router.post("/chat/stream")
 def chat_stream(body: ChatIn):
     """답변을 토큰 단위로 흘려보냄(text/plain). 체감 지연 대폭 감소 — 첫 글자가 1초대에 뜸."""
-    key = os.environ.get("GEMINI_API_KEY")
-    payload, _ = _prepare(body)
-    if not key:
-        return StreamingResponse(iter(["(아직 LLM 미연결) GEMINI_API_KEY를 설정하세요."]),
+    system, user, _ = _prepare(body)
+    if not llm.llm_ready():
+        return StreamingResponse(iter(["(아직 LLM 미연결) Vertex 또는 GEMINI_API_KEY를 설정하세요."]),
                                  media_type="text/plain; charset=utf-8")
 
     def gen():
         try:
-            with SESSION.post(GEMINI_STREAM_URL, params={"key": key, "alt": "sse"},
-                              json=payload, stream=True, timeout=60) as r:
-                r.raise_for_status()
-                for line in r.iter_lines():
-                    if not line or not line.startswith(b"data:"):
-                        continue
-                    try:
-                        d = json.loads(line[5:].strip())
-                        t = d["candidates"][0]["content"]["parts"][0].get("text", "")
-                        if t:
-                            yield t
-                    except (KeyError, IndexError, ValueError):
-                        continue
+            for t in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
+                if t:
+                    yield t
         except Exception:
             return   # 실패 시 스트림 종료 → 프론트가 빈 응답 감지하고 폴백
 
@@ -319,13 +292,6 @@ def chat_stream(body: ChatIn):
 @router.post("/chat/warmup")
 def chat_warmup():
     """연결·모델 예열용 미니 호출(1토큰). 챗 화면 진입 시 호출 → 첫 질문 콜드 지연 감소."""
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
+    if not llm.llm_ready():
         return {"ok": False}
-    try:
-        SESSION.post(GEMINI_URL, params={"key": key},
-                     json={"contents": [{"role": "user", "parts": [{"text": "hi"}]}],
-                           "generationConfig": {"maxOutputTokens": 1}}, timeout=15)
-    except Exception:
-        return {"ok": False}
-    return {"ok": True}
+    return {"ok": llm.warmup()}

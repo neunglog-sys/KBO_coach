@@ -1,26 +1,25 @@
 # -*- coding: utf-8 -*-
-"""Gemini 임베딩 공용 모듈 — 청크 백필(embed_chunks.py)과 /chat 질의에서 함께 사용."""
+"""Gemini 임베딩 공용 모듈 — 청크 백필(embed_chunks.py)과 /chat 질의에서 함께 사용.
+
+google-genai 클라이언트(llm.get_client)를 공유 → Vertex/AI Studio 설정을 그대로 따른다.
+모델·차원은 기존 저장 벡터와 동일해야 검색이 맞으므로 gemini-embedding-001 / 768 유지.
+"""
 import os
-import requests
+
+from google.genai import types
+
+import llm
 
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "gemini-embedding-001")
 EMBED_DIM = int(os.environ.get("EMBED_DIM", "768"))   # pgvector 인덱스 한계(2000) 이내
-EMBED_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBED_MODEL}:embedContent"
 
 
 def embed_text(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
     """텍스트 → 임베딩 벡터. 문서는 RETRIEVAL_DOCUMENT, 질의는 RETRIEVAL_QUERY."""
-    key = os.environ["GEMINI_API_KEY"]
-    r = requests.post(
-        EMBED_URL, params={"key": key},
-        json={
-            "model": f"models/{EMBED_MODEL}",
-            "content": {"parts": [{"text": text}]},
-            "taskType": task_type,
-            "outputDimensionality": EMBED_DIM,
-        }, timeout=30)
-    r.raise_for_status()
-    return r.json()["embedding"]["values"]
+    r = llm.get_client().models.embed_content(
+        model=EMBED_MODEL, contents=text,
+        config=types.EmbedContentConfig(task_type=task_type, output_dimensionality=EMBED_DIM))
+    return list(r.embeddings[0].values)
 
 
 def to_pgvector(vec: list[float]) -> str:
