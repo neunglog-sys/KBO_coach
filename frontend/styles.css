@@ -2635,14 +2635,9 @@ html.theme-dark .app-shell {
   filter: none;
 }
 
+/* 다크모드: 채팅 위 어두운 음영(페이드) 제거 — 필드 배경 + 둥근 채팅 시트만 */
 .theme-dark .stage-white-fade {
-  background: linear-gradient(
-    180deg,
-    rgba(7, 17, 31, 0) 0%,
-    rgba(7, 17, 31, 0.66) 34%,
-    rgba(7, 17, 31, 0.94) 58%,
-    #07111f 78%
-  );
+  display: none;
 }
 
 .theme-dark .stage-chat {

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { ArrowUp } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
@@ -138,6 +139,8 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
+  const [inputFocused, setInputFocused] = useState(false);
   // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
   const [greetSignal, setGreetSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
@@ -747,26 +750,7 @@ export function MainViewV2({
         </div>
 
         <form className="stage-inputbar" onSubmit={handleSubmit}>
-          <button
-            type="button"
-            className={`stage-mic ${isListening ? "is-on" : ""}`}
-            onClick={toggleMic}
-            disabled={!supportsSTT}
-            aria-pressed={isListening}
-            aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
-            title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
-          >
-            <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
-          </button>
-
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="텍스트 입력 창"
-            aria-label="질문 입력"
-          />
-
+          {/* 왼쪽: 음성 일시정지 (항상) */}
           <button
             type="button"
             className="stage-stop"
@@ -778,9 +762,41 @@ export function MainViewV2({
             <span aria-hidden="true">⏸</span>
           </button>
 
-          <button type="submit" className="stage-send">
-            보내기
-          </button>
+          <input
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder="텍스트 입력 창"
+            aria-label="질문 입력"
+          />
+
+          {/* 오른쪽: 키보드 내려감 → 마이크 / 키보드 올라옴 → 보내기(↑) */}
+          {inputFocused ? (
+            <button
+              type="submit"
+              className="stage-send-arrow"
+              aria-label="보내기"
+              title="보내기"
+              // 버튼 탭 시 입력창 포커스(키보드)가 풀리지 않게 → 연속 전송 가능
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <ArrowUp strokeWidth={3} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`stage-mic ${isListening ? "is-on" : ""}`}
+              onClick={toggleMic}
+              disabled={!supportsSTT}
+              aria-pressed={isListening}
+              aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
+              title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
+            >
+              <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
+            </button>
+          )}
         </form>
       </section>
 

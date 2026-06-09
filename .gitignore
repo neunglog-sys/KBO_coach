@@ -95,3 +95,5 @@ test/
 !frontend/public/model/3d/mouth_test2.glb
 !frontend/public/model/3d/260607_ballonly.glb
 !frontend/public/model/3d/model_260608_opt.glb
+design_preview/
+.claude/settings.local.json
