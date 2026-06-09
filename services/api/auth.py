@@ -34,6 +34,12 @@ def make_token(user_id: int, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
 
+def ensure_user_profile_columns(conn) -> None:
+    """Keep older local/dev databases compatible with buddy profile fields."""
+    with conn.cursor() as cur:
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS buddy_nickname VARCHAR(10)")
+
+
 def current_user_id(token: str = Depends(oauth2)) -> int:
     """JWT 검증 후 user_id 반환 (보호 엔드포인트용)."""
     try:
@@ -60,6 +66,15 @@ class UpdateFavTeamIn(BaseModel):
     fav_team_code: str
 
 
+class UpdateGenderIn(BaseModel):
+    gender: str   # 'man' | 'girl'
+
+
+class UpdateBuddyIn(BaseModel):
+    gender: str | None = None
+    buddy_nickname: str
+
+
 class ChangePasswordIn(BaseModel):
     current_password: str
     new_password: str
@@ -71,6 +86,7 @@ def register(body: RegisterIn):
     conn = get_conn()
     try:
         with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
             cur.execute("SELECT 1 FROM users WHERE email = %s", (body.email,))
             if cur.fetchone():
                 raise HTTPException(status_code=409, detail="이미 가입된 이메일")
@@ -90,13 +106,15 @@ def login(body: LoginIn):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id, email, nickname, fav_team_code, password_hash "
+            ensure_user_profile_columns(conn)
+            cur.execute("SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname, password_hash "
                         "FROM users WHERE email = %s", (body.email,))
             user = cur.fetchone()
         if not user or not verify_pw(body.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
         return {"user": {"user_id": user["user_id"], "email": user["email"],
-                         "nickname": user["nickname"], "fav_team_code": user["fav_team_code"]},
+                         "nickname": user["nickname"], "fav_team_code": user["fav_team_code"],
+                         "gender": user["gender"], "buddy_nickname": user["buddy_nickname"]},
                 "token": make_token(user["user_id"], user["email"])}
     finally:
         conn.close()
@@ -107,8 +125,61 @@ def me(user_id: int = Depends(current_user_id)):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id, email, nickname, fav_team_code, created_at FROM users WHERE user_id = %s",
-                        (user_id,))
+            ensure_user_profile_columns(conn)
+            cur.execute("SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname, created_at "
+                        "FROM users WHERE user_id = %s", (user_id,))
+            user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return user
+    finally:
+        conn.close()
+
+
+@router.patch("/me/gender")
+def update_gender(body: UpdateGenderIn, user_id: int = Depends(current_user_id)):
+    """캐릭터 성별(man/girl) 저장 — 계정에 묶여 기기 바꿔도 유지."""
+    if body.gender not in ("man", "girl"):
+        raise HTTPException(status_code=400, detail="gender는 man 또는 girl이어야 합니다")
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            cur.execute("UPDATE users SET gender = %s WHERE user_id = %s RETURNING gender",
+                        (body.gender, user_id))
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return {"gender": row["gender"]}
+    finally:
+        conn.close()
+
+
+@router.patch("/me/buddy")
+def update_buddy(body: UpdateBuddyIn, user_id: int = Depends(current_user_id)):
+    """Save the baseball buddy profile for the current user."""
+    buddy_nickname = body.buddy_nickname.strip()
+    if not buddy_nickname:
+        raise HTTPException(status_code=400, detail="야구짝꿍 닉네임을 입력해주세요")
+    if len(buddy_nickname) > 10:
+        raise HTTPException(status_code=400, detail="야구짝꿍 닉네임은 10자 이하로 입력해주세요")
+    if body.gender is not None and body.gender not in ("man", "girl"):
+        raise HTTPException(status_code=400, detail="gender는 man 또는 girl이어야 합니다")
+
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            cur.execute(
+                """
+                UPDATE users
+                   SET gender = COALESCE(%s, gender),
+                       buddy_nickname = %s
+                 WHERE user_id = %s
+                 RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname, created_at
+                """,
+                (body.gender, buddy_nickname, user_id),
+            )
             user = cur.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="유저 없음")
@@ -123,9 +194,10 @@ def update_fav_team(body: UpdateFavTeamIn, user_id: int = Depends(current_user_i
     conn = get_conn()
     try:
         with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
             cur.execute(
                 "UPDATE users SET fav_team_code = %s WHERE user_id = %s "
-                "RETURNING user_id, email, nickname, fav_team_code, created_at",
+                "RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname, created_at",
                 (body.fav_team_code, user_id))
             user = cur.fetchone()
         if not user:

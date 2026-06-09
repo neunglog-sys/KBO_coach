@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     nickname VARCHAR(50) NOT NULL,
     fav_team_code VARCHAR(4),
+    gender VARCHAR(8) CHECK (gender IS NULL OR gender IN ('man', 'girl')),
+    buddy_nickname VARCHAR(10),
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 

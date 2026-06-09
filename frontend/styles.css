@@ -1143,6 +1143,198 @@ select:focus {
   align-items: center;
 }
 
+.tamagotchi-setup-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  width: 100%;
+  min-height: 100%;
+}
+
+.tamagotchi-setup-card {
+  display: grid;
+  gap: 18px;
+  align-content: center;
+  width: 100%;
+  min-height: 100%;
+  padding: clamp(72px, 11vh, 98px) clamp(18px, 6vw, 32px) 32px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: none;
+  text-align: center;
+}
+
+.tamagotchi-setup-card h2 {
+  margin: 0;
+  color: #0b1838;
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.tamagotchi-setup-card .attendance-message {
+  margin: 0;
+}
+
+.tamagotchi-gender-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tamagotchi-gender-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-height: 154px;
+  border: 2px solid #d9e5f6;
+  border-radius: 22px;
+  padding: 16px;
+  color: #0b1838;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 900;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tamagotchi-gender-card:hover,
+.tamagotchi-gender-card.is-selected {
+  transform: translateY(-2px);
+  border-color: #126dff;
+  box-shadow: 0 14px 28px rgba(18, 109, 255, 0.18);
+}
+
+.tamagotchi-gender-card img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.tamagotchi-nickname-field {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.tamagotchi-nickname-field span,
+.tamagotchi-nickname-field small {
+  color: #334155;
+  font-weight: 900;
+}
+
+.tamagotchi-nickname-field input {
+  width: 100%;
+  min-height: 54px;
+  border: 2px solid #d9e5f6;
+  border-radius: 16px;
+  padding: 0 16px;
+  color: #0b1838;
+  background: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.tamagotchi-nickname-field input:focus {
+  outline: none;
+  border-color: #126dff;
+  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.12);
+}
+
+.tamagotchi-nickname-field small {
+  justify-self: end;
+  font-size: 0.82rem;
+}
+
+.tamagotchi-setup-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.tamagotchi-setup-submit {
+  min-height: 58px;
+  border: 0;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #126dff 0%, #5b8cff 100%);
+  box-shadow: 0 14px 28px rgba(18, 109, 255, 0.22);
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.tamagotchi-setup-submit:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) {
+  width: min(430px, calc(100vw - 32px));
+  min-width: min(360px, 100%);
+  height: min(860px, calc(100dvh - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: hidden;
+  border-radius: 28px;
+  background: #fff;
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  min-width: 46px;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  color: transparent;
+  background: rgba(18, 109, 255, 0.1);
+  box-shadow: none;
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close::before,
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close::before {
+  left: 12px;
+  top: 21px;
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  background: #0a1732;
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close::after {
+  left: 12px;
+  top: 16px;
+  width: 11px;
+  height: 11px;
+  border-bottom: 3px solid #0a1732;
+  border-left: 3px solid #0a1732;
+  transform: rotate(45deg);
+}
+
+.attendance-window:has(.tamagotchi-setup-panel) .attendance-panel {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(126, 211, 255, 0.24) 0 86px, transparent 87px),
+    linear-gradient(180deg, #ffffff 0%, #f5fbff 62%, #ecf8f2 100%);
+  overflow-y: auto;
+}
+
 .attendance-mascot {
   position: relative;
   grid-row: 1 / 6;
@@ -1524,6 +1716,14 @@ select:focus {
     background: #f7fbff;
   }
 
+  .attendance-window:has(.tamagotchi-setup-panel) {
+    width: 100%;
+    min-width: 0;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
   .attendance-window-close {
     position: sticky;
     top: 10px;
@@ -1532,6 +1732,13 @@ select:focus {
     margin: 10px 10px 0 0;
     border-radius: 8px;
     font-size: 0.82rem;
+  }
+
+  .attendance-window:has(.tamagotchi-setup-panel) .attendance-window-close {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    left: 16px;
+    margin: 0;
   }
 
   .attendance-window .attendance-panel {
@@ -1544,6 +1751,28 @@ select:focus {
     gap: 16px;
     place-items: stretch;
     text-align: center;
+  }
+
+  .tamagotchi-setup-card {
+    gap: 14px;
+    min-height: 100%;
+    border-radius: 0;
+    padding: 76px 18px 28px;
+  }
+
+  .tamagotchi-gender-options {
+    gap: 10px;
+  }
+
+  .tamagotchi-gender-card {
+    min-height: 132px;
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .tamagotchi-gender-card img {
+    width: 78px;
+    height: 78px;
   }
 
   .attendance-mascot {
@@ -1860,6 +2089,7 @@ select:focus {
 
 .tamagotchi-nav button.is-active {
   min-height: 52px;
+  height: 52px;
   margin: 0;
   color: #126dff;
   background: rgba(255, 255, 255, 0.72);
@@ -2227,12 +2457,14 @@ select:focus {
     justify-items: center;
     gap: 2px;
     min-height: 48px;
+    height: 62px;
     border-radius: 10px;
     padding: 0 2px;
   }
 
   .tamagotchi-nav button.is-active {
     min-height: 62px;
+    height: 62px;
   }
 
   .tamagotchi-status-card {
@@ -2372,8 +2604,9 @@ html.theme-dark .app-shell {
   border-color: #33435b;
 }
 
+/* 다크모드에서도 배경(하늘·경기장)은 원래 밝기 유지 — 채팅 영역만 어둡게. */
 .theme-dark .stage-bg {
-  filter: brightness(0.38) saturate(0.72);
+  filter: none;
 }
 
 .theme-dark .stage-white-fade {

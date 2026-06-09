@@ -35,11 +35,13 @@ interface MainViewV2Props {
   authToken: string;
   favTeamCode?: string;
   nickname?: string;
+  buddyNickname?: string;
   notificationEnabled: boolean;
   darkModeEnabled: boolean;
   onNotificationEnabledChange: (enabled: boolean) => void;
   onDarkModeEnabledChange: (enabled: boolean) => void;
   onFavTeamChange?: (code: string) => void;
+  onBuddyNicknameChange?: (nickname: string) => void;
   onLogout: () => void;
 }
 
@@ -121,11 +123,13 @@ export function MainViewV2({
   authToken,
   favTeamCode,
   nickname,
+  buddyNickname,
   notificationEnabled,
   darkModeEnabled,
   onNotificationEnabledChange,
   onDarkModeEnabledChange,
   onFavTeamChange,
+  onBuddyNicknameChange,
   onLogout,
 }: MainViewV2Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -139,6 +143,7 @@ export function MainViewV2({
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
+  const [closingOverlay, setClosingOverlay] = useState<"tamagotchi" | "stadium" | "settings" | null>(null);
   const [, setAttendanceCheckedToday] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -192,6 +197,9 @@ export function MainViewV2({
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const overlayCloseTimerRef = useRef<number | null>(null);
+  // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
+  const speakTokenRef = useRef(0);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -203,6 +211,20 @@ export function MainViewV2({
       behavior: "smooth",
     });
   }, [messages]);
+
+  // 앱이 백그라운드로 가거나(웹뷰 숨김) 페이지가 사라지면 재생 중인 음성을 멈춘다.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) stopSpeaking();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", stopSpeaking);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", stopSpeaking);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -230,9 +252,58 @@ export function MainViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => () => {
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+    }
+  }, []);
+
+  function closeOverlay(
+    overlay: "tamagotchi" | "stadium" | "settings",
+    afterClose?: () => void,
+  ) {
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const finish = () => {
+      if (overlay === "tamagotchi") setIsAttendanceOpen(false);
+      if (overlay === "stadium") setIsStadiumPageOpen(false);
+      if (overlay === "settings") setIsSettingsOpen(false);
+      setClosingOverlay(null);
+      afterClose?.();
+    };
+
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+      overlayCloseTimerRef.current = null;
+    }
+
+    if (reduceMotion) {
+      finish();
+      return;
+    }
+
+    setClosingOverlay(overlay);
+    overlayCloseTimerRef.current = window.setTimeout(finish, 260);
+  }
+
+  function switchToMenuTarget(key: TopMenuTarget) {
+    if (overlayCloseTimerRef.current) {
+      window.clearTimeout(overlayCloseTimerRef.current);
+      overlayCloseTimerRef.current = null;
+    }
+
+    stopSpeaking();
+    setClosingOverlay(null);
+    setIsAttendanceOpen(key === "tamagotchi");
+    setIsStadiumPageOpen(key === "stadium");
+    setIsSettingsOpen(key === "settings");
+    setShowRecords(key === "record");
+    setShowChat(key === "chat");
+  }
+
   async function speakWithAzure(
     text: string,
     onReveal?: (revealed: string) => void,
+    isCancelled?: () => boolean,
   ): Promise<boolean> {
     try {
       if (ttsAudioRef.current) {
@@ -249,6 +320,8 @@ export function MainViewV2({
 
       const data = await resp.json();
       if (!data.audio) return false;
+      // 응답을 받는 사이 중단됐으면 재생하지 않음(폴백도 막기 위해 처리완료로 반환).
+      if (isCancelled?.()) return true;
 
       const visemes: Array<{ offset: number; id: number }> = Array.isArray(data.visemes)
         ? data.visemes
@@ -315,16 +388,26 @@ export function MainViewV2({
   }
 
   async function speakAnswer(text: string, onReveal?: (revealed: string) => void) {
-    if (await speakWithAzure(text, onReveal)) return;
+    // 이번 발화의 토큰. 중간에 stopSpeaking 되면 토큰이 바뀌어 cancelled()가 true가 된다.
+    const myToken = ++speakTokenRef.current;
+    const cancelled = () => speakTokenRef.current !== myToken;
+
+    if (await speakWithAzure(text, onReveal, cancelled)) return;
+    if (cancelled()) return; // Azure 실패를 기다리는 사이 중단됐으면 폴백 음성도 시작 안 함
 
     onReveal?.(text);   // Azure 실패 → 정밀 타이밍 불가하니 전체 텍스트 즉시 표시
 
     if (Capacitor.isNativePlatform()) {
+      if (cancelled()) return;
       setIsSpeaking(true);
       try {
         await TextToSpeech.stop();
       } catch {
         /* noop */
+      }
+      if (cancelled()) {   // stop() 사이에 중단됐으면 새로 말하지 않음
+        setIsSpeaking(false);
+        return;
       }
       await TextToSpeech.speak({
         text,
@@ -339,6 +422,7 @@ export function MainViewV2({
     }
 
     if (!("speechSynthesis" in window)) return;
+    if (cancelled()) return;
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -409,6 +493,20 @@ export function MainViewV2({
     void submitQuestion(input);
   }
 
+  // 모든 TTS(오디오 엘리먼트 / 네이티브 / 웹 음성)를 즉시 중단 + 입모양 정리.
+  function stopSpeaking() {
+    speakTokenRef.current++; // 진행 중/예정된 발화를 무효화 (폴백 음성 race 방지)
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.src = "";
+      ttsAudioRef.current = null;
+    }
+    TextToSpeech.stop().catch(() => {}); // 네이티브(Capacitor) 음성 중단
+    window.speechSynthesis?.cancel();    // 웹 음성 중단
+    clearMouth();
+    setIsSpeaking(false);
+  }
+
   function toggleMic() {
     const recognition = recognitionRef.current;
     if (!recognition) return;
@@ -419,13 +517,7 @@ export function MainViewV2({
       return;
     }
 
-    if (ttsAudioRef.current) {
-      ttsAudioRef.current.pause();
-      ttsAudioRef.current = null;
-    }
-    clearMouth();
-    setIsSpeaking(false);
-    window.speechSynthesis?.cancel();
+    stopSpeaking(); // 마이크 켜기 전, 재생 중인 음성 중단
 
     try {
       recognition.start();
@@ -439,43 +531,31 @@ export function MainViewV2({
     if (key === "home") {
       return;
     }
-    if (key === "tamagotchi") {
-      setIsAttendanceOpen(true);
-      return;
-    }
-    if (key === "stadium") {
-      setIsStadiumPageOpen(true);
-      return;
-    }
-    if (key === "settings") {
-      setIsSettingsOpen(true);
-      return;
-    }
-    if (key === "record") {
-      setShowRecords(true);
-      return;
-    }
-    if (key === "chat") {
-      setShowChat(true);
-      return;
-    }
+    switchToMenuTarget(key);
   }
 
   return (
     <section className="stage-view" aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
-        {/* 하늘 레이어 (뒤, 느리게) */}
+        {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
-          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
-          <img className="stage-bg-image" src="/bg-sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
         </div>
-        {/* 경기장 레이어 (앞, 빠르게) */}
+        {/* 경기장 레이어 (앞, 빠르게) — background_1~4를 이어붙이고, 같은 세트를 2번 반복해 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-ground">
-          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
-          <img className="stage-bg-image" src="/bg-ground.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
+          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
+      <div className="stage-nav-overlay" aria-hidden="true" />
 
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
@@ -515,6 +595,17 @@ export function MainViewV2({
             aria-label="질문 입력"
           />
 
+          <button
+            type="button"
+            className="stage-stop"
+            onClick={stopSpeaking}
+            disabled={!isSpeaking}
+            aria-label="음성 정지"
+            title="음성 정지"
+          >
+            <span aria-hidden="true">⏸</span>
+          </button>
+
           <button type="submit" className="stage-send">
             보내기
           </button>
@@ -523,34 +614,35 @@ export function MainViewV2({
 
       {isAttendanceOpen ? (
         <div
-          className="attendance-window-backdrop"
+          className={`attendance-window-backdrop ${closingOverlay === "tamagotchi" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsAttendanceOpen(false)}
+          onClick={() => closeOverlay("tamagotchi")}
         >
           <section
             className="attendance-window"
             role="dialog"
             aria-modal="true"
-            aria-label="다마고치"
+            aria-label="야구짝꿍"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               className="attendance-window-close"
               type="button"
               aria-label="뒤로가기"
-              onClick={() => setIsAttendanceOpen(false)}
+              onClick={() => closeOverlay("tamagotchi")}
             >
               뒤로가기
             </button>
             <AttendanceCheckIn
               authToken={authToken}
               nickname={nickname}
+              buddyNickname={buddyNickname}
               favTeamCode={favTeamCode}
+              onBuddyNicknameChange={onBuddyNicknameChange}
               onCheckedTodayChange={setAttendanceCheckedToday}
-              onRequestClose={() => setIsAttendanceOpen(false)}
+              onRequestClose={() => closeOverlay("tamagotchi")}
               onNavigate={(target) => {
-                setIsAttendanceOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -559,9 +651,9 @@ export function MainViewV2({
 
       {isStadiumPageOpen ? (
         <div
-          className="stadium-page-backdrop"
+          className={`stadium-page-backdrop ${closingOverlay === "stadium" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsStadiumPageOpen(false)}
+          onClick={() => closeOverlay("stadium")}
         >
           <section
             className="stadium-page-window"
@@ -571,10 +663,9 @@ export function MainViewV2({
             onClick={(event) => event.stopPropagation()}
           >
             <StadiumPage
-              onClose={() => setIsStadiumPageOpen(false)}
+              onClose={() => closeOverlay("stadium")}
               onNavigate={(target) => {
-                setIsStadiumPageOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -583,9 +674,9 @@ export function MainViewV2({
 
       {isSettingsOpen ? (
         <div
-          className="settings-window-backdrop"
+          className={`settings-window-backdrop ${closingOverlay === "settings" ? "is-closing" : ""}`}
           role="presentation"
-          onClick={() => setIsSettingsOpen(false)}
+          onClick={() => closeOverlay("settings")}
         >
           <section
             className="settings-window"
@@ -595,7 +686,7 @@ export function MainViewV2({
             onClick={(event) => event.stopPropagation()}
           >
             <SettingsView
-              onClose={() => setIsSettingsOpen(false)}
+              onClose={() => closeOverlay("settings")}
               notificationEnabled={notificationEnabled}
               darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
@@ -605,8 +696,7 @@ export function MainViewV2({
               onFavTeamChange={onFavTeamChange}
               onLogout={onLogout}
               onNavigate={(target) => {
-                setIsSettingsOpen(false);
-                window.setTimeout(() => handleNav(target), 0);
+                switchToMenuTarget(target);
               }}
             />
           </section>
@@ -614,11 +704,19 @@ export function MainViewV2({
       ) : null}
 
       {showRecords ? (
-        <MyRecordsView authToken={authToken} onBack={() => setShowRecords(false)} />
+        <MyRecordsView
+          authToken={authToken}
+          onBack={() => setShowRecords(false)}
+          onNavigate={switchToMenuTarget}
+        />
       ) : null}
 
       {showChat ? (
-        <TeamChatView authToken={authToken} onBack={() => setShowChat(false)} />
+        <TeamChatView
+          authToken={authToken}
+          onBack={() => setShowChat(false)}
+          onNavigate={switchToMenuTarget}
+        />
       ) : null}
     </section>
   );

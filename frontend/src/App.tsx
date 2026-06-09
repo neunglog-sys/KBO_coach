@@ -18,7 +18,7 @@ const AUTH_SESSION_KEY = "baseballCoachAuth";
 function loadAuthSession() {
   const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
   if (!saved) {
-    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
   }
 
   try {
@@ -27,24 +27,47 @@ function loadAuthSession() {
       isLoggedIn?: boolean;
       favTeamCode?: string;
       nickname?: string;
+      buddyNickname?: string;
     };
     return {
       isLoggedIn: Boolean(parsed.isLoggedIn),
       authToken: parsed.authToken || "",
       favTeamCode: parsed.favTeamCode || "",
       nickname: parsed.nickname || "",
+      buddyNickname: parsed.buddyNickname || "",
     };
   } catch {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
-    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "" };
+    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
   }
 }
 
-function saveAuthSession(authToken: string, favTeamCode: string, nickname: string) {
+function saveAuthSession(
+  authToken: string,
+  favTeamCode: string,
+  nickname: string,
+  buddyNickname = "",
+) {
   sessionStorage.setItem(
     AUTH_SESSION_KEY,
-    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname }),
+    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname, buddyNickname }),
   );
+}
+
+function clearTamagotchiLocalState() {
+  const prefixes = [
+    "baseballCoachGender",
+    "baseballCoachBuddyNickname",
+    "baseballCoachTamagotchi",
+    "baseballCoachAttendance",
+    "baseballCoachLevelSeen",
+  ];
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key && prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))) {
+      localStorage.removeItem(key);
+    }
+  }
 }
 
 export function App() {
@@ -54,6 +77,7 @@ export function App() {
   const [authToken, setAuthToken] = useState(authSession.authToken);
   const [favTeamCode, setFavTeamCode] = useState(authSession.favTeamCode);
   const [nickname, setNickname] = useState(authSession.nickname);
+  const [buddyNickname, setBuddyNickname] = useState(authSession.buddyNickname);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
@@ -95,11 +119,13 @@ export function App() {
         const token = data.access_token || data.token || "";
         const teamCode = data.user?.fav_team_code || ""; // 로그인 응답의 응원팀
         const userNickname = data.user?.nickname || "";
+        const userBuddyNickname = data.user?.buddy_nickname || "";
         setAuthToken(token);
         setFavTeamCode(teamCode);
         setNickname(userNickname);
+        setBuddyNickname(userBuddyNickname);
         setIsLoggedIn(true);
-        saveAuthSession(token, teamCode, userNickname);
+        saveAuthSession(token, teamCode, userNickname, userBuddyNickname);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
@@ -111,6 +137,7 @@ export function App() {
       setAuthToken("");
       setFavTeamCode("");
       setNickname("야구팬");
+      setBuddyNickname("");
       setIsLoggedIn(true);
       saveAuthSession("", "", "야구팬");
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -161,9 +188,11 @@ export function App() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem("myTeamCode");
+    clearTamagotchiLocalState();
     setAuthToken("");
     setFavTeamCode("");
     setNickname("");
+    setBuddyNickname("");
     setIsLoggedIn(false);
     setLoginError("");
     setLoginNotice("");
@@ -176,7 +205,12 @@ export function App() {
   // 응원구단 변경: 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗이 같은 팀 값을 봄
   function handleFavTeamChange(code: string) {
     setFavTeamCode(code);
-    saveAuthSession(authToken, code, nickname);
+    saveAuthSession(authToken, code, nickname, buddyNickname);
+  }
+
+  function handleBuddyNicknameChange(nextBuddyNickname: string) {
+    setBuddyNickname(nextBuddyNickname);
+    saveAuthSession(authToken, favTeamCode, nickname, nextBuddyNickname);
   }
 
   return (
@@ -186,6 +220,7 @@ export function App() {
           authToken={authToken}
           favTeamCode={favTeamCode}
           nickname={nickname}
+          buddyNickname={buddyNickname}
           notificationEnabled={appSettings.notificationEnabled}
           darkModeEnabled={appSettings.darkModeEnabled}
           onNotificationEnabledChange={(notificationEnabled) =>
@@ -195,6 +230,7 @@ export function App() {
             setAppSettings((current) => ({ ...current, darkModeEnabled }))
           }
           onFavTeamChange={handleFavTeamChange}
+          onBuddyNicknameChange={handleBuddyNicknameChange}
           onLogout={handleLogout}
         />
       ) : authMode === "register" ? (

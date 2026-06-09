@@ -83,6 +83,18 @@
       #ffffff 78%);
 }
 
+/* 상단 메뉴 영역 그라데이션 오버레이: 배경 이미지 위에 자연스럽게 어둡게 */
+.stage-nav-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
+}
+
 .stage-nav {
   position: absolute;
   top: var(--stage-nav-top);
@@ -97,16 +109,18 @@
 }
 
 .stage-nav-item {
-  display: grid;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 2px;
   min-width: 0;
   min-height: 48px;
   padding: 0 2px;
   border: 0;
   background: transparent;
-  color: #143159;
-  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+  text-shadow: none;
 }
 
 .stage-nav-icon {
@@ -119,13 +133,14 @@
 }
 
 .stage-nav-label {
-  max-width: 68px;
-  color: #10243c;
+  width: 100%;
+  color: #0f172a;
   font-size: 0.7rem;
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0;
   text-align: center;
+  text-shadow: none;
   word-break: keep-all;
 }
 
@@ -216,7 +231,7 @@
 
 .stage-inputbar {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
   align-items: center;
   align-self: center;
   gap: 8px;
@@ -248,10 +263,28 @@
 }
 
 .stage-mic,
+.stage-stop,
 .stage-send {
   min-height: 46px;
   border: 0;
   font-weight: 900;
+}
+
+.stage-stop {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #16345a;
+  background: #eef1f6;
+  box-shadow: inset 0 0 0 1px rgba(42, 83, 130, 0.08);
+  font-size: 1.05rem;
+}
+
+.stage-stop:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .stage-mic {
@@ -309,11 +342,12 @@
   }
 
   .stage-inputbar {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto auto;
     gap: 6px;
   }
 
-  .stage-mic {
+  .stage-mic,
+  .stage-stop {
     width: 42px;
     height: 42px;
   }
