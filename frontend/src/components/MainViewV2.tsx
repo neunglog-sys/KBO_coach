@@ -203,6 +203,9 @@ export function MainViewV2({
   const overlayCloseTimerRef = useRef<number | null>(null);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
+  // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
+  // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
+  const submitQuestionRef = useRef<(raw: string) => void>(() => {});
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -241,7 +244,7 @@ export function MainViewV2({
     recognition.addEventListener("result", (event) => {
       const transcript = event.results[0]?.[0]?.transcript?.trim() ?? "";
       setIsListening(false);
-      if (transcript) void submitQuestion(transcript);
+      if (transcript) void submitQuestionRef.current(transcript);   // 최신 submitQuestion 사용
     });
     recognition.addEventListener("end", () => setIsListening(false));
     recognition.addEventListener("error", () => setIsListening(false));
@@ -879,6 +882,11 @@ export function MainViewV2({
     event.preventDefault();
     void submitQuestion(input);
   }
+
+  // 음성인식 리스너가 항상 최신 submitQuestion(최신 favTeamCode)을 쓰도록 매 렌더마다 갱신.
+  useEffect(() => {
+    submitQuestionRef.current = submitQuestion;
+  });
 
   // 모든 TTS(오디오 엘리먼트 / 네이티브 / 웹 음성)를 즉시 중단 + 입모양 정리.
   function stopSpeaking() {
