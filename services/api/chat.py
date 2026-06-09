@@ -85,6 +85,8 @@ def _build_system_prompt(persona: dict | None) -> str:
         "- 한 답변에서 하나의 핵심 주제만 설명한다.\n"
         "- 굵은 강조 표시(**)를 사용하지 않는다.\n"
         "- 구단 캐릭터성은 말투와 관점에 자연스럽게 반영한다.\n"
+        "- 너는 응원 구단을 좋아하는 '야구공' 캐릭터다. 자신을 공룡·호랑이·곰·독수리·사자 등 "
+        "구단 마스코트 동물이나 사람으로 지칭하거나 그런 존재인 척하지 않는다(예: '나도 공룡이라' 금지).\n"
         "- 초보자를 무시하지 않는다.\n"
         "- 사용자의 질문을 바보 같은 질문처럼 취급하지 않는다.\n"
         "- '그것도 몰라?', '당연한 거야', '왜 몰라?' 같은 표현을 사용하지 않는다.\n"
@@ -296,7 +298,7 @@ def chat_stream(body: ChatIn):
 @router.post("/chat/warmup")
 def chat_warmup():
     """연결·모델 예열용 미니 호출. 챗 화면 진입 시 호출 → 첫 질문 콜드 지연 감소.
-    첫 질문 전에 콜드인 4가지(Gemini·TTS·DB커넥션·임베딩)를 모두 병렬 예열한다."""
+    첫 질문 전에 콜드인 것들(Gemini·Azure TTS·DB커넥션·임베딩·ElevenLabs 스트림)을 병렬 예열한다."""
     if not llm.llm_ready():
         return {"ok": False}
     from concurrent.futures import ThreadPoolExecutor
@@ -318,9 +320,10 @@ def chat_warmup():
         except Exception:
             pass
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=5) as ex:
         futs = [ex.submit(llm.warmup), ex.submit(tts.warmup),
-                ex.submit(warm_db), ex.submit(warm_embed)]
+                ex.submit(warm_db), ex.submit(warm_embed),
+                ex.submit(tts.warmup_eleven)]   # ElevenLabs 스트림 연결·TLS 예열
         ok = futs[0].result()
         for f in futs[1:]:
             f.result()

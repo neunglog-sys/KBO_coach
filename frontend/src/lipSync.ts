@@ -48,6 +48,26 @@ export function setActiveViseme(id: number): void {
   target = next;
 }
 
+// 한글 음절 중성(모음, 0~20) → 입모양. ElevenLabs 글자 타임스탬프 립싱크용.
+//   ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ
+const MEDIAL_TO_SHAPE: (MouthShape | null)[] = [
+  "A", "E", "A", "E", "A", "E", "A", "E", "O", "O", "E",
+  "O", "O", "W", "O", "E", "W", "W", "I", "I", "I",
+];
+
+/** 한글 음절 한 글자 → 그 모음 입모양으로 설정. 음절이 아니면(공백·문장부호) 다문 입. */
+export function setActiveSyllable(ch: string): void {
+  const code = ch ? ch.charCodeAt(0) : 0;
+  let shape: MouthShape | null = null;
+  if (code >= 0xac00 && code <= 0xd7a3) {
+    const medial = Math.floor((code - 0xac00) / 28) % 21;
+    shape = MEDIAL_TO_SHAPE[medial] ?? "A";
+  }
+  const next: MouthWeights = { ...ZERO };
+  if (shape) next[shape] = 1;
+  target = next;
+}
+
 /** 다문 입(전부 0)으로. 발화 종료/중단 시 호출. */
 export function clearMouth(): void {
   target = { ...ZERO };

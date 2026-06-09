@@ -16,6 +16,7 @@ viseme = 발화 중 입모양 타이밍 [{offset(ms), id}] → 프론트에서 3
 """
 import base64
 import io
+import json
 import os
 import re
 import threading
@@ -25,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 router = APIRouter(tags=["tts"])
@@ -50,6 +52,28 @@ def _tts_cache_put(key, value):
         while len(_tts_cache) > _TTS_CACHE_MAX:
             _tts_cache.popitem(last=False)
 
+
+# 스트리밍 오디오 캐시 — (eleven_text, voice_id) → 완성된 mp3 bytes.
+# 스트리밍이 끝나면 누적 바이트를 여기 저장 → 동일 요청은 재합성 없이 즉시(캐시에서) 흘림.
+_STREAM_CACHE_MAX = 200
+_stream_cache: "OrderedDict[tuple, bytes]" = OrderedDict()
+
+
+def _stream_cache_get(key):
+    with _tts_lock:
+        hit = _stream_cache.get(key)
+        if hit is not None:
+            _stream_cache.move_to_end(key)
+        return hit
+
+
+def _stream_cache_put(key, value):
+    with _tts_lock:
+        _stream_cache[key] = value
+        _stream_cache.move_to_end(key)
+        while len(_stream_cache) > _STREAM_CACHE_MAX:
+            _stream_cache.popitem(last=False)
+
 AZURE_KEY = os.environ.get("AZURE_SPEECH_KEY")
 AZURE_REGION = os.environ.get("AZURE_SPEECH_REGION")
 DEFAULT_VOICE = os.environ.get("AZURE_TTS_VOICE", "ko-KR-SunHiNeural")
@@ -58,19 +82,28 @@ DEFAULT_VOICE = os.environ.get("AZURE_TTS_VOICE", "ko-KR-SunHiNeural")
 # ELEVENLABS_KEY 있고 구단코드 있으면 자동 활성. 없으면 Azure 단독(프로덕션 안전).
 ELEVEN_KEY = os.environ.get("ELEVENLABS_KEY")
 ELEVEN_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v3")
-ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id (구단별 확정 보이스)
-    "SS": "oCGrO4fC1eEQUw2T7zxa",         # 삼성 (경상·남)
-    "LT": "YWZp0kp04cSI79eVijrX",         # 롯데 (경상·남)
-    "HT": "6ghOKtsRs57f0DTCDWmq",         # 기아 (전라·남)
-    "HH": "FGLxBYXsCNeXWvXHe193",         # 한화 (충청·여)
+ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id
+    # 사투리 팀: 팀원 녹음(본인 동의) → IVC 클론 → pyworld 포먼트보존 피치업 재클론(익명성+캐릭터톤).
+    "SS": "9FiZDZAX84GsWo9JY3PF",         # 삼성 (대구) — 용준님 클론 +5반음(과묵 캐릭터)
+    "LT": "YGD5E7UxfKGvH0astJLT",         # 롯데 (부산) — 동완님 클론 +7반음(다혈질 캐릭터)
+    "NC": "ZdmGb2x4fujs5pfLs9vW",         # NC   (창원) — 동완님 클론 +10반음(능청 영포티)
+    "HT": "FWJJYAuNelKTpvm5fWKo",         # 기아 (전라) — Voice Design 전라(히스토리 재클론 복원), 화자 구하면 교체
+    "HH": "vr6iLqSlQKsMHP79UL1r",         # 한화 (충청) — Voice Design 마스코트 충청(재생성)
+    # 표준어 팀: 기존 Voice Design 보이스 유지
     "LG": "f1jSprXYPgiSbio3N4pp",         # LG (표준어·여)
     "OB": "oMzFTv55ovUK27h8iS5n",         # 두산 (표준어·남)
     "KT": "7qAqosQrZcvLrawKW2Mq",         # KT (표준어·여)
     "SK": "qDYEWTCdFmiN1IyrEze6",         # SSG (표준어·남)
-    "NC": "Uw2XvkJIih5308czJ9Ib",         # NC (창원/경상 사투리·능청 남) — 안정 보이스
     "WO": "XZAfpfQfaYAGv3W67mld",         # 키움 (표준어·여)
 }
-_ELEVEN_RATE = 24000   # pcm_24000 → 길이 계산·wav 래핑용 샘플레이트
+# creator 등급에서 되는 고음질 포맷(44.1kHz mp3) — 샘플 비교 때와 동일.
+# (pcm_44100은 상위 등급 전용이라 거부됨 → Azure 폴백되던 문제 회피)
+_ELEVEN_FORMAT = "mp3_44100_128"
+_ELEVEN_MP3_KBPS = 128
+
+# ElevenLabs 호출용 공유 세션 — keep-alive로 TLS·연결을 재사용(첫 호출 콜드 지연 감소).
+# 워밍업이 이 세션으로 연결을 데워두면 실제 호출이 그 연결을 그대로 씀.
+_eleven_session = requests.Session()
 
 
 def _wav_dur(b: bytes) -> float:
@@ -81,53 +114,21 @@ def _wav_dur(b: bytes) -> float:
         w.close()
 
 
-def _pcm_to_wav(pcm: bytes, rate: int = _ELEVEN_RATE) -> bytes:
-    """16bit mono PCM → wav 컨테이너 바이트(프론트 재생용)."""
-    buf = io.BytesIO()
-    w = wave.open(buf, "wb")
-    w.setnchannels(1)
-    w.setsampwidth(2)
-    w.setframerate(rate)
-    w.writeframes(pcm)
-    w.close()
-    return buf.getvalue()
-
-
-def _eleven_pcm(text: str, voice_id: str):
-    """ElevenLabs 단일 합성 → (pcm bytes, 길이초). pcm_24000.
-    seed 고정 + stability로 문장 간 음색 흔들림 완화(스트리밍 시 문장별 생성이라 중요)."""
-    r = requests.post(
+def _eleven_synth(text: str, voice_id: str):
+    """ElevenLabs 합성 → (mp3 bytes, 길이초). 통문장 1회 호출(문맥 살려 자연스럽게 — 쪼개지 않음).
+    클론 보이스는 seed 고정 시 오히려 어색 → seed 미지정, stability로만 음색 안정."""
+    r = _eleven_session.post(
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
         headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
-        params={"output_format": "pcm_24000"},
+        params={"output_format": _ELEVEN_FORMAT},
         json={"text": text, "model_id": ELEVEN_MODEL,
-              "seed": 1234,
               "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
         timeout=12)   # 멈추면 12초 내 Azure 폴백(프론트 워치독 15초보다 먼저)
     if r.status_code != 200:
         raise RuntimeError(f"ElevenLabs {r.status_code}: {r.text[:160]}")
-    pcm = r.content
-    return pcm, len(pcm) / (2.0 * _ELEVEN_RATE)   # 16bit=2byte/sample
-
-
-# 문장 단위 분리(.?!…。 뒤 공백 기준). v3는 길이 비례라 문장별 병렬이 wall-clock을 max로 줄임.
-def _split_sentences(text: str) -> list[str]:
-    parts = re.split(r"(?<=[.!?…。])\s+", text.strip())
-    return [p for p in (s.strip() for s in parts) if p]
-
-
-def _eleven_synth(text: str, voice_id: str):
-    """ElevenLabs 합성 → (wav bytes, 길이초). 여러 문장이면 문장별 병렬 합성 후 PCM 이어붙임."""
-    chunks = _split_sentences(text)
-    if len(chunks) <= 1:
-        pcm, dur = _eleven_pcm(text, voice_id)
-        return _pcm_to_wav(pcm), dur
-    # 문장별 병렬 합성(순서 보존) → PCM 연결. 총 길이는 각 조각 합.
-    with ThreadPoolExecutor(max_workers=min(4, len(chunks))) as ex:
-        results = list(ex.map(lambda c: _eleven_pcm(c, voice_id), chunks))
-    pcm = b"".join(p for p, _ in results)
-    dur = sum(d for _, d in results)
-    return _pcm_to_wav(pcm), dur
+    mp3 = r.content
+    dur = len(mp3) * 8.0 / (_ELEVEN_MP3_KBPS * 1000)   # CBR 128k 길이 추정
+    return mp3, dur
 
 # 숫자 → 한자어 한글(한 글자=한 글자, 길이 보존). "1번"을 "한번"이 아닌 "일번"으로 읽게.
 # 길이가 보존돼야 단어경계 textOffset이 화면 텍스트와 그대로 맞아 자막 싱크가 안 깨진다.
@@ -286,6 +287,7 @@ def tts(body: TtsIn):
     try:
         el_audio, el_dur = fut_el.result()
         audio = el_audio
+        mime = "audio/mpeg"   # ElevenLabs = mp3
         # Azure viseme가 있을 때만 ElevenLabs 길이에 맞춰 스케일(없으면 립싱크 생략, 음성은 정상)
         if az_audio and visemes:
             try:
@@ -302,15 +304,116 @@ def tts(body: TtsIn):
             except Exception:
                 visemes, boundaries = [], []
     except Exception:
-        # ElevenLabs 실패 → Azure 오디오로 폴백(있으면), 둘 다 실패면 에러
+        # ElevenLabs 실패 → Azure 오디오(wav)로 폴백(있으면), 둘 다 실패면 에러
         if not az_audio:
             raise HTTPException(status_code=502, detail="TTS 합성 실패")
         audio = az_audio
+        mime = "audio/wav"
 
-    out = {"audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/wav",
+    out = {"audio": base64.b64encode(audio).decode("ascii"), "mime": mime,
            "voice": voice, "visemes": visemes, "boundaries": boundaries}
     _tts_cache_put(cache_key, out)
     return out
+
+
+# ── 스트리밍 경로 (구단 보이스 전용) ─────────────────────────────────────────────
+# 통문장 1콜을 그대로 유지(사투리 억양 보존)하되, 다 만들 때까지 기다리지 않고
+# ElevenLabs가 만들어내는 오디오를 청크로 흘려 첫 소리까지 ~8s→~0.8s로 단축한다.
+#   POST /tts/prepare → Azure viseme(립싱크) + 스트림 토큰 반환
+#   GET  /tts/stream  → 토큰으로 ElevenLabs /stream 바이트를 audio/mpeg로 progressive 전송
+# viseme는 '미스케일'(Azure 타임라인) 그대로 주고, 재생 길이가 잡히면 프론트가 보정한다.
+
+def _eleven_text(text: str) -> str:
+    """ElevenLabs로 보낼 정제 텍스트(이모티콘 제거 + 숫자 한글화)."""
+    return _read_numbers_eleven(_strip_emoticon(text))
+
+
+def _make_token(eleven_text: str, voice_id: str) -> str:
+    """GET이 인스턴스에 상관없이 자급자족하도록 텍스트·보이스를 토큰에 인코딩(서버상태 X)."""
+    raw = json.dumps({"e": eleven_text, "v": voice_id}, ensure_ascii=False).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii")
+
+
+def _read_token(token: str):
+    raw = base64.urlsafe_b64decode(token.encode("ascii"))
+    d = json.loads(raw.decode("utf-8"))
+    return d["e"], d["v"]
+
+
+@router.post("/tts/prepare")
+def tts_prepare(body: TtsIn):
+    """스트리밍 준비 — 스트림 토큰 + 정제텍스트 길이(자막 진행률 분모) 발급.
+    구단 보이스가 아니면 fallback=true 반환(프론트는 기존 블로킹 /tts 사용).
+    립싱크·자막 타이밍은 스트림이 주는 ElevenLabs 글자 타임스탬프로 맞추므로 Azure 불필요."""
+    text = (body.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text가 비어 있습니다.")
+    two_tts = bool(body.team_code in ELEVEN_VOICE and ELEVEN_KEY)
+    if not two_tts:
+        return {"fallback": True}   # 표준어/키 없음 → 기존 경로(Azure 단독)로
+
+    eleven_text = _eleven_text(text)
+    voice_id = ELEVEN_VOICE[body.team_code]
+    return {
+        "token": _make_token(eleven_text, voice_id),
+        "cleanLen": len(eleven_text),   # 합성 글자 수 — 프론트 자막 진행률 분모
+        "mime": "audio/mpeg",
+    }
+
+
+@router.get("/tts/stream")
+def tts_stream(token: str):
+    """토큰의 텍스트를 ElevenLabs '타임스탬프 스트리밍'으로 합성.
+    각 청크를 NDJSON 한 줄로 전송: {"a": 오디오mp3 base64, "c": [글자...], "t": [시작초...]}.
+    프론트는 a를 MediaSource에 먹여 재생하고, c/t로 자막·입모양을 그 음성 기준으로 정확히 맞춘다.
+    완료 시 (오디오·글자·타임) 캐시 저장(동일 요청은 한 줄로 즉시 반환)."""
+    try:
+        eleven_text, voice_id = _read_token(token)
+    except Exception:
+        raise HTTPException(status_code=400, detail="잘못된 토큰")
+    if not ELEVEN_KEY:
+        raise HTTPException(status_code=503, detail="ElevenLabs 미설정")
+
+    key = (eleven_text, voice_id)
+    cached = _stream_cache_get(key)
+    if cached is not None:                       # 캐시 적중 → 한 줄로 전체 반환(재합성 X)
+        line = json.dumps({"a": base64.b64encode(cached["audio"]).decode("ascii"),
+                           "c": cached["chars"], "t": cached["starts"]}, ensure_ascii=False)
+        return StreamingResponse(iter([line + "\n"]), media_type="application/x-ndjson")
+
+    def gen():
+        buf = bytearray()
+        chars: list = []
+        starts: list = []
+        try:
+            with _eleven_session.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream/with-timestamps",
+                headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
+                params={"output_format": _ELEVEN_FORMAT},
+                json={"text": eleven_text, "model_id": ELEVEN_MODEL,
+                      "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
+                timeout=60, stream=True,
+            ) as r:
+                if r.status_code != 200:
+                    return   # 첫 바이트 전 실패 → 빈 본문(프론트가 블로킹 폴백)
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    obj = json.loads(line)
+                    a = obj.get("audio_base64") or obj.get("audio")
+                    al = obj.get("alignment") or obj.get("normalized_alignment") or {}
+                    cs = al.get("characters", []) or []
+                    ts = al.get("character_start_times_seconds", []) or []
+                    if a:
+                        buf += base64.b64decode(a)
+                    chars += cs
+                    starts += ts
+                    yield json.dumps({"a": a, "c": cs, "t": ts}, ensure_ascii=False) + "\n"
+        finally:
+            if buf:
+                _stream_cache_put(key, {"audio": bytes(buf), "chars": chars, "starts": starts})
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
 
 
 def warmup() -> bool:
@@ -319,6 +422,28 @@ def warmup() -> bool:
         return False
     try:
         _azure_synth("안녕", DEFAULT_VOICE, want_pcm=False)
+        return True
+    except Exception:
+        return False
+
+
+def warmup_eleven() -> bool:
+    """ElevenLabs 스트림 경로 예열 — 공유 세션으로 TLS·연결을 미리 열어 풀에 남겨둔다.
+    첫 질문이 콜드 연결로 느려지던 것 방지. 짧은 텍스트로 끝까지 소비해야 연결이 풀에 반환됨."""
+    if not ELEVEN_KEY or not ELEVEN_VOICE:
+        return False
+    voice_id = next(iter(ELEVEN_VOICE.values()))
+    try:
+        with _eleven_session.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream/with-timestamps",
+            headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
+            params={"output_format": _ELEVEN_FORMAT},
+            json={"text": "네", "model_id": ELEVEN_MODEL,
+                  "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
+            timeout=20, stream=True,
+        ) as r:
+            for _ in r.iter_content(chunk_size=8192):
+                pass   # 끝까지 소비 → 연결이 keep-alive 풀로 반환됨
         return True
     except Exception:
         return False
