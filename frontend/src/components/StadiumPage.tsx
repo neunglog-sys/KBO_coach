@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppBackButton } from "./AppBackButton";
 import { fetchStadiums, type Stadium } from "../data/stadiumData";
-import { matchesStadiumSearch } from "../data/stadiumMapper";
+import { stadiumSearchScore } from "../data/stadiumMapper";
 import { StadiumFoodTab } from "./StadiumFoodTab";
 import { StadiumGuideTab } from "./StadiumGuideTab";
 import { StadiumRegionTab } from "./StadiumRegionTab";
@@ -51,7 +51,16 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   }
 
   function handleSearch() {
-    const result = stadiums.find((stadium) => matchesStadiumSearch(searchValue, stadium));
+    // 점수가 가장 높은 구장 선택 (팀명·구장명 매칭 우선 → "삼성" 검색 시 잠실 숙박정보 오매칭 방지)
+    let result: Stadium | null = null;
+    let bestScore = 0;
+    for (const stadium of stadiums) {
+      const score = stadiumSearchScore(searchValue, stadium);
+      if (score > bestScore) {
+        bestScore = score;
+        result = stadium;
+      }
+    }
     if (!result) {
       setNotice("검색 결과가 없습니다. 구단명, 구장명 또는 지역명으로 검색해 주세요.");
       return;
