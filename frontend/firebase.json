@@ -23,6 +23,9 @@
       { "source": "/recommendations{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/board{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/my-records{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/attendance{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/quiz{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/tamagotchi{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/push{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/tts{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "**", "destination": "/index.html" }

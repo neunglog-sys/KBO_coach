@@ -10,7 +10,7 @@
   --stage-side: clamp(14px, 4vw, 24px);
   --stage-nav-top: calc(env(safe-area-inset-top, 0px) + 8px);
   --stage-character-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 9vh, 92px));
-  --stage-character-size: clamp(300px, min(92vw, 53vh), 480px);
+  --stage-character-size: clamp(280px, min(88vw, 48vh), 440px);
   --stage-bg-rise: clamp(90px, 30vh, 240px);
   /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
   --stage-chat-limit: clamp(210px, 34vh, 390px);
