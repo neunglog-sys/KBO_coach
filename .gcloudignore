@@ -9,8 +9,13 @@ env.yaml
 env*.yaml
 *firebase-adminsdk*.json
 serviceAccountKey.json
+*-key.json
+*deployer*.json
+kboai-*.json
+gcp-*.json
 *.pem
 *.key
+tts_samples/
 
 # --- 백엔드 배포에 불필요 (용량/무관) ---
 frontend/

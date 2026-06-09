@@ -58,7 +58,31 @@ const STADIUM_IMAGES: Record<string, string> = {
 
 const FOOD_IMAGE_BASE = "/img/kbo_stadium_food";
 
+// 잠실야구장(LG·두산 공용) 먹거리 — 백엔드 음식명 → 이미지 파일 매핑.
+const JAMSIL_FOODS: Record<string, string> = {
+  김치말이국수: `${FOOD_IMAGE_BASE}/잠실음식_webp/01_김치말이국수.png`,
+  삼겹살도시락: `${FOOD_IMAGE_BASE}/잠실음식_webp/02_삼겹살도시락.png`,
+  "우이락 고추튀김": `${FOOD_IMAGE_BASE}/잠실음식_webp/03_우이락 고추튀김.png`,
+  "보영만두 군만두/쫄면": `${FOOD_IMAGE_BASE}/잠실음식_webp/04_보영만두 군만두 찐만두.png`,
+  "BHC 치킨": `${FOOD_IMAGE_BASE}/잠실음식_webp/05_BHC치킨.png`,
+  "BBQ 치킨": `${FOOD_IMAGE_BASE}/잠실음식_webp/06_BBQ치킨.png`,
+  피자헛: `${FOOD_IMAGE_BASE}/잠실음식_webp/07_피자헛.png`,
+  도미노피자: `${FOOD_IMAGE_BASE}/잠실음식_webp/08_도미노피자.png`,
+  죠스떡볶이: `${FOOD_IMAGE_BASE}/잠실음식_webp/09_죠스떡볶이.png`,
+  명인만두: `${FOOD_IMAGE_BASE}/잠실음식_webp/10_명인만두.png`,
+  "통밥/덮밥류": `${FOOD_IMAGE_BASE}/잠실음식_webp/11_통밥 덮밥류.png`,
+  KFC: `${FOOD_IMAGE_BASE}/잠실음식_webp/12_KFC.png`,
+  맘스터치: `${FOOD_IMAGE_BASE}/잠실음식_webp/13_맘스터치.png`,
+  브뤼셀프라이: `${FOOD_IMAGE_BASE}/잠실음식_webp/14_브리셸프라이.png`,
+  타코잇: `${FOOD_IMAGE_BASE}/잠실음식_webp/15_타코잇.png`,
+  픽베이크: `${FOOD_IMAGE_BASE}/잠실음식_webp/16_픽베이크.png`,
+  생맥주: `${FOOD_IMAGE_BASE}/잠실음식_webp/17_생맥주.png`,
+  "맥주보이 좌석 판매 생맥주": `${FOOD_IMAGE_BASE}/잠실음식_webp/18_맥주보이 좌석판매 생맥주.png`,
+};
+
 const FOOD_IMAGE_MAP: Record<string, Record<string, string>> = {
+  LG: JAMSIL_FOODS,
+  OB: JAMSIL_FOODS,
   HT: {
     원샷치킨: `${FOOD_IMAGE_BASE}/KIA음식_webp/07_원샷치킨.webp`,
     "스테이션 크림새우": `${FOOD_IMAGE_BASE}/KIA음식_webp/08_스테이션_크림새우.webp`,
@@ -142,13 +166,22 @@ function findFoodImageUrl(teamCode: string, foodName: string) {
   if (!teamImages) return "";
 
   const normalizedFoodName = normalizeFoodName(foodName);
-  const matched = Object.entries(teamImages).find(([name]) => (
-    normalizedFoodName === normalizeFoodName(name) ||
-    normalizedFoodName.includes(normalizeFoodName(name)) ||
-    normalizeFoodName(name).includes(normalizedFoodName)
-  ));
 
-  return matched?.[1] ?? "";
+  // 1) 정확히 일치하는 항목 우선 (예: "생맥주" vs "맥주보이…생맥주" 혼동 방지)
+  const exact = Object.entries(teamImages).find(
+    ([name]) => normalizeFoodName(name) === normalizedFoodName,
+  );
+  if (exact) return exact[1];
+
+  // 2) 부분 포함 매칭 — 더 구체적인(긴) 이름이 먼저 매칭되도록 정렬
+  const fuzzy = Object.entries(teamImages)
+    .sort((a, b) => normalizeFoodName(b[0]).length - normalizeFoodName(a[0]).length)
+    .find(([name]) => {
+      const n = normalizeFoodName(name);
+      return normalizedFoodName.includes(n) || n.includes(normalizedFoodName);
+    });
+
+  return fuzzy?.[1] ?? "";
 }
 
 function extractFoodItems(value: string | null, teamCode: string): Food[] {

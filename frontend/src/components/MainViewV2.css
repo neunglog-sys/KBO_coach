@@ -370,3 +370,13 @@
     transform: translateX(-50%);
   }
 }
+
+/* 화면 전환 중 메인이 비치지 않도록 메인 위에 까는 중립 커버.
+   z-index: 메인 콘텐츠(0~10)보다 위, 모든 화면(records 50 / chat 55 / 모달 320)보다 아래. */
+.screen-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--color-background, #f4f6fb);
+  pointer-events: none;
+}

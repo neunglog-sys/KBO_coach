@@ -772,3 +772,46 @@
     height: 28px;
   }
 }
+
+/* 내 정보 — 계정명 카드 */
+.settings-account-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border, #d6e6f2);
+  border-radius: var(--radius-card, 20px);
+  background: var(--color-card, #fff);
+  box-shadow: var(--shadow-card, 0 8px 24px rgba(30, 91, 143, 0.1));
+}
+.settings-account-card .settings-row-text strong {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--color-text, #0f172a);
+}
+.settings-account-card .settings-row-text span {
+  font-size: 0.85rem;
+  color: var(--color-text-sub, #64748b);
+}
+
+/* 설정 내부 화면 전환(main↔내정보↔비번/팀)을 부드럽게 */
+.settings-screen-anim {
+  animation: settings-screen-in 0.26s cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  will-change: transform, opacity;
+}
+@keyframes settings-screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(7%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-screen-anim {
+    animation: none;
+  }
+}
