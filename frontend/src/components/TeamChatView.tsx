@@ -32,6 +32,14 @@ const TEAMS = [
 const MYTEAM_KEY = "myTeamCode";
 const teamByCode = (c: string | null) => TEAMS.find((t) => t.code === c);
 
+/** message_id 기준으로 이미 있는 건 빼고 합침 — 낙관적 추가와 폴링이 같은 메시지를 중복 추가하는 것 방지. */
+function mergeMessages(prev: BoardMessage[], incoming: BoardMessage[]): BoardMessage[] {
+  if (!incoming.length) return prev;
+  const seen = new Set(prev.map((m) => m.message_id));
+  const add = incoming.filter((m) => !seen.has(m.message_id));
+  return add.length ? [...prev, ...add] : prev;
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -83,6 +91,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
   const logRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
+  const sendingRef = useRef(false);   // 전송 재진입 가드(더블탭/중복 제출 시 POST 두 번 방지)
   const msgRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const teamObj = teamByCode(team);
@@ -131,7 +140,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         const fresh: BoardMessage[] = Array.isArray(d.messages) ? d.messages : [];
         if (fresh.length) {
           lastIdRef.current = fresh[fresh.length - 1].message_id;
-          setMessages((prev) => (initial ? fresh : [...prev, ...fresh]));
+          setMessages((prev) => (initial ? fresh : mergeMessages(prev, fresh)));
         }
       } catch {
         /* 무시 */
@@ -166,8 +175,10 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   }, [matchIds, query]);
 
   async function send() {
+    if (sendingRef.current) return;   // 진행 중인 전송이 있으면 무시(중복 POST 방지)
     const text = input.trim();
     if (!text || !authToken || !team) return;
+    sendingRef.current = true;
     setInput("");
     try {
       const r = await fetch(apiUrl(`/board/${team}/messages`), {
@@ -178,10 +189,13 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       if (r.ok) {
         const msg: BoardMessage = await r.json();
         lastIdRef.current = Math.max(lastIdRef.current, msg.message_id);
-        setMessages((prev) => [...prev, { ...msg, is_mine: true }]);
+        // message_id 기준 중복 제거 — 폴링이 이미 가져왔으면 또 안 붙임.
+        setMessages((prev) => mergeMessages(prev, [{ ...msg, is_mine: true }]));
       }
     } catch {
       /* 무시 */
+    } finally {
+      sendingRef.current = false;
     }
   }
 

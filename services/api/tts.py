@@ -100,6 +100,10 @@ ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id
 # (pcm_44100은 상위 등급 전용이라 거부됨 → Azure 폴백되던 문제 회피)
 _ELEVEN_FORMAT = "mp3_44100_128"
 _ELEVEN_MP3_KBPS = 128
+# 스트리밍(타임스탬프) 경로 포맷 — PCM(16-bit LE mono). 프론트가 Web Audio로 청크 단위 재생.
+# (MSE+mp3는 안드 WebView에서 안 먹힘 → Web Audio+PCM으로 전환. pcm_44100은 등급 미지원이라 24k.)
+_STREAM_FORMAT = "pcm_24000"
+_STREAM_RATE = 24000
 
 # ElevenLabs 호출용 공유 세션 — keep-alive로 TLS·연결을 재사용(첫 호출 콜드 지연 감소).
 # 워밍업이 이 세션으로 연결을 데워두면 실제 호출이 그 연결을 그대로 씀.
@@ -357,15 +361,15 @@ def tts_prepare(body: TtsIn):
     return {
         "token": _make_token(eleven_text, voice_id),
         "cleanLen": len(eleven_text),   # 합성 글자 수 — 프론트 자막 진행률 분모
-        "mime": "audio/mpeg",
+        "sampleRate": _STREAM_RATE,      # PCM 샘플레이트(Web Audio AudioBuffer 생성용)
     }
 
 
 @router.get("/tts/stream")
 def tts_stream(token: str):
-    """토큰의 텍스트를 ElevenLabs '타임스탬프 스트리밍'으로 합성.
-    각 청크를 NDJSON 한 줄로 전송: {"a": 오디오mp3 base64, "c": [글자...], "t": [시작초...]}.
-    프론트는 a를 MediaSource에 먹여 재생하고, c/t로 자막·입모양을 그 음성 기준으로 정확히 맞춘다.
+    """토큰의 텍스트를 ElevenLabs '타임스탬프 스트리밍'으로 합성(PCM 16-bit LE).
+    각 청크를 NDJSON 한 줄로 전송: {"a": PCM base64, "c": [글자...], "t": [시작초...]}.
+    프론트는 a를 Web Audio로 청크단위 gapless 재생하고, c/t로 자막·입모양을 그 음성 기준으로 맞춘다.
     완료 시 (오디오·글자·타임) 캐시 저장(동일 요청은 한 줄로 즉시 반환)."""
     try:
         eleven_text, voice_id = _read_token(token)
@@ -389,7 +393,7 @@ def tts_stream(token: str):
             with _eleven_session.post(
                 f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream/with-timestamps",
                 headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
-                params={"output_format": _ELEVEN_FORMAT},
+                params={"output_format": _STREAM_FORMAT},   # PCM 24k — Web Audio 재생용
                 json={"text": eleven_text, "model_id": ELEVEN_MODEL,
                       "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
                 timeout=60, stream=True,
