@@ -348,7 +348,7 @@ export default function AttendanceCheckIn({
   const [nickname, setNickname] = useState(initialNickname || "");
   const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
   const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
-    loadDailyState(stateStorageKey, initialBuddyNickname || initialNickname)
+    loadDailyState(stateStorageKey, initialNickname)
   );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
@@ -481,7 +481,7 @@ export default function AttendanceCheckIn({
       onBuddyNicknameChange?.(nextBuddyNickname);
       updateDailyState((current) => ({
         ...current,
-        speechText: randomSpeech(DEFAULT_SPEECHES, nextBuddyNickname),
+        speechText: randomSpeech(DEFAULT_SPEECHES, nickname),
       }));
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
@@ -601,7 +601,7 @@ export default function AttendanceCheckIn({
         const initialized = initializeTamagotchiState(
           serverState,
           todayKey(),
-          randomSpeech(DEFAULT_SPEECHES, buddyNickname || nickname),
+          randomSpeech(DEFAULT_SPEECHES, nickname),
         );
         setDailyState(initialized);
         saveDailyState(stateStorageKey, initialized);
@@ -671,13 +671,13 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(authToken, data);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(authToken, status);
       setStatus(next);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } finally {
@@ -737,7 +737,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    const speech = randomSpeech(CHEER_SPEECHES, displayBuddyNickname);
+    const speech = randomSpeech(CHEER_SPEECHES, nickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
     setNotice(speech);
   }
