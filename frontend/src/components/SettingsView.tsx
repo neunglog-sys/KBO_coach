@@ -22,6 +22,7 @@ type SettingsScreen = "main" | "myInfo" | "password" | "team";
 interface SettingsViewProps {
   onClose: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
+  nickname?: string;
   notificationEnabled?: boolean;
   darkModeEnabled?: boolean;
   onNotificationEnabledChange?: (enabled: boolean) => void;
@@ -165,6 +166,7 @@ function MenuCard({
 export default function SettingsView({
   onClose,
   onNavigate,
+  nickname,
   notificationEnabled: controlledNotificationEnabled,
   darkModeEnabled: controlledDarkModeEnabled,
   onNotificationEnabledChange,
@@ -364,6 +366,8 @@ export default function SettingsView({
 
   return (
     <section className="settings-app-screen">
+      {/* key={screen}로 화면 전환 시 리마운트 → 슬라이드/페이드 애니메이션 재생 */}
+      <div className="settings-screen-anim" key={screen}>
       {screen === "main" ? (
         <>
           <SettingsHeader title="환경 설정" onBack={goBack} />
@@ -405,6 +409,13 @@ export default function SettingsView({
       {screen === "myInfo" ? (
         <>
           <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} />
+          <div className="settings-account-card">
+            <IconCircle icon={User} />
+            <div className="settings-row-text">
+              <strong>{nickname?.trim() || "사용자"}</strong>
+              <span>내 계정</span>
+            </div>
+          </div>
           <div className="settings-card-list">
             <MenuCard icon={LockKeyhole} title="비밀번호 변경" onClick={() => setScreen("password")} />
             <MenuCard icon={Trophy} title="응원구단 변경" onClick={() => setScreen("team")} />
@@ -506,6 +517,7 @@ export default function SettingsView({
           </form>
         </>
       ) : null}
+      </div>
 
       <div className="settings-stadium-decoration" aria-hidden="true">
         <span />
