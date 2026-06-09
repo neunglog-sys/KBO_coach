@@ -14,12 +14,14 @@ interface Character3DProps {
 }
 
 const MODEL_URL = "/model/3d/model_260608_opt.glb";
-const FRONT_ROTATION_DEG = 0; // mouth_test2는 정면(+Z) 제작 → 보정 불필요. 옆으로 보이면 조정.
+const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 재생할 애니메이션(모션) 클립 이름
 const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
+const MODEL_FRAME_HEIGHT = 2.15;
+const MODEL_VERTICAL_OFFSET = 0.08;
 
 export default function Character3D({ isSpeaking, greetSignal, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -111,9 +113,10 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        const scale = 2.4 / maxDim;
+        const scale = MODEL_FRAME_HEIGHT / maxDim;
         model.scale.setScalar(scale);
         model.position.sub(center.multiplyScalar(scale));
+        model.position.y += MODEL_VERTICAL_OFFSET;
 
         root.add(model);
 
