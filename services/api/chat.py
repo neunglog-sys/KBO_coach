@@ -10,6 +10,9 @@
 설정: .env에 GEMINI_API_KEY (선택: GEMINI_MODEL, 기본 gemini-2.0-flash)
 다음 단계: knowledge_chunks 임베딩(pgvector) 벡터검색으로 RAG 고도화.
 """
+import json
+import queue
+import re
 import threading
 from collections import OrderedDict
 
@@ -20,6 +23,7 @@ from pydantic import BaseModel
 from db_pg import get_conn
 from embeddings import embed_text, to_pgvector
 import llm
+import tts
 
 router = APIRouter(tags=["chat"])
 
@@ -291,7 +295,139 @@ def chat_stream(body: ChatIn):
 
 @router.post("/chat/warmup")
 def chat_warmup():
-    """연결·모델 예열용 미니 호출(1토큰). 챗 화면 진입 시 호출 → 첫 질문 콜드 지연 감소."""
+    """연결·모델 예열용 미니 호출. 챗 화면 진입 시 호출 → 첫 질문 콜드 지연 감소.
+    첫 질문 전에 콜드인 4가지(Gemini·TTS·DB커넥션·임베딩)를 모두 병렬 예열한다."""
     if not llm.llm_ready():
         return {"ok": False}
-    return {"ok": llm.warmup()}
+    from concurrent.futures import ThreadPoolExecutor
+
+    def warm_db():
+        try:
+            conn = get_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            finally:
+                conn.close()
+        except Exception:
+            pass
+
+    def warm_embed():
+        try:
+            embed_text("야구", task_type="RETRIEVAL_QUERY")
+        except Exception:
+            pass
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = [ex.submit(llm.warmup), ex.submit(tts.warmup),
+                ex.submit(warm_db), ex.submit(warm_embed)]
+        ok = futs[0].result()
+        for f in futs[1:]:
+            f.result()
+    return {"ok": ok}
+
+
+# ── 음성 스트리밍 파이프라인: Gemini 문장 단위 생성 → 끝난 문장부터 TTS → SSE로 흘림 ──
+# 첫 음성이 "첫 문장 생성+합성"만에 시작(≈2~3s) → 전체(질문→음성) 대기 6.5s 체감 제거.
+_SENT_RE = re.compile(r"(?<=[.!?…。!?])\s+")   # 문장 끝(.?!…) 뒤 공백 기준 분리
+
+_VOICE_CACHE_MAX = 200
+_voice_cache: "OrderedDict[tuple, list]" = OrderedDict()
+_voice_lock = threading.Lock()
+
+
+def _voice_cache_get(key):
+    with _voice_lock:
+        hit = _voice_cache.get(key)
+        if hit is not None:
+            _voice_cache.move_to_end(key)
+        return hit
+
+
+def _voice_cache_put(key, value):
+    with _voice_lock:
+        _voice_cache[key] = value
+        _voice_cache.move_to_end(key)
+        while len(_voice_cache) > _VOICE_CACHE_MAX:
+            _voice_cache.popitem(last=False)
+
+
+def _synth_event(text: str, team_code: str | None) -> dict:
+    """한 문장 → {text, audio, mime, visemes, boundaries}. (TTS 자체 캐시 활용)"""
+    res = tts.tts(tts.TtsIn(text=text, team_code=team_code))
+    return {"text": text, "audio": res["audio"], "mime": res["mime"],
+            "visemes": res["visemes"], "boundaries": res["boundaries"]}
+
+
+@router.post("/chat/voice/stream")
+def chat_voice_stream(body: ChatIn):
+    """질문 → (Gemini 문장 스트림 ∥ 문장별 TTS) → SSE.
+    각 이벤트: {text, audio(base64), mime, visemes, boundaries}. 마지막에 {done:true}.
+    프론트는 받은 오디오를 순차 재생 + 텍스트/립싱크 표시."""
+    if not llm.llm_ready():
+        return StreamingResponse(
+            iter([f"data: {json.dumps({'error': 'LLM 미연결'}, ensure_ascii=False)}\n\n"]),
+            media_type="text/event-stream")
+
+    cache_key = None if body.personal_context else _cache_key(body)
+    if cache_key is not None:
+        cached = _voice_cache_get(cache_key)
+        if cached is not None:   # 캐시 적중 → 저장된 문장 음성 즉시 흘림
+            def replay():
+                for ev in cached:
+                    yield f"data: {json.dumps({**ev, 'cached': True}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+            return StreamingResponse(replay(), media_type="text/event-stream")
+
+    system, user, _ = _prepare(body)
+
+    def gen():
+        # 생산자 스레드: Gemini를 계속 생성하며 완성된 문장을 큐에 넣음
+        # 소비자(본 제너레이터): 큐에서 문장을 꺼내 TTS → SSE. 생성과 합성이 겹쳐 전체 시간↓
+        q: "queue.Queue" = queue.Queue()
+        SENTINEL = object()
+
+        def produce():
+            buf = ""
+            try:
+                for piece in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
+                    buf += piece
+                    parts = _SENT_RE.split(buf)
+                    if len(parts) > 1:
+                        for sent in parts[:-1]:
+                            s = sent.strip()
+                            if s:
+                                q.put(s)
+                        buf = parts[-1]
+                tail = buf.strip()
+                if tail:
+                    q.put(tail)
+            except Exception as e:
+                q.put(("__error__", str(e)[:160]))
+            finally:
+                q.put(SENTINEL)
+
+        threading.Thread(target=produce, daemon=True).start()
+
+        events: list[dict] = []
+        while True:
+            item = q.get()
+            if item is SENTINEL:
+                break
+            if isinstance(item, tuple) and item and item[0] == "__error__":
+                # 생성 단계 에러 → 에러 알리고 종료(프론트가 폴백)
+                yield f"data: {json.dumps({'error': item[1]}, ensure_ascii=False)}\n\n"
+                break
+            try:
+                ev = _synth_event(item, body.team_code)
+                events.append(ev)
+            except Exception:
+                # 한 문장 합성 실패는 치명적이지 않게 — 텍스트만 보내고 계속
+                ev = {"text": item, "audio": "", "mime": "", "visemes": [], "boundaries": []}
+            yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+
+        if cache_key is not None and events:
+            _voice_cache_put(cache_key, events)
+        yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
