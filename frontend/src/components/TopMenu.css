@@ -162,6 +162,7 @@
    반응형
    ──────────────────────────────────────────────── */
 @media (max-width: 360px) {
+
   .app-top-menu-label,
   .app-top-menu.settings-top-menu .app-top-menu-label,
   .app-top-menu.stadium-page-top-menu .app-top-menu-label,
@@ -171,6 +172,7 @@
 }
 
 @media (max-width: 720px) {
+
   .app-top-menu,
   .app-top-menu.settings-top-menu,
   .app-top-menu.stadium-page-top-menu,

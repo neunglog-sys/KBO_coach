@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { ArrowUp } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
@@ -138,6 +139,10 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
+  const [inputFocused, setInputFocused] = useState(false);
+  // 채팅 시트 접힘 여부 — 손잡이를 아래로 끌면 메시지 영역을 접어 캐릭터를 더 보이게 한다.
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
   const [greetSignal, setGreetSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
@@ -151,7 +156,7 @@ export function MainViewV2({
 
   // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
   useEffect(() => {
-    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => {});
+    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => { });
   }, []);
 
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
@@ -205,7 +210,9 @@ export function MainViewV2({
   const speakTokenRef = useRef(0);
   // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
   // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
-  const submitQuestionRef = useRef<(raw: string) => void>(() => {});
+  const submitQuestionRef = useRef<(raw: string) => void>(() => { });
+  // 채팅 시트 손잡이 드래그 시작 Y좌표 (아래로 끌면 접기 / 위로 끌면 펼치기)
+  const chatDragStartY = useRef<number | null>(null);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -399,7 +406,7 @@ export function MainViewV2({
         return;
       }
       const audioCtx = ctx;
-      void audioCtx.resume().catch(() => {});   // 자동재생 정책: 제스처 후 재개
+      void audioCtx.resume().catch(() => { });   // 자동재생 정책: 제스처 후 재개
 
       const chars: string[] = [];
       const starts: number[] = [];
@@ -504,7 +511,7 @@ export function MainViewV2({
           const reader = resp.body.getReader();
           const dec = new TextDecoder();
           let acc = "";
-          for (;;) {
+          for (; ;) {
             const { done, value } = await reader.read();
             if (done) break;
             acc += dec.decode(value, { stream: true });
@@ -773,7 +780,7 @@ export function MainViewV2({
       let buf = "";
       while (true) {
         if (cancelled()) {
-          reader.cancel().catch(() => {});
+          reader.cancel().catch(() => { });
           break;
         }
         const { value, done } = await reader.read();
@@ -836,6 +843,8 @@ export function MainViewV2({
     const question = raw.trim();
     if (!question) return;
 
+    setChatCollapsed(false); // 메시지 보내면 접혀있어도 펼쳐서 답변을 보이게
+
     // Web Audio 잠금 해제 — 제스처(전송) 시점에 AudioContext 생성·재개해 두면
     // 안드 WebView 자동재생 정책으로 스트리밍 음성이 suspended로 멈추는 것 방지.
     try {
@@ -843,7 +852,7 @@ export function MainViewV2({
         || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (AC) {
         if (!audioCtxRef.current) audioCtxRef.current = new AC();
-        void audioCtxRef.current.resume().catch(() => {});
+        void audioCtxRef.current.resume().catch(() => { });
       }
     } catch {
       /* Web Audio 미지원 — 블로킹 폴백이 받음 */
@@ -897,7 +906,7 @@ export function MainViewV2({
       ttsAudioRef.current.src = "";
       ttsAudioRef.current = null;
     }
-    TextToSpeech.stop().catch(() => {}); // 네이티브(Capacitor) 음성 중단
+    TextToSpeech.stop().catch(() => { }); // 네이티브(Capacitor) 음성 중단
     window.speechSynthesis?.cancel();    // 웹 음성 중단
     clearMouth();
     setIsSpeaking(false);
@@ -961,7 +970,35 @@ export function MainViewV2({
 
       <WeatherFx condition={weatherCondition} />
 
-      <section className="stage-chat" aria-label="야구 코치 채팅">
+      <section
+        className={`stage-chat ${chatCollapsed ? "is-collapsed" : ""}`}
+        aria-label="야구 코치 채팅"
+      >
+        {/* 손잡이: 아래로 끌면 접기 / 위로 끌면 펼치기 / 탭이면 토글 */}
+        <div
+          className="stage-chat-handle"
+          role="button"
+          tabIndex={0}
+          aria-label={chatCollapsed ? "채팅창 올리기" : "채팅창 내리기"}
+          onPointerDown={(e) => {
+            chatDragStartY.current = e.clientY;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerUp={(e) => {
+            const start = chatDragStartY.current;
+            chatDragStartY.current = null;
+            if (start == null) return;
+            const dy = e.clientY - start;
+            if (dy > 24) setChatCollapsed(true);
+            else if (dy < -24) setChatCollapsed(false);
+            else setChatCollapsed((v) => !v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setChatCollapsed((v) => !v);
+          }}
+        >
+          <span className="stage-chat-grip" aria-hidden="true" />
+        </div>
         <div className="stage-chatlog" ref={chatLogRef} aria-live="polite">
           {messages.map((message) => (
             <div key={message.id} className={`stage-msg ${message.type}`}>
@@ -971,26 +1008,7 @@ export function MainViewV2({
         </div>
 
         <form className="stage-inputbar" onSubmit={handleSubmit}>
-          <button
-            type="button"
-            className={`stage-mic ${isListening ? "is-on" : ""}`}
-            onClick={toggleMic}
-            disabled={!supportsSTT}
-            aria-pressed={isListening}
-            aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
-            title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
-          >
-            <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
-          </button>
-
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="텍스트 입력 창"
-            aria-label="질문 입력"
-          />
-
+          {/* 왼쪽: 음성 일시정지 (항상) */}
           <button
             type="button"
             className="stage-stop"
@@ -1002,9 +1020,41 @@ export function MainViewV2({
             <span aria-hidden="true">⏸</span>
           </button>
 
-          <button type="submit" className="stage-send">
-            보내기
-          </button>
+          <input
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder="텍스트 입력 창"
+            aria-label="질문 입력"
+          />
+
+          {/* 오른쪽: 키보드 내려감 → 마이크 / 키보드 올라옴 → 보내기(↑) */}
+          {inputFocused ? (
+            <button
+              type="submit"
+              className="stage-send-arrow"
+              aria-label="보내기"
+              title="보내기"
+              // 버튼 탭 시 입력창 포커스(키보드)가 풀리지 않게 → 연속 전송 가능
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <ArrowUp strokeWidth={3} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`stage-mic ${isListening ? "is-on" : ""}`}
+              onClick={toggleMic}
+              disabled={!supportsSTT}
+              aria-pressed={isListening}
+              aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
+              title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
+            >
+              <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
+            </button>
+          )}
         </form>
       </section>
 

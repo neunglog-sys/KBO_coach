@@ -1,0 +1,35 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="checkin">
+  <defs>
+    <linearGradient id="bg_checkin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ad1ff"/>
+      <stop offset="1" stop-color="#2b9fe0"/>
+    </linearGradient>
+    <linearGradient id="gloss_checkin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="ds_checkin" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <!-- 배경 카드 -->
+  <rect x="8" y="8" width="104" height="104" rx="26" fill="url(#bg_checkin)" filter="url(#ds_checkin)"/>
+  <!-- 상단 광택 -->
+  <rect x="8" y="8" width="104" height="60" rx="26" fill="url(#gloss_checkin)"/>
+  <!-- 심볼 -->
+  <g transform="translate(60,60)">
+    
+  <rect x="-28" y="-24" width="56" height="50" rx="9" fill="#ffffff"/>
+  <rect x="-28" y="-24" width="56" height="15" rx="9" fill="#2b9fe0"/>
+  <rect x="-28" y="-15" width="56" height="3" fill="#1f7bb0" opacity="0.25"/>
+  <rect x="-17" y="-32" width="6" height="15" rx="3" fill="#1f7bb0"/>
+  <rect x="11" y="-32" width="6" height="15" rx="3" fill="#1f7bb0"/>
+  <!-- 날짜 점 그리드(흐리게) -->
+  <g fill="#cfe6f7"><circle cx="-15" cy="-2" r="2"/><circle cx="-5" cy="-2" r="2"/><circle cx="5" cy="-2" r="2"/></g>
+  <!-- 체크 배지 -->
+  <circle cx="10" cy="12" r="12" fill="#39c46a"/>
+  <path d="M4,12 l4,4 l8,-9" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  </g>
+</svg>
