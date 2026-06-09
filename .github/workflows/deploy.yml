@@ -23,6 +23,7 @@ jobs:
               - 'requirements.txt'
               - 'Procfile'
               - '.gcloudignore'
+              - '.github/workflows/deploy.yml'   # 배포 설정 변경도 백엔드 재배포(예: 워밍업 단계)
             frontend:
               - 'frontend/**'
 
@@ -66,6 +67,17 @@ jobs:
             --min-instances 1 \
             --service-account firebase-adminsdk-fbsvc@kboai-5dea0.iam.gserviceaccount.com \
             --env-vars-file services/api/env.yaml
+      - name: Warm up service
+        # 배포 직후 워밍업을 CI가 한 번 쳐서 min-instance를 미리 데움(LLM·임베딩·Azure·ElevenLabs 연결).
+        # → 첫 사용자 질문이 콜드(약 7초)로 빠지던 것 제거. min-instances=1이라 데워진 채 유지됨.
+        run: |
+          URL=$(gcloud run services describe kbo-api --project kboai-5dea0 \
+                --region asia-northeast3 --format='value(status.url)')
+          echo "Warming $URL/chat/warmup"
+          for i in 1 2 3; do
+            curl -s -m 90 -X POST "$URL/chat/warmup" && break
+            echo "retry $i"; sleep 5
+          done
 
   deploy-frontend:
     needs: changes
