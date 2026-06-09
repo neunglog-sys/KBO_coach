@@ -612,6 +612,11 @@ export function MainViewV2({
         </form>
       </section>
 
+      {/* 화면이 열려있는 동안 메인 위에 중립 커버를 깔아, 메뉴↔메뉴 전환 시 뒤로 메인이 비치지 않게 한다. */}
+      {(showRecords || showChat || isAttendanceOpen || isStadiumPageOpen || isSettingsOpen || closingOverlay) ? (
+        <div className="screen-cover" aria-hidden="true" />
+      ) : null}
+
       {isAttendanceOpen ? (
         <div
           className={`attendance-window-backdrop ${closingOverlay === "tamagotchi" ? "is-closing" : ""}`}
@@ -687,6 +692,7 @@ export function MainViewV2({
           >
             <SettingsView
               onClose={() => closeOverlay("settings")}
+              nickname={nickname}
               notificationEnabled={notificationEnabled}
               darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
