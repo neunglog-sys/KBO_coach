@@ -289,8 +289,13 @@ def tts(body: TtsIn):
         # Azure viseme가 있을 때만 ElevenLabs 길이에 맞춰 스케일(없으면 립싱크 생략, 음성은 정상)
         if az_audio and visemes:
             try:
-                az_dur = _wav_dur(az_audio) or 1.0
-                scale = (el_dur / az_dur) if az_dur else 1.0
+                # 기준을 az_dur(무음 포함 전체길이)이 아니라 'Azure 마지막 viseme'(=발화 끝)로.
+                # 그래야 입모양이 ElevenLabs 오디오 끝까지 가고 일찍 멈추지 않는다.
+                az_end_ms = visemes[-1]["offset"] or (_wav_dur(az_audio) * 1000.0) or 1.0
+                el_ms = el_dur * 1000.0
+                scale = (el_ms / az_end_ms) if az_end_ms else 1.0
+                # 안전 범위(과도 보정 방지)
+                scale = min(2.5, max(0.5, scale))
                 visemes = [{"offset": round(v["offset"] * scale, 1), "id": v["id"]} for v in visemes]
                 boundaries = [{"offset": round(b["offset"] * scale, 1),
                                "textOffset": b["textOffset"], "length": b["length"]} for b in boundaries]
