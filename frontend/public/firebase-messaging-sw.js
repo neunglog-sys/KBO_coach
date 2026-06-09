@@ -45,5 +45,28 @@ messaging.onBackgroundMessage(async (payload) => {
   const data = payload.data || {};
   await self.registration.showNotification(data.title || "알림", {
     body: data.body || "",
+    data: { url: data.url || "/" },
   });
+});
+
+// 알림 클릭 → 웹에서도 앱을 연다. (이 핸들러가 없으면 웹은 알림 눌러도 아무 일 안 일어남.
+// 안드는 OS가 네이티브로 앱을 열어줘서 됐던 것.) 열린 탭이 있으면 포커스, 없으면 새로 연다.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if ("focus" in client) {
+            if (target !== "/" && "navigate" in client) {
+              client.navigate(target).catch(() => {});
+            }
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) return self.clients.openWindow(target);
+      }),
+  );
 });
