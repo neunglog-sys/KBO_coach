@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   BookOpenCheck,
   CalendarCheck,
@@ -22,9 +22,7 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import type { TopMenuTarget } from "./TopMenu";
-import { MenuButton } from "./MenuButton";
-import { SideMenu } from "./SideMenu";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
@@ -83,6 +81,24 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 const SHOW_TEST_PANEL = true;
 
 // =====================================================================
+// 말풍선: 완전 고정 위치 (측정·계산 없음 — 어떤 캐릭터든 항상 같은 자리)
+//  - 가로: 정중앙 / 세로: 카드 상단에서 아래 px 만큼
+// =====================================================================
+const BUBBLE_TOP_PX = 14;
+
+// =====================================================================
+// 캐릭터 크기 배율 (수동 조절표)
+//  - PNG마다 그림 크기가 달라서 남/녀가 다르게 보이는 것을 숫자로 보정
+//  - 1.0 = CSS 기본 크기. 키우려면 1.1, 1.2... / 줄이려면 0.9, 0.85...
+//  - 화면 보면서 숫자만 바꾸면 됨 (새로고침 필요 없음, 저장하면 바로 반영)
+// =====================================================================
+const CHAR_SIZE_SCALE: Record<"default" | "child" | "adult", { man: number; girl: number }> = {
+  default: { man: 1.0, girl: 1.0 },   // 1레벨/무소속 기본 캐릭터
+  child: { man: 1.2, girl: 0.86 },    // 2~4레벨 꼬마 (남↑ 여↓ 로 크기 통일)
+  adult: { man: 1.05, girl: 0.95 },   // 5레벨↑ 어른
+};
+
+// =====================================================================
 // 캐릭터 이미지 경로 만들기
 //  규칙: /character/{팀}_{단계}_{성별}.png
 //   - 무소속(구단 없음): 레벨과 무관하게 default_{성별}.png  ← 무소속은 단계 이미지 없음
@@ -114,7 +130,7 @@ export interface RewardItem { src: string; name: string; teamBased?: boolean; te
 
 export const LEVEL_REWARDS: Record<number, RewardItem> = {
   3: { src: "/equipment/HT_towel.png", name: "응원 수건", teamBased: true, teamSuffix: "towel" },
-  4: { src: "/equipment/HT_cap.png", name: "모자", teamBased: true, teamSuffix: "cap" },
+  4: { src: "/equipment/HT_cap.png", name: "야구 모자", teamBased: true, teamSuffix: "cap" },
   7: { src: "/equipment/ball_high_level.png", name: "고급 야구공" },
   8: { src: "/equipment/bat_high_level.png", name: "고급 배트" },
   9: { src: "/equipment/glove_high_level.png", name: "고급 글러브" },
@@ -364,7 +380,7 @@ export default function AttendanceCheckIn({
   const [nickname, setNickname] = useState(initialNickname || "");
   const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
   const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
-    loadDailyState(stateStorageKey, initialNickname)
+    loadDailyState(stateStorageKey, initialBuddyNickname || initialNickname)
   );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
@@ -380,7 +396,6 @@ export default function AttendanceCheckIn({
 
   // 꾸미기(라커룸) 오버레이 열림 여부
   const [showLocker, setShowLocker] = useState(false);
-  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -393,9 +408,15 @@ export default function AttendanceCheckIn({
   // 짝꿍 별명 (dev에서 추가됨)
   const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
-  const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
   const charGender = SHOW_TEST_PANEL ? testGender : gender;
+
+  // 무소속(팀 미선택)이면 레벨을 1로 제한 — 어떤 경로(테스트 패널/실제 경험치)로 레벨이 올라도
+  // 캐릭터/보상/라커룸 화면은 2레벨 이상을 그리지 않음 (구단별 이미지가 없는 화면 노출 방지)
+  const rawLevel = SHOW_TEST_PANEL ? testLevel : status.level;
+  const charLevel = !charTeam ? Math.min(rawLevel, 1) : rawLevel;
+  // 무소속인데 실제 레벨이 2 이상이면 안내 배너 표시용
+  const levelLockedByNoTeam = !charTeam && rawLevel >= 2;
 
   const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 3);
   const displayProgress = SHOW_TEST_PANEL ? 0 : (progress || 60);
@@ -403,6 +424,77 @@ export default function AttendanceCheckIn({
     () => getCharacterImage(charLevel, charTeam, charGender),
     [charLevel, charTeam, charGender],
   );
+
+  // 캐릭터 크기 보정 (말풍선은 BUBBLE_TOP_PX 완전 고정 — 측정 없음)
+  const charImgRef = useRef<HTMLImageElement | null>(null);
+  // 🔍 크기 보정 진단용 (테스트 패널에 표시, 문제 해결 후 제거 예정)
+  const [charScaleDebug, setCharScaleDebug] = useState("아직 실행 안 됨");
+
+  // 현재 캐릭터 단계 (이미지 규칙과 동일한 분기)
+  const charStage: "default" | "child" | "adult" =
+    !charTeam || charLevel <= 1 ? "default" : charLevel >= 5 ? "adult" : "child";
+
+  // 캐릭터 크기 적용: CHAR_SIZE_SCALE 의 단계×성별 배율을 CSS 기본 높이에 곱해 강제 적용
+  // ※ CSS 클래스에 !important 가 있어도 이기도록 setProperty(..., "important") 사용
+  const applyCharacterScale = () => {
+    const img = charImgRef.current;
+    if (!img) {
+      setCharScaleDebug("img ref 없음");
+      return;
+    }
+    if (!img.complete || img.naturalWidth === 0) {
+      setCharScaleDebug("이미지 로드 대기 중 (onLoad에서 재시도)");
+      return; // 로드 전이면 onLoad 때 다시 옴
+    }
+    // 인라인 크기를 잠시 지워 CSS 기본 박스 높이(baseH)를 측정
+    img.style.removeProperty("height");
+    img.style.removeProperty("width");
+    const baseH = img.getBoundingClientRect().height;
+    if (baseH > 0) {
+      const genderKey = charGender === "girl" ? "girl" : "man";
+      const scale = CHAR_SIZE_SCALE[charStage][genderKey];
+      const targetH = Math.round(baseH * scale);
+      img.style.setProperty("height", `${targetH}px`, "important");
+      img.style.setProperty("width", "auto", "important"); // 비율 유지
+      // 적용 직후 실제 결과 확인
+      const afterH = Math.round(img.getBoundingClientRect().height);
+      setCharScaleDebug(
+        `${charStage}/${genderKey} 배율 ${scale} | 기본 ${Math.round(baseH)}px → 목표 ${targetH}px → 실제 ${afterH}px${
+          Math.abs(afterH - targetH) > 2 ? " ⚠️ 적용 안 됨(CSS 충돌)" : " ✅"
+        }`,
+      );
+    } else {
+      setCharScaleDebug("기본 높이 측정 실패 (baseH=0)");
+    }
+  };
+
+  useEffect(() => {
+    applyCharacterScale();
+    window.addEventListener("resize", applyCharacterScale);
+    return () => window.removeEventListener("resize", applyCharacterScale);
+    // 캐릭터 이미지가 바뀌면 재계산 (이미지 로드 완료 시엔 <img onLoad>가 호출)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterSrc, imgFailed, charStage, charGender]);
+
+  // 말풍선 본체 — 완전 고정 위치 (가로 정중앙 + 카드 상단에서 BUBBLE_TOP_PX), 꼬리 없음
+  const speechBubbleStyle: CSSProperties = {
+    position: "absolute",
+    left: "50%",
+    top: BUBBLE_TOP_PX,
+    transform: "translateX(-50%)",
+    maxWidth: "82%",
+    background: "#fff",
+    border: "2px solid #0f172a",
+    borderRadius: 14,
+    padding: "9px 14px",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#0f172a",
+    textAlign: "center",
+    lineHeight: 1.4,
+    zIndex: 5,
+    boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+  };
 
   useEffect(() => {
     setImgFailed(false);
@@ -496,7 +588,7 @@ export default function AttendanceCheckIn({
       onBuddyNicknameChange?.(nextBuddyNickname);
       updateDailyState((current) => ({
         ...current,
-        speechText: randomSpeech(DEFAULT_SPEECHES, nickname),
+        speechText: randomSpeech(DEFAULT_SPEECHES, nextBuddyNickname),
       }));
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
@@ -616,7 +708,7 @@ export default function AttendanceCheckIn({
         const initialized = initializeTamagotchiState(
           serverState,
           todayKey(),
-          randomSpeech(DEFAULT_SPEECHES, nickname),
+          randomSpeech(DEFAULT_SPEECHES, buddyNickname || nickname),
         );
         setDailyState(initialized);
         saveDailyState(stateStorageKey, initialized);
@@ -686,13 +778,13 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(authToken, data);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(authToken, status);
       setStatus(next);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } finally {
@@ -752,7 +844,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    const speech = randomSpeech(CHEER_SPEECHES, nickname);
+    const speech = randomSpeech(CHEER_SPEECHES, displayBuddyNickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
     setNotice(speech);
   }
@@ -834,15 +926,10 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
-      <div className="tamagotchi-menu-bar">
-        <MenuButton onClick={() => setSideMenuOpen(true)} />
-      </div>
-
-      <SideMenu
-        isOpen={sideMenuOpen}
+      <TopMenu
         active="tamagotchi"
+        className="tamagotchi-nav"
         onNavigate={(target) => onNavigate?.(target)}
-        onClose={() => setSideMenuOpen(false)}
       />
 
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
@@ -871,14 +958,42 @@ export default function AttendanceCheckIn({
         </div>
       </section>
 
-      <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
-        <div className="tamagotchi-speech-bubble">
+      <section
+        className="tamagotchi-field-card"
+        aria-label="캐릭터 영역"
+        style={{ position: "relative" }}
+      >
+        {/* 무소속인데 레벨이 2 이상이면 안내: 팀을 선택해야 캐릭터가 성장한 모습으로 보임 */}
+        {levelLockedByNoTeam ? (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: 8,
+              transform: "translateX(-50%)",
+              background: "rgba(220, 38, 38, 0.92)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "6px 12px",
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+              zIndex: 3,
+            }}
+          >
+            ⚠️ 2레벨 이상은 팀 선택을 해야 가능합니다.
+          </div>
+        ) : null}
+        {/* 말풍선: 완전 고정 위치 (BUBBLE_TOP_PX), 가로 정중앙, 꼬리 없음 */}
+        <div style={speechBubbleStyle}>
           {dailyState.speechText}
         </div>
         <img
+          ref={charImgRef}
           className="tamagotchi-character-img"
           src={imgFailed ? FALLBACK_CHARACTER_SRC : characterSrc}
           alt="야구짝꿍 캐릭터"
+          onLoad={applyCharacterScale}
           onError={() => setImgFailed(true)}
         />
       </section>
@@ -901,17 +1016,29 @@ export default function AttendanceCheckIn({
             🧪 테스트 패널 (배포 시 SHOW_TEST_PANEL=false)
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <span style={{ width: 32, color: "#6b7280" }}>레벨</span>
             <input
               type="range"
               min={1}
               max={10}
               value={testLevel}
-              onChange={(e) => setTestLevel(Number(e.target.value))}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                setTestLevel(next);
+                // 규칙: 1레벨 = 무조건 무소속, 2레벨 이상 = 무조건 구단 소속
+                if (next === 1) {
+                  setTestTeam("");
+                } else if (!testTeam) {
+                  setTestTeam("HT"); // 2레벨 진입 시 구단 미선택이면 기본 구단 자동 선택
+                }
+              }}
               style={{ flex: 1 }}
             />
             <strong style={{ width: 24, textAlign: "right" }}>{testLevel}</strong>
+          </div>
+          <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 10 }}>
+            1레벨 = 무소속 고정 · 2레벨부터 구단 소속 (무소속 불가)
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -919,9 +1046,11 @@ export default function AttendanceCheckIn({
             <select
               value={testTeam}
               onChange={(e) => setTestTeam(e.target.value)}
-              style={{ flex: 1, padding: "4px 6px", borderRadius: 6 }}
+              disabled={testLevel === 1}
+              title={testLevel === 1 ? "1레벨은 무소속 고정입니다. 레벨을 올리면 구단을 선택할 수 있어요." : undefined}
+              style={{ flex: 1, padding: "4px 6px", borderRadius: 6, opacity: testLevel === 1 ? 0.5 : 1, cursor: testLevel === 1 ? "not-allowed" : "pointer" }}
             >
-              <option value="">무소속(default)</option>
+              <option value="" disabled={testLevel >= 2}>무소속(default)</option>
               <option value="HT">KIA (HT)</option>
               <option value="SS">삼성 (SS)</option>
               <option value="HH">한화 (HH)</option>
@@ -971,21 +1100,21 @@ export default function AttendanceCheckIn({
             <span style={{ width: 32, color: "#6b7280" }}>단계</span>
             <button
               type="button"
-              onClick={() => setTestLevel(1)}
+              onClick={() => { setTestLevel(1); setTestTeam(""); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel <= 1 ? "#ede9fe" : "#fff" }}
             >
               1레벨(default)
             </button>
             <button
               type="button"
-              onClick={() => setTestLevel(4)}
+              onClick={() => { setTestLevel(4); if (!testTeam) setTestTeam("HT"); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: (charLevel >= 2 && charLevel <= 4) ? "#ede9fe" : "#fff" }}
             >
               4레벨(child)
             </button>
             <button
               type="button"
-              onClick={() => setTestLevel(5)}
+              onClick={() => { setTestLevel(5); if (!testTeam) setTestTeam("HT"); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel >= 5 ? "#ede9fe" : "#fff" }}
             >
               5레벨(adult)
@@ -997,6 +1126,11 @@ export default function AttendanceCheckIn({
             {" · "}단계: {(!charTeam || charLevel <= 1) ? "default(기본)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
             {" · "}경로: <code>{characterSrc}</code>
           </div>
+          {/* 🔍 크기 보정 진단 (문제 해결 후 제거 예정) */}
+          <div style={{ marginTop: 6, padding: "6px 8px", background: "#fef3c7", borderRadius: 8, fontSize: 12, fontFamily: "monospace" }}>
+            🔍 크기보정: {charScaleDebug}
+          </div>
+
         </section>
       ) : null}
 

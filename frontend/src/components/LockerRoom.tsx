@@ -51,8 +51,8 @@ const LOCKER_ITEM_POS: Record<number, { left: string; top: string; width: string
   3: { left: "45%",   top: "40.6%", width: "36%",   rotate: 0,   z: 1 }, // 수건
   8: { left: "66.2%", top: "63.1%", width: "57%",   rotate: 148, z: 2 }, // 고급배트
   9: { left: "48.8%", top: "75.9%", width: "37%",   rotate: 0,   z: 3 }, // 고급글러브
-  4: { left: "48.8%", top: "25%",   width: "26%",   rotate: 11,  z: 4 }, // 모자
-  7: { left: "32.9%", top: "78.8%", width: "18%",   rotate: 0,   z: 5 }, // 야구공
+  4: { left: "38%",   top: "76%",   width: "26%",   rotate: 11,  z: 4 }, // 모자 (글러브보다 앞)
+  7: { left: "69.1%", top: "79%",   width: "14%",   rotate: 0,   z: 5 }, // 야구공 (맨 앞, 라커 구석)
 };
 
 export default function LockerRoom({ level, teamCode, gender, onClose }: LockerRoomProps) {
@@ -141,12 +141,14 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
           }}
         >
           {/* 왼쪽: 빈 라커 + 획득한 물건 연출 (레벨업 시 하나씩 채워짐) */}
+          {/* 캐릭터(height 58%)와 같은 단순 % 방식이라 기기 비율이 달라도 크기 일정 */}
+          {/* 350×750 기준 시뮬레이션으로 검증: 벽~라커 간격 ≈ 라커~캐릭터 간격 */}
           <div
             style={{
               position: "absolute",
-              left: "-8%",
+              left: "-11%",
               bottom: "2%",
-              height: "82%",
+              height: "74%",
               aspectRatio: "1024 / 1536",
               backgroundImage: `url(${EMPTY_LOCKER_BG})`,
               backgroundSize: "contain",
@@ -190,14 +192,14 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             }}
             style={{
               position: "absolute",
-              left: "78%",
+              left: "80%",
               bottom: "2%",
               // 여자 이미지가 더 작게 그려져 있어 여자를 더 키워 남자와 크기를 맞춤
               transform: gender === "girl"
                 ? "translateX(-50%) scale(1.22)"
                 : "translateX(-50%) scale(1.08)",
               transformOrigin: "bottom center",
-              height: "58%",
+              height: "54%",
               objectFit: "contain",
               filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
             }}
