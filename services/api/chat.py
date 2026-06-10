@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from db_pg import get_conn
 from embeddings import embed_text, to_pgvector
 import llm
+import pcache
 import tts
 
 router = APIRouter(tags=["chat"])
@@ -254,11 +255,18 @@ def _prepare(body: ChatIn):
 @router.post("/chat")
 def chat(body: ChatIn):
     # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
-    cache_key = None if body.personal_context else _cache_key(body)
-    if cache_key is not None:
+    cache_key = None
+    if not body.personal_context:
+        # 키에 페르소나 해시 포함 — 페르소나(DB) 수정 시 옛 답이 캐시에서 나오는 것 자동 방지
+        phash = pcache.persona_hash(body.team_code)
+        cache_key = _cache_key(body) + (phash,)
         hit = _cache_get(cache_key)
-        if hit is not None:   # 캐시 적중 → Gemini·임베딩 호출 없이 즉시 응답
+        if hit is not None:   # 메모리 캐시 적중 → 즉시 응답
             return {"answer": hit["answer"], "context": {**hit["used"], "cached": True}}
+        p = pcache.get("chat", cache_key)   # 영속 캐시(배포 생존) 확인
+        if p is not None and p[0]:
+            _cache_put(cache_key, p[0])     # 메모리에 재적재
+            return {"answer": p[0]["answer"], "context": {**p[0].get("used", {}), "cached": True}}
 
     system, user, used = _prepare(body)
     if not llm.llm_ready():
@@ -272,7 +280,9 @@ def chat(body: ChatIn):
         raise HTTPException(status_code=502, detail="Gemini 응답 형식 오류(차단되었거나 빈 응답)")
 
     if cache_key is not None:
-        _cache_put(cache_key, {"answer": answer, "used": used})
+        entry = {"answer": answer, "used": used}
+        _cache_put(cache_key, entry)
+        pcache.put("chat", cache_key, payload=entry)   # 비동기 영속화
     return {"answer": answer, "context": used}
 
 

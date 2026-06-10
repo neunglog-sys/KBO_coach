@@ -29,6 +29,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+import pcache
+
 router = APIRouter(tags=["tts"])
 
 # 음성 합성 캐시(텍스트+보이스) — 반복 답변은 Azure 재합성 없이 즉시 반환. (오디오라 항목 수는 작게)
@@ -261,10 +263,16 @@ def tts(body: TtsIn):
     if not text:
         raise HTTPException(status_code=400, detail="text가 비어 있습니다.")
     two_tts = bool(body.team_code in ELEVEN_VOICE and ELEVEN_KEY)
-    cache_key = (text, body.voice or DEFAULT_VOICE, body.team_code if two_tts else "")
+    # 영속 키엔 실제 voice_id 포함 — 보이스 교체 시 옛 오디오가 영속 캐시에서 나오는 것 방지
+    cache_key = (text, body.voice or DEFAULT_VOICE,
+                 ELEVEN_VOICE[body.team_code] if two_tts else "")
     cached = _tts_cache_get(cache_key)
-    if cached is not None:   # 캐시 적중 → 재합성 없이 즉시 반환
+    if cached is not None:   # 메모리 캐시 적중 → 재합성 없이 즉시 반환
         return cached
+    p = pcache.get("tts", cache_key)   # 영속 캐시(배포 생존)
+    if p is not None and p[0]:
+        _tts_cache_put(cache_key, p[0])
+        return p[0]
     if not AZURE_KEY or not AZURE_REGION:
         raise HTTPException(
             status_code=503,
@@ -288,6 +296,7 @@ def tts(body: TtsIn):
         out = {"audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/mpeg",
                "voice": voice, "visemes": visemes, "boundaries": boundaries}
         _tts_cache_put(cache_key, out)
+        pcache.put("tts", cache_key, payload=out)   # 비동기 영속화
         return out
 
     # 구단 보이스 — Azure(viseme·길이용 PCM) ∥ ElevenLabs(음성) 병렬. 음성은 항상 ElevenLabs 우선.
@@ -326,6 +335,7 @@ def tts(body: TtsIn):
     out = {"audio": base64.b64encode(audio).decode("ascii"), "mime": mime,
            "voice": voice, "visemes": visemes, "boundaries": boundaries}
     _tts_cache_put(cache_key, out)
+    pcache.put("tts", cache_key, payload=out)   # 비동기 영속화
     return out
 
 
@@ -394,11 +404,20 @@ def tts_stream(token: str):
         raise HTTPException(status_code=503, detail="ElevenLabs 미설정")
 
     key = (eleven_text, voice_id)
-    cached = _stream_cache_get(key)
-    if cached is not None:                       # 캐시 적중 → 한 줄로 전체 반환(재합성 X)
-        line = json.dumps({"a": base64.b64encode(cached["audio"]).decode("ascii"),
-                           "c": cached["chars"], "t": cached["starts"]}, ensure_ascii=False)
+
+    def _serve_cached(entry):
+        line = json.dumps({"a": base64.b64encode(entry["audio"]).decode("ascii"),
+                           "c": entry["chars"], "t": entry["starts"]}, ensure_ascii=False)
         return StreamingResponse(iter([line + "\n"]), media_type="application/x-ndjson")
+
+    cached = _stream_cache_get(key)
+    if cached is not None:                       # 메모리 캐시 적중 → 한 줄로 전체 반환(재합성 X)
+        return _serve_cached(cached)
+    p = pcache.get("stream", key)                # 영속 캐시(배포 생존) 확인
+    if p is not None and p[0] is not None and p[1]:
+        entry = {"audio": p[1], "chars": p[0].get("chars", []), "starts": p[0].get("starts", [])}
+        _stream_cache_put(key, entry)            # 메모리에 재적재
+        return _serve_cached(entry)
 
     def gen():
         buf = bytearray()
@@ -431,6 +450,8 @@ def tts_stream(token: str):
         finally:
             if buf:
                 _stream_cache_put(key, {"audio": bytes(buf), "chars": chars, "starts": starts})
+                pcache.put("stream", key, payload={"chars": chars, "starts": starts},
+                           audio=bytes(buf))     # 비동기 영속화(배포 생존)
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
 
