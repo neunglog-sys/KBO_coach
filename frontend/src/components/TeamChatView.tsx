@@ -212,6 +212,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
   const headerColor = teamObj?.color ?? "#444";
   const bubbleBaseColor = team === "OB" ? "#7AB6E8" : headerColor;
+  const headerGradientStart = mixWithWhite(headerColor, 0.3);
 
   function bubbleStyle(m: BoardMessage): React.CSSProperties {
     if (m.is_mine) {
@@ -240,7 +241,12 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         if (closing && e.target === e.currentTarget) onBack();
       }}
     >
-      <header className="chat-header" style={{ background: headerColor }}>
+      <header
+        className="chat-header"
+        style={{
+          background: `linear-gradient(135deg, ${headerGradientStart} 0%, ${headerColor} 100%)`,
+        }}
+      >
         <div className="chat-header-top">
           <button className="chat-back" type="button" onClick={handleBack} aria-label="뒤로">
             ←
@@ -264,8 +270,11 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         </div>
 
         <div className="chat-title">
-          <strong>{teamObj?.name ?? "응원톡"}</strong>
+          <strong>Hi!</strong>
+          <span>{teamObj?.name ?? "응원톡"} 팀 채팅방</span>
         </div>
+
+        {notice ? <div className="chat-notice">📢 {notice}</div> : null}
       </header>
 
       <SideMenu
@@ -324,12 +333,6 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       ) : null}
 
       <section className={`chat-panel ${searchOpen ? "search-open" : ""}`}>
-        {notice ? (
-          <div className="chat-notice" style={{ marginLeft: chatSideSpace, marginRight: chatSideSpace }}>
-            📢 {notice}
-          </div>
-        ) : null}
-
         <div className="chat-log" ref={logRef} style={{ paddingLeft: chatSideSpace, paddingRight: chatSideSpace }}>
           {!authToken ? (
             <p className="chat-empty">로그인하면 응원톡에 참여할 수 있어요.</p>
