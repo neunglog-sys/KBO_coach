@@ -56,7 +56,6 @@ function teamBubbleTone(hex: string, messageId: number): string {
   return mixWithWhite(hex, tones[Math.abs(messageId) % tones.length]);
 }
 
-/** 팀+오늘 날짜 기반 일관된 방문수(프론트 표시용; 진짜 집계는 추후 백엔드). */
 function visitCount(code: string): number {
   const seed = code + new Date().toISOString().slice(0, 10);
   let h = 2166136261;
