@@ -15,26 +15,22 @@
 
 .stadium-page-window {
   width: min(520px, 100%);
-  height: min(940px, calc(100dvh - 36px));
-  overflow: hidden;
+  height: auto;
+  max-height: min(940px, calc(100dvh - 36px));
+  overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid rgba(255, 255, 255, 0.76);
   border-radius: 28px;
   box-shadow: 0 24px 80px rgba(0, 24, 72, 0.32);
+  scrollbar-width: thin;
 }
 
 .stadium-page {
+  --page-pad-x: 18px;
   position: relative;
-  min-height: 100%;
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px calc(118px + env(safe-area-inset-bottom));
-  color: #0a1732;
-  background:
-    radial-gradient(circle at 12% 4%, rgba(255, 255, 255, 0.64) 0 42px, transparent 43px),
-    radial-gradient(circle at 90% 7%, rgba(255, 255, 255, 0.48) 0 54px, transparent 55px),
-    linear-gradient(180deg, #a9ddff 0%, #eaf7ff 34%, #f8fcff 100%);
-  scrollbar-width: thin;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--page-pad-x) calc(24px + env(safe-area-inset-bottom));
+  color: #1c2536;
+  background: #f4f6fb;
 }
 
 .stadium-page button,
@@ -42,21 +38,25 @@
   font: inherit;
 }
 
+/* 나만의 야구기록(.records-top) 헤더 막대와 동일한 설정 — sticky + 단색 배경 */
 .stadium-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
-  margin-bottom: 8px;
+  margin: calc(-1 * (env(safe-area-inset-top, 0px) + 12px)) calc(-1 * var(--page-pad-x)) 18px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  background: #f4f6fb;
 }
 
 .stadium-page-header h2 {
   flex: 1;
   margin: 0;
-  font-size: 2rem;
-  line-height: 1;
-  letter-spacing: 0;
   text-align: center;
+  font-size: 1.15rem;
+  font-weight: 900;
 }
 
 .stadium-page-top-menu {
@@ -138,25 +138,29 @@
 }
 
 .stadium-page-search {
-  --search-control-height: 48px;
+  --search-control-height: 46px;
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 1fr 60px 70px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 14px;
   border-radius: 16px;
-  padding: 13px 10px;
+  padding: 12px 8px;
   background: var(--color-card, #fff);
   box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
-  transition: box-shadow 0.25s ease;
+  transition: grid-template-columns 0.26s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+
+/* 검색창 focus 시 슬라이드 확장 — 검색 버튼 트랙을 0으로 줄여 입력창에 폭을 양보 */
+.stadium-page-search.is-search-focused {
+  grid-template-columns: 1fr 0px 70px;
 }
 
 .stadium-page-search label {
   position: relative;
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
   box-sizing: border-box;
   min-width: 0;
@@ -164,9 +168,9 @@
   margin: 0;
   border: 1px solid #d7e5f2;
   border-radius: 12px;
-  padding: 0 10px;
+  padding: 0 8px;
   background: #fff;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  transition: border-color 0.25s ease, background 0.25s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -178,38 +182,10 @@
   background: #fbfdff;
 }
 
-/* focus 시 전체 문장을 오른쪽→왼쪽으로 흘려 보여주는 marquee 플레이스홀더 */
-.stadium-search-marquee {
-  position: absolute;
-  top: 0;
-  /* label 좌측 padding(10px) + 검색 아이콘(20px) + input 좌측 padding(6px) */
-  left: 36px;
-  right: 10px;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.stadium-search-marquee-text {
-  display: inline-block;
-  white-space: nowrap;
-  color: var(--color-placeholder, #888);
-  font-size: 0.86rem;
-  animation: stadium-search-marquee-scroll 6s ease-in-out infinite;
-}
-
-@keyframes stadium-search-marquee-scroll {
-  0%       { transform: translateX(0); }       /* 즉시 시작 */
-  40%, 68% { transform: translateX(-180px); }  /* 전체 문장 노출, 잠시 유지 */
-  100%     { transform: translateX(0); }        /* 처음으로 복귀 */
-}
-
 .stadium-page-search label svg {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: #75849a;
 }
 
@@ -220,10 +196,10 @@
   border: 0;
   outline: none !important;
   box-shadow: none !important;
-  padding: 0 4px 0 6px;
+  padding: 0 2px 0 5px;
   color: #0a1732;
   background: transparent;
-  font-size: clamp(0.8rem, 3.6vw, 0.95rem);
+  font-size: clamp(0.74rem, 3.3vw, 0.9rem);
   line-height: normal;
   -webkit-appearance: none;
   -webkit-tap-highlight-color: transparent;
@@ -243,22 +219,23 @@
 
 .stadium-page-search button {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  width: 100%;
   height: var(--search-control-height);
   margin: 0;
   padding: 0;
   border-radius: 12px;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 900;
   letter-spacing: 0;
   white-space: nowrap;
   word-break: keep-all;
   outline: none;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.18s ease;
 }
 
 .stadium-page-search button:active {
@@ -266,18 +243,22 @@
 }
 
 .stadium-page-search-button {
-  width: 68px;
   border: 1px solid transparent;
   color: #fff;
   background: #108d55;
 }
 
 .stadium-page-team-button {
-  width: 78px;
   border: 1px solid #d7e5f2;
   color: #0a1732;
   background: #fff;
   font-weight: 800;
+}
+
+/* focus 시 검색 버튼은 트랙과 함께 사라지도록 처리 */
+.stadium-page-search.is-search-focused .stadium-page-search-button {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .stadium-page-search-button:focus,
@@ -357,27 +338,34 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   margin-bottom: 14px;
-  border-radius: 18px;
-  padding: 5px;
-  background: var(--color-card, #fff);
-  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 16px rgba(39, 103, 158, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .stadium-page-tabs button {
-  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
   border: 0;
-  border-radius: 14px;
-  color: #0a1732;
-  background: #fff;
+  border-radius: 999px;
+  color: #5b6b80;
+  background: transparent;
   font-size: 0.94rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stadium-page-tabs button.is-active {
   color: #fff;
-  background: #176dff;
-  box-shadow: 0 6px 14px rgba(23, 109, 255, 0.24);
+  background: #2f8bff;
+  box-shadow: 0 4px 12px rgba(47, 139, 255, 0.28);
 }
 
 .stadium-page-tab-panel {
@@ -388,14 +376,20 @@
 .stadium-page-empty {
   position: relative;
   z-index: 1;
-  border: 1px solid rgba(198, 218, 236, 0.84);
-  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 22px;
   padding: 40px 20px;
   color: #65758a;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.56);
   font-weight: 800;
   text-align: center;
-  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.11);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -12px 18px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
 }
 
 .stadium-page-empty-copy {
@@ -407,15 +401,48 @@
 .stadium-page-guide-card,
 .stadium-page-tips,
 .stadium-page-food-card,
-.stadium-page-region-card {
-  border: 1px solid rgba(198, 218, 236, 0.84);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.11);
+.stadium-page-region-card,
+.stadium-page-empty {
+  position: relative;
+  overflow: hidden;
 }
 
-.stadium-page-guide-card {
-  overflow: hidden;
+.stadium-page-guide-card::before,
+.stadium-page-tips::before,
+.stadium-page-food-card::before,
+.stadium-page-region-card::before,
+.stadium-page-empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.58), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 54%, rgba(255, 255, 255, 0.12));
+}
+
+.stadium-page-guide-card > *,
+.stadium-page-tips > *,
+.stadium-page-food-card > *,
+.stadium-page-region-card > *,
+.stadium-page-empty > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stadium-page-guide-card,
+.stadium-page-tips,
+.stadium-page-food-card,
+.stadium-page-region-card {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -12px 18px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
 }
 
 .stadium-page-guide-card > img {
@@ -489,12 +516,34 @@
 }
 
 .stadium-page-map-card {
+  position: relative;
+  overflow: hidden;
   margin-top: 12px;
-  border: 1px solid rgba(198, 218, 236, 0.84);
-  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 22px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.11);
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -12px 18px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+.stadium-page-map-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.58), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 54%, rgba(255, 255, 255, 0.12));
+}
+
+.stadium-page-map-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .stadium-page-map,
@@ -659,27 +708,26 @@
   .stadium-page-backdrop {
     align-items: stretch;
     padding: 0;
+    background: #f4f6fb;
   }
 
   .stadium-page-window {
+    align-self: start;
     width: 100%;
-    height: 100dvh;
-    max-height: none;
+    max-height: 100dvh;
     border: 0;
     border-radius: 0;
+    box-shadow: none;
   }
 
   .stadium-page {
-    padding-right: 12px;
-    padding-left: 12px;
+    --page-pad-x: 12px;
+    padding-right: var(--page-pad-x);
+    padding-left: var(--page-pad-x);
   }
 }
 
 @media (max-width: 390px) {
-  .stadium-page-header h2 {
-    font-size: 1.75rem;
-  }
-
   .stadium-page-top-menu {
     padding-right: 5px;
     padding-left: 5px;
@@ -704,31 +752,24 @@
   }
 
   .stadium-page-search {
-    gap: 6px;
-    padding: 10px 8px;
+    --search-control-height: 46px;
+    grid-template-columns: 1fr 54px 64px;
+    gap: 5px;
+    padding: 10px 6px;
   }
 
-  .stadium-page-search label {
-    height: 46px;
+  .stadium-page-search.is-search-focused {
+    grid-template-columns: 1fr 0px 64px;
   }
 
   .stadium-page-search button {
-    height: 46px;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 
   .stadium-page-search input {
     padding-right: 2px;
-    padding-left: 5px;
-    font-size: clamp(0.74rem, 3.6vw, 0.88rem);
-  }
-
-  .stadium-page-search-button {
-    width: 60px;
-  }
-
-  .stadium-page-team-button {
-    width: 70px;
+    padding-left: 4px;
+    font-size: clamp(0.7rem, 3.6vw, 0.84rem);
   }
 
   .stadium-page-guide-card > img {
