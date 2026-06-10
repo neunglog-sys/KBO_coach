@@ -14,7 +14,7 @@
   --stage-character-size: clamp(320px, min(96vw, 54vh), 500px);
   --stage-bg-rise: clamp(90px, 30vh, 240px);
   /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
-  --stage-chat-limit: clamp(210px, 34vh, 390px);
+  --stage-chat-limit: clamp(150px, 22vh, 220px);
   --stage-content-width: min(680px, 100%);
 }
 
@@ -275,7 +275,8 @@
   min-height: 0;
   overflow-y: auto;
   padding: 2px 2px 0;
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth 제거 — 자동 맨아래 이동(JS scrollTop)이 애니메이션으로 처리되어
+     스트리밍 중 따라가다 멈추거나 버벅이던 문제 방지. 수동 스크롤은 이 속성과 무관. */
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
