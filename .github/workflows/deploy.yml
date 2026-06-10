@@ -90,6 +90,8 @@ jobs:
           node-version: 20
       - name: Build
         working-directory: frontend
+        env:
+          VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
         run: |
           npm ci
           npm run build
