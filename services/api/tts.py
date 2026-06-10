@@ -87,7 +87,7 @@ ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id
     "SS": "9FiZDZAX84GsWo9JY3PF",         # 삼성 (대구) — 용준님 클론 +5반음(과묵 캐릭터)
     "LT": "AE0Ob4e4pvfwnR0N5bWt",         # 롯데 (부산) — 재현님 클론 +3반음·포먼트0.84·억양과장2.0(굵직 다혈질)
     "NC": "ZdmGb2x4fujs5pfLs9vW",         # NC   (창원) — 동완님 클론 +10반음(능청 영포티)
-    "HT": "FWJJYAuNelKTpvm5fWKo",         # 기아 (전라) — Voice Design 전라(히스토리 재클론 복원), 화자 구하면 교체
+    "HT": "Eh803JsgFbddFgvN5qXh",         # 기아 (전라) — 전라 화자 클론 +5반음·포먼트1.06·평문억양2.2(밝은 열정, 평문에서도 억양 유지)
     "HH": "vr6iLqSlQKsMHP79UL1r",         # 한화 (충청) — Voice Design 마스코트 충청(재생성)
     # 표준어 팀: 기존 Voice Design 보이스 유지
     "LG": "f1jSprXYPgiSbio3N4pp",         # LG (표준어·여)
