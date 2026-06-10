@@ -5,7 +5,7 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
-import { clearMouth, setActiveSyllable, setActiveViseme } from "../lipSync";
+import { clearMouth, setActiveSyllablePhase, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
 import SettingsView from "./SettingsView";
@@ -550,7 +550,16 @@ export function MainViewV2({
           if (starts[i] <= tt) spoken = i + 1;
           else break;
         }
-        setActiveSyllable(spoken > 0 ? chars[spoken - 1] : "");
+        // viseme식 입모양: 지금 음절의 진행률(phase)로 초성→모음→받침 자음까지 반영.
+        if (spoken > 0) {
+          const ci = spoken - 1;
+          const st = starts[ci];
+          const en = ci + 1 < starts.length ? starts[ci + 1] : st + 0.18; // 마지막 글자는 길이 추정
+          const phase = Math.min(1, Math.max(0, (tt - st) / Math.max(0.06, en - st)));
+          setActiveSyllablePhase(chars[ci], phase);
+        } else {
+          setActiveSyllablePhase("", 0);
+        }
         if (cleanLen > 0) {
           const frac = Math.min(1, spoken / cleanLen);
           const spokenChars = Math.ceil(text.length * frac); // clean→원본 텍스트 글자수 환산
