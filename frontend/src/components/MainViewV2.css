@@ -157,26 +157,33 @@
    버튼 순서: 1 채팅방 / 2 나만의 기록 / 3 야구짝꿍 / 4 구장정보 / 5 설정 */
 /* 메인만 아이콘 크기 키움 (다른 화면은 TopMenu.css 기본 36px 유지) */
 .app-top-menu.stage-nav {
-  --top-menu-icon-size: 60px;
+  --top-menu-icon-size: 48px;
 }
+
 .app-top-menu.stage-nav .app-top-menu-icon {
-  font-size: 0; /* 이모지 글자 숨김 */
+  font-size: 0;
+  /* 이모지 글자 숨김 */
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 }
+
 .app-top-menu.stage-nav button:nth-child(1) .app-top-menu-icon {
   background-image: url("/img/baseball_icons2/chat.svg");
 }
+
 .app-top-menu.stage-nav button:nth-child(2) .app-top-menu-icon {
   background-image: url("/img/baseball_icons2/record.svg");
 }
+
 .app-top-menu.stage-nav button:nth-child(3) .app-top-menu-icon {
   background-image: url("/img/baseball_icons2/pet.svg");
 }
+
 .app-top-menu.stage-nav button:nth-child(4) .app-top-menu-icon {
   background-image: url("/img/baseball_icons2/stadium.svg");
 }
+
 .app-top-menu.stage-nav button:nth-child(5) .app-top-menu-icon {
   background-image: url("/img/baseball_icons2/settings.svg");
 }
@@ -228,14 +235,17 @@
   margin-top: -6px;
   padding: 4px 0 2px;
   cursor: grab;
-  touch-action: none; /* 드래그 제스처가 스크롤로 새지 않게 */
+  touch-action: none;
+  /* 드래그 제스처가 스크롤로 새지 않게 */
 }
+
 .stage-chat-grip {
   width: 44px;
   height: 5px;
   border-radius: 999px;
   background: rgba(22, 35, 56, 0.2);
 }
+
 .stage-chat-handle:active {
   cursor: grabbing;
 }
@@ -244,6 +254,7 @@
 .stage-chatlog {
   transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
 }
+
 .stage-chat.is-collapsed .stage-chatlog {
   max-height: 0 !important;
   opacity: 0;

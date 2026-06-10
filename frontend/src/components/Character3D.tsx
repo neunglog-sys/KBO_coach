@@ -10,26 +10,33 @@ interface Character3DProps {
   isSpeaking: boolean;
   /** 값이 바뀔 때마다(증가) 인사(손 흔들기) 모션을 1회 재생한다. */
   greetSignal?: number;
+  /** 값이 바뀔 때마다(증가) 잠깐 뛰는(빠른 걷기) 모션을 재생한다. */
+  runSignal?: number;
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/model_260608_opt.glb";
+const MODEL_URL = "/model/3d/260609_Rig_v2_opt.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
-const MOTION_NAME = "hi"; // 재생할 애니메이션(모션) 클립 이름
+const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
+const WALK_NAME = "walk"; // 걷기 클립 — 기본 루프(항상 재생)
 const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
-const MODEL_FRAME_HEIGHT = 2.15;
+const MODEL_FRAME_HEIGHT = 1.8;
 const MODEL_VERTICAL_OFFSET = 0.08;
+const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
+const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
 
-export default function Character3D({ isSpeaking, greetSignal, className }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, runSignal, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   // 애니메이션 루프가 항상 최신 isSpeaking 값을 읽도록 ref로 보관
   const speakingRef = useRef(isSpeaking);
   speakingRef.current = isSpeaking;
   // 모델 로드 후 채워지는 "인사 모션 재생" 함수. 외부 greetSignal 변화 시 호출.
   const greetRef = useRef<(() => void) | null>(null);
+  // 모델 로드 후 채워지는 "뛰기(빠른 걷기) 트리거" 함수. runSignal 변화 시 호출.
+  const runRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -82,7 +89,13 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
     let mouseHalf: THREE.Object3D | null = null;
     let mixer: THREE.AnimationMixer | null = null;
     let introRunning = false;       // 인트로 모션 재생 중에만 렌더
+    let idleLooping = false;        // 걷기 루프 재생 중 → 렌더 루프 항상 활성
     let renderQuietUntil = 0;       // 로드·리사이즈·발화 직후 잠깐 렌더 유지(정착)용
+    // 걷기(뛰기)/인사 상태머신용 — 평소엔 멈춤(bind 포즈), 트리거 때만 재생
+    let walkAction: THREE.AnimationAction | null = null;
+    let runUntil = 0;               // 걷기/뛰기 종료 시각(>now면 재생 중)
+    let hiUntil = 0;                // 인사 재생 중 종료 시각(이 동안 걷기 제어 정지)
+    let walkStopPending = false;    // 시간 만료 후 '현재 걷기 사이클을 마치고' 정자세로 멈추기 위한 대기 플래그
     // 입모양 shape key(morph target)를 가진 메시들.
     // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
     const mouthMeshes: THREE.Mesh[] = [];
@@ -120,27 +133,71 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
 
         root.add(model);
 
-        // "hi" 모션 재생 (없으면 첫 번째 클립으로 폴백) — 1회만(무한루프 X)
+        // 평소엔 멈춤(bind 포즈). "걷다/뛰다" 텍스트(runSignal) 때만 잠깐 걷기/뛰기,
+        // 인사(greetSignal) 때만 손 흔들기. 둘 다 끝나면 다시 멈춤.
         if (gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(model);
-          const clip =
-            THREE.AnimationClip.findByName(gltf.animations, MOTION_NAME) ??
-            gltf.animations[0];
-          const action = mixer.clipAction(clip);
-          action.setLoop(THREE.LoopOnce, 1);
-          action.clampWhenFinished = true;
-          action.play();
-          introRunning = true;
-          mixer.addEventListener("finished", () => {
-            introRunning = false;
+          const walkClip =
+            THREE.AnimationClip.findByName(gltf.animations, WALK_NAME) ?? gltf.animations[0];
+          const hiClip = THREE.AnimationClip.findByName(gltf.animations, MOTION_NAME);
+
+          // 걷기는 항상 '재생'시키되 평소엔 첫 프레임(서있는 자세)에 멈춰둔다 → 깔끔한 정지 포즈.
+          walkAction = mixer.clipAction(walkClip);
+          walkAction.setLoop(THREE.LoopRepeat, Infinity);
+          walkAction.play();
+          walkAction.paused = true;
+          walkAction.time = 0;
+
+          let hiAction: THREE.AnimationAction | null = null;
+          if (hiClip) {
+            hiAction = mixer.clipAction(hiClip);
+            hiAction.setLoop(THREE.LoopOnce, 1);
+            hiAction.clampWhenFinished = false;
+            // 인사 끝 → 걷기(정지 포즈)로 복귀
+            mixer.addEventListener("finished", (e) => {
+              if (e.action === hiAction && walkAction) {
+                hiUntil = 0;
+                walkAction.setEffectiveWeight(1);
+              }
+            });
+          }
+
+          // 걷기 시간이 만료돼도 사이클 중간에 끊지 않고, 한 사이클이 끝나는 'loop' 경계(=정자세)에서
+          // 멈춘다 → 갑자기 정자세로 스냅하지 않고 자연스럽게 마무리.
+          mixer.addEventListener("loop", (e) => {
+            if (e.action === walkAction && walkStopPending && walkAction) {
+              walkStopPending = false;
+              walkAction.paused = true;
+              walkAction.time = 0;
+              renderQuietUntil = performance.now() + 200; // 정지 자세 한 번 적용 후 렌더 정지
+            }
           });
-          // 외부 인사 트리거 시 손 흔들기 모션을 처음부터 다시 1회 재생.
-          greetRef.current = () => {
-            action.reset();
-            action.play();
-            introRunning = true;
-            // 모션 길이 동안 렌더 루프가 깨어있도록 유지.
-            renderQuietUntil = performance.now() + clip.duration * 1000 + 300;
+
+          // 인사 1회: 걷기 끄고(weight 0) 인사 재생 → 끝나면 정지 포즈 복귀.
+          const playHi = () => {
+            if (!hiAction || !walkAction) return;
+            runUntil = 0;
+            walkStopPending = false;
+            walkAction.paused = true;
+            walkAction.time = 0;
+            walkAction.setEffectiveWeight(0);
+            hiAction.reset().setEffectiveWeight(1).play();
+            hiUntil = performance.now() + hiClip!.duration * 1000 + 400;
+            renderQuietUntil = hiUntil;
+          };
+
+          if (hiAction) playHi(); // 등장 시 인사 1회 후 정지
+          greetRef.current = playHi;
+
+          // 걷기/뛰기: RUN_MS 동안 재생 후 정지(첫 프레임).
+          runRef.current = () => {
+            if (!walkAction) return;
+            runUntil = performance.now() + RUN_MS;
+            walkStopPending = false;
+            walkAction.setEffectiveWeight(1);
+            walkAction.setEffectiveTimeScale(RUN_SPEED);
+            walkAction.paused = false;
+            renderQuietUntil = runUntil + 300; // 움직이는 동안 렌더 유지
           };
         }
         renderQuietUntil = performance.now() + 1500; // 로드 직후 모델 표시·입모양 정착 위해 잠깐 렌더
@@ -162,8 +219,20 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
 
       // 유휴(말 안 함 + 인트로 끝 + 정착 끝)면 렌더·업데이트 스킵 → GPU/팬 절약. 발화 중엔 정착 여유 400ms.
       if (speakingRef.current) renderQuietUntil = now + 400;
-      const active = speakingRef.current || introRunning || now < renderQuietUntil;
+      // 걷기/인사 모션이 진행 중(또는 사이클 마무리 대기 중)이면 TTS가 도중에 끊겨도 끝까지 돌려야
+      // 정자세로 복귀한다. (이게 없으면 발화 중단 시 렌더가 멈춰 걷는 자세 그대로 얼어붙음)
+      const motionActive = walkAction != null && (now < runUntil || now < hiUntil || walkStopPending);
+      // 모션 종료 직후 정자세 복귀 로직이 실행될 프레임을 보장(발화가 renderQuietUntil을 덮어써도 꼬리 유지).
+      if (motionActive) renderQuietUntil = Math.max(renderQuietUntil, now + 300);
+      // 걷기 루프(idleLooping) 중엔 항상 렌더. 그 외엔 발화/인트로/모션/정착 동안만.
+      const active = idleLooping || speakingRef.current || introRunning || motionActive || now < renderQuietUntil;
       if (!active) return;
+
+      // 걷기/뛰기 시간이 끝나면 즉시 끊지 않고 '현재 사이클을 마치고' 멈추도록 예약한다.
+      // 실제 정지는 mixer의 'loop' 이벤트(사이클 경계=정자세)에서 수행 → 부자연스러운 스냅 방지.
+      if (walkAction && now >= hiUntil && now >= runUntil && !walkAction.paused) {
+        walkStopPending = true;
+      }
 
       if (mixer) mixer.update(dt / 1000); // 모션 클립 진행
 
@@ -227,6 +296,8 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
       dracoLoader.dispose();
       renderer.dispose();
       greetRef.current = null;
+      runRef.current = null;
+      walkAction = null;
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
@@ -238,6 +309,12 @@ export default function Character3D({ isSpeaking, greetSignal, className }: Char
     if (!greetSignal) return;
     greetRef.current?.();
   }, [greetSignal]);
+
+  // runSignal 이 바뀌면(0 제외) 뛰기(빠른 걷기) 트리거. 모델 로드 전이면 무시.
+  useEffect(() => {
+    if (!runSignal) return;
+    runRef.current?.();
+  }, [runSignal]);
 
   return (
     <div
