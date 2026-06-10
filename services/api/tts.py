@@ -85,7 +85,7 @@ ELEVEN_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v3")
 ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id
     # 사투리 팀: 팀원 녹음(본인 동의) → IVC 클론 → pyworld 포먼트보존 피치업 재클론(익명성+캐릭터톤).
     "SS": "9FiZDZAX84GsWo9JY3PF",         # 삼성 (대구) — 용준님 클론 +5반음(과묵 캐릭터)
-    "LT": "YGD5E7UxfKGvH0astJLT",         # 롯데 (부산) — 동완님 클론 +7반음(다혈질 캐릭터)
+    "LT": "AE0Ob4e4pvfwnR0N5bWt",         # 롯데 (부산) — 재현님 클론 +3반음·포먼트0.84·억양과장2.0(굵직 다혈질)
     "NC": "ZdmGb2x4fujs5pfLs9vW",         # NC   (창원) — 동완님 클론 +10반음(능청 영포티)
     "HT": "FWJJYAuNelKTpvm5fWKo",         # 기아 (전라) — Voice Design 전라(히스토리 재클론 복원), 화자 구하면 교체
     "HH": "vr6iLqSlQKsMHP79UL1r",         # 한화 (충청) — Voice Design 마스코트 충청(재생성)
@@ -96,6 +96,15 @@ ELEVEN_VOICE = {                          # team_code → ElevenLabs voice_id
     "SK": "qDYEWTCdFmiN1IyrEze6",         # SSG (표준어·남)
     "WO": "XZAfpfQfaYAGv3W67mld",         # 키움 (표준어·여)
 }
+# 보이스별 합성 stability — 기본 0.5(Natural). 1.0(Robust)은 제멋대로 쉼은 잡지만 억양 기복도 눌러버림.
+# 롯데의 어색한 쉼·물결은 텍스트 정제(줄바꿈 평탄화+사투리어미 붙이기)로 잡고, 억양은 0.5로 살린다.
+_VOICE_STABILITY: dict[str, float] = {}
+
+
+def _stability_for(voice_id: str) -> float:
+    return _VOICE_STABILITY.get(voice_id, 0.5)
+
+
 # creator 등급에서 되는 고음질 포맷(44.1kHz mp3) — 샘플 비교 때와 동일.
 # (pcm_44100은 상위 등급 전용이라 거부됨 → Azure 폴백되던 문제 회피)
 _ELEVEN_FORMAT = "mp3_44100_128"
@@ -126,7 +135,7 @@ def _eleven_synth(text: str, voice_id: str):
         headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
         params={"output_format": _ELEVEN_FORMAT},
         json={"text": text, "model_id": ELEVEN_MODEL,
-              "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
+              "voice_settings": {"stability": _stability_for(voice_id), "similarity_boost": 0.85}},
         timeout=12)   # 멈추면 12초 내 Azure 폴백(프론트 워치독 15초보다 먼저)
     if r.status_code != 200:
         raise RuntimeError(f"ElevenLabs {r.status_code}: {r.text[:160]}")
@@ -283,8 +292,8 @@ def tts(body: TtsIn):
 
     # 구단 보이스 — Azure(viseme·길이용 PCM) ∥ ElevenLabs(음성) 병렬. 음성은 항상 ElevenLabs 우선.
     with ThreadPoolExecutor(max_workers=2) as ex:
-        # ElevenLabs는 이모티콘만 제거(ㅎㅎ 웃음은 유지), Azure는 자체적으로 더 정리.
-        fut_el = ex.submit(_eleven_synth, _read_numbers_eleven(_strip_emoticon(text)),
+        # ElevenLabs는 이모티콘 제거+줄바꿈 평탄화(ㅎㅎ 웃음은 유지), Azure는 자체적으로 더 정리.
+        fut_el = ex.submit(_eleven_synth, _eleven_text(text),
                            ELEVEN_VOICE[body.team_code])
         az_audio, visemes, boundaries = _azure_synth(text, voice, want_pcm=True)  # 빈 결과 가능(비치명)
 
@@ -328,8 +337,14 @@ def tts(body: TtsIn):
 # viseme는 '미스케일'(Azure 타임라인) 그대로 주고, 재생 길이가 잡히면 프론트가 보정한다.
 
 def _eleven_text(text: str) -> str:
-    """ElevenLabs로 보낼 정제 텍스트(이모티콘 제거 + 숫자 한글화)."""
-    return _read_numbers_eleven(_strip_emoticon(text))
+    """ElevenLabs로 보낼 정제 텍스트(이모티콘 제거 + 숫자 한글화 + 줄바꿈 평탄화 + 사투리어미 붙이기).
+    - 줄바꿈(문단)은 v3가 길게 쉬고 억양을 리셋해 흐름이 끊기므로 공백으로 합친다.
+    - 사투리 어미 '기다/기라' 등은 띄어 쓰면 별개 단어로 읽혀 억양이 끊기므로 앞말에 붙인다
+      ("판정되는 기다!"→"판정되는기다!"). 화면 자막은 원본 그대로라 표기엔 영향 없음."""
+    s = _read_numbers_eleven(_strip_emoticon(text))
+    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+(기[다라네지제]|긴데)(?=[\s!?.,~…]|$)", r"\1", s)
+    return s
 
 
 def _make_token(eleven_text: str, voice_id: str) -> str:
@@ -395,7 +410,7 @@ def tts_stream(token: str):
                 headers={"xi-api-key": ELEVEN_KEY, "Content-Type": "application/json"},
                 params={"output_format": _STREAM_FORMAT},   # PCM 24k — Web Audio 재생용
                 json={"text": eleven_text, "model_id": ELEVEN_MODEL,
-                      "voice_settings": {"stability": 0.5, "similarity_boost": 0.85}},
+                      "voice_settings": {"stability": _stability_for(voice_id), "similarity_boost": 0.85}},
                 timeout=60, stream=True,
             ) as r:
                 if r.status_code != 200:
