@@ -12,8 +12,8 @@
       <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.18"/>
     </filter>
   </defs>
-  <rect x="8" y="8" width="104" height="104" rx="26" fill="url(#bg_withdraw)" filter="url(#ds_withdraw)"/>
-  <rect x="8" y="8" width="104" height="60" rx="26" fill="url(#gloss_withdraw)"/>
+  <rect x="8" y="8" width="104" height="104" rx="30" fill="url(#bg_withdraw)" filter="url(#ds_withdraw)"/>
+  <rect x="8" y="8" width="104" height="60" rx="30" fill="url(#gloss_withdraw)"/>
   <g transform="translate(60,60)">
   <!-- 머리 (중앙) -->
   <circle cx="0" cy="-12" r="12" fill="#ffffff"/>

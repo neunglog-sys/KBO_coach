@@ -161,6 +161,11 @@
 /* ────────────────────────────────────────────────
    반응형
    ──────────────────────────────────────────────── */
+/* 설정 아이콘: 레이아웃 변경 없이 시각적으로 약 12% 확대 */
+.app-top-menu [data-target="settings"] .app-top-menu-icon img {
+  transform: scale(1.12);
+}
+
 @media (max-width: 360px) {
 
   .app-top-menu-label,

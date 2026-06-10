@@ -181,6 +181,7 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
+  overflow: hidden;
   color: #126dff;
   background: #e9f6ff;
   box-shadow: inset 0 0 0 1px rgba(18, 109, 255, 0.06);
@@ -189,6 +190,28 @@
 .settings-icon-circle svg {
   width: 52%;
   height: 52%;
+}
+
+/* SVG 아이콘 wrapper — settings-icon-circle 상속 없이 독립적으로 동작 */
+.settings-img-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  position: static;
+}
+
+.setting-icon {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
 }
 
 .settings-menu-icon {
@@ -224,28 +247,34 @@
 
 .settings-menu-card,
 .settings-toggle-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
-  gap: 20px;
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 20px;
 }
 
 .settings-menu-card {
   width: 100%;
-  min-height: 142px;
-  padding: 24px 26px;
+  min-height: 112px;
+  padding: 16px 24px;
   color: #101a36;
   text-align: left;
 }
 
 .settings-toggle-row {
-  min-height: 138px;
+  min-height: 112px;
+}
+
+.settings-menu-card .settings-row-text,
+.settings-toggle-row .settings-row-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .settings-menu-card .settings-icon-circle,
 .settings-toggle-row .settings-icon-circle {
-  width: 86px;
-  height: 86px;
+  width: 80px;
+  height: 80px;
 }
 
 .settings-icon-circle.is-danger {
@@ -254,8 +283,10 @@
 }
 
 .settings-row-text {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -286,10 +317,12 @@
 }
 
 .settings-toggle {
-  display: inline-grid;
-  grid-template-columns: 74px auto;
-  gap: 10px;
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
   color: #727987;
   background: transparent;
   font-weight: 900;
@@ -532,6 +565,7 @@
 
 .settings-stadium-decoration {
   position: absolute;
+  z-index: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -673,14 +707,13 @@
 
   .settings-menu-card,
   .settings-toggle-row {
-    grid-template-columns: 56px minmax(0, 1fr) auto;
-    gap: 10px;
+    gap: 16px;
   }
 
   .settings-menu-card {
-    min-height: 96px;
+    min-height: 108px;
     border-radius: 24px;
-    padding: 14px;
+    padding: 14px 16px;
   }
 
   .settings-large-card {
@@ -689,19 +722,17 @@
   }
 
   .settings-toggle-row {
-    min-height: 96px;
+    min-height: 108px;
   }
 
   .settings-menu-card .settings-icon-circle,
   .settings-toggle-row .settings-icon-circle {
-    width: 54px;
-    height: 54px;
+    width: 80px;
+    height: 80px;
   }
 
   .settings-toggle {
-    grid-template-columns: 54px;
-    justify-items: center;
-    gap: 5px;
+    gap: 4px;
     font-size: 0.74rem;
   }
 
@@ -775,15 +806,25 @@
 
 /* 내 정보 — 계정명 카드 */
 .settings-account-card {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 22px;
   margin-bottom: 14px;
-  padding: 18px 20px;
+  padding: 16px 20px;
   border: 1px solid var(--color-border, #d6e6f2);
   border-radius: var(--radius-card, 20px);
   background: var(--color-card, #fff);
   box-shadow: var(--shadow-card, 0 8px 24px rgba(30, 91, 143, 0.1));
+}
+.settings-account-card .settings-icon-circle {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+.settings-account-card .settings-row-text {
+  gap: 4px;
 }
 .settings-account-card .settings-row-text strong {
   font-size: 1.25rem;
@@ -797,6 +838,8 @@
 
 /* 설정 내부 화면 전환(main↔내정보↔비번/팀)을 부드럽게 */
 .settings-screen-anim {
+  position: relative;
+  z-index: 1;
   animation: settings-screen-in 0.26s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
 }
