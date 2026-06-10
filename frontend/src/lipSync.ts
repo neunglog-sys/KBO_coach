@@ -91,12 +91,15 @@ export function setActiveSyllablePhase(ch: string, phase: number): void {
   const coda = idx % 28;
   let shape: MouthShape | null = MEDIAL_TO_SHAPE[medial] ?? "A";
   if (phase < 0.22) {
+    // Azure viseme가 대부분의 자음을 E로 보내 입이 계속 모음↔E로 바뀌던 것(역동성)을 재현.
+    // ㅇ(11)은 소리 없는 초성이라 모음 그대로.
     if (ONSET_LABIAL.has(onset)) shape = null;
     else if (ONSET_SIBILANT.has(onset)) shape = "I";
+    else if (onset !== 11) shape = "E";
   } else if (phase > 0.7 && coda > 0) {
     if (CODA_LABIAL.has(coda)) shape = null;
     else if (CODA_SIBILANT.has(coda)) shape = "I";
-    else if (CODA_SOFT.has(coda)) shape = "E";
+    else shape = "E";   // 그 외 모든 받침(ㄱㄴㄷㄹㅋㅌㅎ 등) → E (viseme식)
   }
   const next: MouthWeights = { ...ZERO };
   if (shape) next[shape] = 1;
