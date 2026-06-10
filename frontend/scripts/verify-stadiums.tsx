@@ -45,7 +45,7 @@ async function main() {
     assert.equal(matchesStadiumSearch(teamName, stadium), true);
     assert.equal(matchesStadiumSearch(stadium.city, stadium), true);
 
-    const guideHtml = renderToStaticMarkup(<StadiumGuideTab stadium={stadium} />);
+    const guideHtml = renderToStaticMarkup(<StadiumGuideTab stadium={stadium} stadiums={stadiums} />);
     const foodHtml = renderToStaticMarkup(<StadiumFoodTab stadium={stadium} />);
     const regionHtml = renderToStaticMarkup(<StadiumRegionTab stadium={stadium} />);
     assert.ok(guideHtml.includes(teamName));

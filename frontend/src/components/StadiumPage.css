@@ -132,44 +132,56 @@
   line-height: 1.2;
 }
 
+.stadium-page-search-area {
+  position: relative;
+  z-index: 1;
+}
+
 .stadium-page-search {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 68px 76px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 8px;
   margin-bottom: 14px;
-  border-radius: 18px;
-  padding: 10px;
+  border-radius: 16px;
+  padding: 13px 10px;
   background: var(--color-card, #fff);
   box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
+  transition: box-shadow 0.25s ease;
 }
 
 .stadium-page-search label {
   position: relative;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
+  box-sizing: border-box;
   min-width: 0;
+  height: 48px;
   border: 1px solid #d7e5f2;
   border-radius: 12px;
   padding: 0 10px;
   background: #fff;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* focus 시 border 색상 유지, 파란 outline/ring 제거 */
+/* focus 시 테두리 색상만 변경 — borderWidth/box-shadow로 외곽 크기가 변하지 않도록 유지 */
 .stadium-page-search label:focus-within {
-  border-color: #d7e5f2 !important;
+  border-color: #176dff !important;
   outline: none !important;
   box-shadow: none !important;
+  background: #fbfdff;
 }
 
 /* focus 시 전체 문장을 오른쪽→왼쪽으로 흘려 보여주는 marquee 플레이스홀더 */
 .stadium-search-marquee {
   position: absolute;
   top: 0;
-  /* label 좌측 padding(10px) + 검색 아이콘(22px) + input 좌측 padding(8px) */
-  left: 40px;
+  /* label 좌측 padding(10px) + 검색 아이콘(20px) + input 좌측 padding(6px) */
+  left: 36px;
   right: 10px;
   bottom: 0;
   display: flex;
@@ -194,23 +206,30 @@
 
 .stadium-page-search label svg {
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   color: #75849a;
 }
 
 .stadium-page-search input {
   width: 100%;
   min-width: 0;
+  height: 100%;
   border: 0;
   outline: none !important;
   box-shadow: none !important;
-  padding: 13px 8px;
+  padding: 0 4px 0 6px;
   color: #0a1732;
   background: transparent;
-  font-size: 0.86rem;
+  font-size: clamp(0.8rem, 3.6vw, 0.95rem);
+  line-height: normal;
   -webkit-appearance: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.stadium-page-search input::placeholder {
+  overflow: visible;
+  color: var(--color-placeholder, #8a98ad);
 }
 
 .stadium-page-search input:focus,
@@ -221,25 +240,67 @@
 }
 
 .stadium-page-search button {
-  min-width: 0;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0;
   border-radius: 12px;
-  padding: 0 6px;
-  font-size: 0.84rem;
+  font-size: 0.92rem;
   font-weight: 900;
   letter-spacing: 0;
+  white-space: nowrap;
   word-break: keep-all;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.stadium-page-search button:active {
+  transform: scale(0.96);
 }
 
 .stadium-page-search-button {
+  width: 68px;
   border: 0;
   color: #fff;
   background: #108d55;
 }
 
 .stadium-page-team-button {
+  width: 78px;
   border: 1px solid #d7e5f2;
   color: #0a1732;
   background: #fff;
+  font-weight: 800;
+}
+
+.stadium-page-team-button:focus,
+.stadium-page-team-button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* 검색창 아래 팀 목록을 부드럽게 펼치기/접기 — 실제 콘텐츠 높이를 측정해 height/opacity/translateY 애니메이션 */
+.stadium-page-team-list-wrap {
+  overflow: hidden;
+  height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    height 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease-out,
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-bottom 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stadium-page-team-list-wrap.is-open {
+  margin-bottom: 14px;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .stadium-page-team-list {
@@ -248,7 +309,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin: -5px 0 14px;
+  margin: 0;
   border-radius: 18px;
   padding: 12px;
   background: var(--color-card, #fff);
@@ -261,8 +322,9 @@
   border-radius: 12px;
   color: #0a1732;
   background: #fff;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 800;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .stadium-page-team-list button.is-active {
@@ -272,14 +334,15 @@
 }
 
 .stadium-page-notice {
-  position: relative;
-  z-index: 1;
-  margin: -4px 4px 12px;
-  color: #1267e8;
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1.35;
-  text-align: center;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .stadium-page-tabs {
@@ -353,7 +416,7 @@
 .stadium-page-guide-card > img {
   display: block;
   width: 100%;
-  height: 196px;
+  height: 280px;
   object-fit: cover;
 }
 
@@ -364,6 +427,7 @@
 .stadium-page-guide-copy h3,
 .stadium-page-food-card h3,
 .stadium-page-region-card h3,
+.stadium-page-tips h3,
 .stadium-page-section-title {
   margin: 0;
   letter-spacing: 0;
@@ -373,8 +437,14 @@
   font-size: 1.65rem;
 }
 
+/* 구장명 아래 구단명/주소/설명을 들여쓰기 — "구장 위치" 카드 아이콘 좌측 기준선(카드 padding 16px + 6px)에 맞춤 */
+.stadium-page-guide-details {
+  margin-top: 8px;
+  margin-left: 4px;
+}
+
 .stadium-page-home-team {
-  margin: 8px 0 12px;
+  margin: 0 0 12px;
   font-size: 1rem;
   font-weight: 800;
 }
@@ -382,7 +452,7 @@
 .stadium-page-address {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
   margin: 0;
   font-size: 0.9rem;
   font-weight: 700;
@@ -391,9 +461,15 @@
 
 .stadium-page-address svg {
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
+  align-self: flex-start;
+  margin-top: 2px;
+  width: 20px;
+  height: 20px;
   color: #176dff;
+}
+
+.stadium-page-address span {
+  flex: 1;
 }
 
 .stadium-page-description {
@@ -407,6 +483,33 @@
   word-break: keep-all;
 }
 
+.stadium-page-map-card {
+  margin-top: 12px;
+  border: 1px solid rgba(198, 218, 236, 0.84);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.11);
+}
+
+.stadium-page-map,
+.stadium-page-map-error {
+  width: 100%;
+  height: 220px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eaf6ff;
+}
+
+.stadium-page-map-error {
+  display: grid;
+  place-items: center;
+  color: #65758a;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: center;
+}
+
 .stadium-page-tips {
   margin-top: 12px;
   padding: 16px;
@@ -417,6 +520,8 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 12px;
+  padding: 0 6px;
   font-size: 1.15rem;
 }
 
@@ -445,11 +550,6 @@
   font-size: 0.84rem;
   font-weight: 700;
   line-height: 1.4;
-}
-
-.stadium-page-section-title {
-  margin-bottom: 12px;
-  padding: 0 6px;
 }
 
 .stadium-page-food-list,
@@ -504,7 +604,7 @@
 
 .stadium-page-region-card {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   gap: 14px;
   padding: 18px;
 }
@@ -512,16 +612,18 @@
 .stadium-page-region-card > span {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
+  padding: 0;
   border-radius: 14px;
   color: #176dff;
-  background: #eaf6ff;
+  background: transparent;
 }
 
-.stadium-page-region-card > span svg {
-  width: 30px;
-  height: 30px;
+.stadium-page-region-card > span img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .stadium-page-region-card h3 {
@@ -546,18 +648,6 @@
   height: 4px;
   border-radius: 50%;
   background: #176dff;
-}
-
-.stadium-page-bottom-decoration {
-  position: absolute;
-  z-index: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 125px;
-  opacity: 0.24;
-  background: url("/img/background.png") center bottom / cover no-repeat;
-  pointer-events: none;
 }
 
 @media (max-width: 720px) {
@@ -609,23 +699,35 @@
   }
 
   .stadium-page-search {
-    grid-template-columns: minmax(0, 1fr) 58px 64px;
     gap: 6px;
-    padding: 8px;
+    padding: 10px 8px;
   }
 
-  .stadium-page-search input {
-    padding-right: 4px;
-    padding-left: 6px;
-    font-size: 0.78rem;
+  .stadium-page-search label {
+    height: 46px;
   }
 
   .stadium-page-search button {
-    font-size: 0.75rem;
+    height: 46px;
+    font-size: 0.82rem;
+  }
+
+  .stadium-page-search input {
+    padding-right: 2px;
+    padding-left: 5px;
+    font-size: clamp(0.74rem, 3.6vw, 0.88rem);
+  }
+
+  .stadium-page-search-button {
+    width: 60px;
+  }
+
+  .stadium-page-team-button {
+    width: 70px;
   }
 
   .stadium-page-guide-card > img {
-    height: 175px;
+    height: 250px;
   }
 
   .stadium-page-food-card {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppBackButton } from "./AppBackButton";
 import { fetchStadiums, type Stadium } from "../data/stadiumData";
 import { stadiumSearchScore } from "../data/stadiumMapper";
@@ -19,6 +19,21 @@ interface StadiumPageProps {
   onNavigate: (target: Exclude<StadiumMenuTarget, "stadium">) => void;
 }
 
+const TEAM_COLORS: Record<string, string> = {
+  OB: "#131230",
+  LT: "#041E42",
+  SS: "#074CA1",
+  SK: "#CE0E2D",
+  LG: "#C30452",
+  NC: "#315288",
+  WO: "#7B0F1F",
+  KT: "#2B2B2B",
+  HT: "#C8102E",
+  HH: "#FA5C1E",
+};
+
+const TEAM_LIST_TRANSITION_MS = 280;
+
 export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   const [activeTab, setActiveTab] = useState<StadiumTab>("guide");
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
@@ -26,7 +41,55 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   const [searchValue, setSearchValue] = useState("");
   const [notice, setNotice] = useState("구장정보를 불러오는 중입니다.");
   const [isTeamListOpen, setIsTeamListOpen] = useState(false);
+  const [isTeamListMounted, setIsTeamListMounted] = useState(false);
+  const [isTeamListVisible, setIsTeamListVisible] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const [teamListHeight, setTeamListHeight] = useState(0);
+  const searchAreaRef = useRef<HTMLDivElement>(null);
+  const teamListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isTeamListOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      if (!searchAreaRef.current?.contains(event.target as Node)) {
+        setIsTeamListOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isTeamListOpen]);
+
+  useEffect(() => {
+    if (isTeamListOpen) {
+      setIsTeamListMounted(true);
+      return;
+    }
+    setIsTeamListVisible(false);
+    const timer = window.setTimeout(() => setIsTeamListMounted(false), TEAM_LIST_TRANSITION_MS);
+    return () => window.clearTimeout(timer);
+  }, [isTeamListOpen]);
+
+  // 팀 목록이 mount된 뒤 실제 콘텐츠 높이를 측정해 0 → 실제 높이로 펼치기 애니메이션 트리거
+  useEffect(() => {
+    if (!isTeamListMounted) return;
+    const node = teamListRef.current;
+    if (!node) return;
+
+    const updateHeight = () => setTeamListHeight(node.scrollHeight);
+    updateHeight();
+
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setIsTeamListVisible(true));
+    });
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+
+    return () => {
+      cancelAnimationFrame(id);
+      observer.disconnect();
+    };
+  }, [isTeamListMounted, stadiums]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -93,41 +156,57 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
         onNavigate={handleNavigate}
         onClose={() => setSideMenuOpen(false)}
       />
-      <StadiumSearchBar
-        value={searchValue}
-        onChange={setSearchValue}
-        onSearch={handleSearch}
-        onSelectTeam={() => setIsTeamListOpen((open) => !open)}
-        isTeamListOpen={isTeamListOpen}
-      />
-      {isTeamListOpen ? (
-        <div className="stadium-page-team-list" aria-label="KBO 구단 선택">
-          {stadiums.map((stadium) => (
-            <button
-              className={stadium.teamCode === selectedTeamCode ? "is-active" : ""}
-              key={stadium.teamCode}
-              type="button"
-              onClick={() => selectTeam(stadium)}
-            >
-              {stadium.teamName}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <div className="stadium-page-search-area" ref={searchAreaRef}>
+        <StadiumSearchBar
+          value={searchValue}
+          onChange={setSearchValue}
+          onSearch={handleSearch}
+          onSelectTeam={() => setIsTeamListOpen((open) => !open)}
+          isTeamListOpen={isTeamListOpen}
+        />
+        {isTeamListMounted ? (
+          <div
+            className={`stadium-page-team-list-wrap${isTeamListVisible ? " is-open" : ""}`}
+            style={{ height: isTeamListVisible ? teamListHeight : 0 }}
+          >
+            <div className="stadium-page-team-list" aria-label="KBO 구단 선택" ref={teamListRef}>
+              {stadiums.map((stadium) => {
+                const isActive = stadium.teamCode === selectedTeamCode;
+                const teamColor = TEAM_COLORS[stadium.teamCode];
+                return (
+                  <button
+                    className={isActive ? "is-active" : ""}
+                    key={stadium.teamCode}
+                    type="button"
+                    style={
+                      isActive && teamColor
+                        ? { borderColor: teamColor, background: teamColor, color: "#fff" }
+                        : undefined
+                    }
+                    onClick={() => selectTeam(stadium)}
+                  >
+                    {stadium.teamName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
       {notice ? <p className="stadium-page-notice" role="status">{notice}</p> : null}
       <StadiumTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {selectedStadium ? (
         <>
-          {activeTab === "guide" ? <StadiumGuideTab stadium={selectedStadium} /> : null}
+          {activeTab === "guide" ? (
+            <StadiumGuideTab stadium={selectedStadium} stadiums={stadiums} />
+          ) : null}
           {activeTab === "food" ? <StadiumFoodTab stadium={selectedStadium} /> : null}
           {activeTab === "region" ? <StadiumRegionTab stadium={selectedStadium} /> : null}
         </>
       ) : (
         <div className="stadium-page-empty">준비 중입니다</div>
       )}
-
-      <div className="stadium-page-bottom-decoration" aria-hidden="true" />
     </section>
   );
 }
