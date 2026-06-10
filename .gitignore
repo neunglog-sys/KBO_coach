@@ -87,13 +87,12 @@ temp/
 test/
 *.tmp
 
-# 대용량 3D 모델 파일 - git 용량이슈로 따로 공유하겠습니다(배치경로는 model/README.md 참고)
-*.glb
-*.gltf
-*.fbx
-# 예외: 현재 사용 캐릭터 모델(16MB, GitHub 100MB 제한 이하)은 배포 빌드에 포함되도록 git에 포함
-!frontend/public/model/3d/mouth_test2.glb
-!frontend/public/model/3d/260607_ballonly.glb
-!frontend/public/model/3d/model_260608_opt.glb
+# 3D 모델: 100MB 이하는 모두 git에 포함(웹 테스트용). 아래 4개만 GitHub 100MB 제한 초과로
+# push가 거부되므로 제외한다. (원본·작업용 대용량 파일이며 웹 앱은 로드하지 않음 / 별도 공유)
+/frontend/model-work/260609_Rig.glb
+/frontend/model-work/260609_Rig (1).glb
+/frontend/model-work/texture_test_260607.glb
+/model/3d/mouth_test.glb
+
 design_preview/
 .claude/settings.local.json
