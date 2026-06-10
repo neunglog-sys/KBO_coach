@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   BookOpenCheck,
   CalendarCheck,
@@ -79,6 +79,25 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 //   false = 패널 숨김, 실제 레벨·응원팀으로 동작 → 발표·배포용
 //   git에 올릴 땐 false 권장. 테스트할 때만 true 로 바꾸세요.
 const SHOW_TEST_PANEL = true;
+
+// =====================================================================
+// 말풍선: 완전 고정 위치 (측정·계산 없음 — 어떤 캐릭터든 항상 같은 자리)
+//  - 가로: 정중앙 / 세로: 카드 상단에서 아래 px 만큼
+// =====================================================================
+const BUBBLE_TOP_PX = 14;
+
+// =====================================================================
+// 캐릭터 크기 자동 통일
+//  - PNG마다 그림이 캔버스를 채우는 비율이 달라서(여백 차이),
+//    같은 단계인데도 남/녀 크기가 달라 보이는 문제를 픽셀 스캔으로 보정
+//  - 아래 값 = "보이는 캐릭터 높이"를 기본 CSS 높이의 몇 배로 만들지
+//    (단계별 숫자만 조절하면 전체 크기가 바뀜. 남녀는 항상 같게 유지됨)
+// =====================================================================
+const CHAR_VISIBLE_TARGET: Record<"default" | "child" | "adult", number> = {
+  default: 0.82, // 1레벨/무소속 기본 캐릭터
+  child: 0.88,   // 2~4레벨 꼬마
+  adult: 0.98,   // 5레벨↑ 어른
+};
 
 // =====================================================================
 // 캐릭터 이미지 경로 만들기
@@ -406,6 +425,99 @@ export default function AttendanceCheckIn({
     () => getCharacterImage(charLevel, charTeam, charGender),
     [charLevel, charTeam, charGender],
   );
+
+  // 캐릭터 크기 자동 통일 (말풍선은 BUBBLE_TOP_PX 완전 고정 — 측정 없음)
+  const charImgRef = useRef<HTMLImageElement | null>(null);
+  // 이미지별 픽셀 경계 캐시: 위/아래 투명 여백 비율 (0~1, 이미지 높이 대비)
+  const imgBoundsCache = useRef<Record<string, { topRatio: number; visibleRatio: number }>>({});
+
+  // 이미지를 64x64로 축소해 위/아래에서 첫 불투명 픽셀이 나오는 행을 찾음
+  const getVisibleBounds = (img: HTMLImageElement): { topRatio: number; visibleRatio: number } => {
+    const fallback = { topRatio: 0, visibleRatio: 1 };
+    const key = img.currentSrc || img.src;
+    const cached = imgBoundsCache.current[key];
+    if (cached !== undefined) return cached;
+    if (!img.complete || img.naturalWidth === 0) return fallback;
+    try {
+      const size = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return fallback;
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      const rowHasPixel = (y: number) => {
+        for (let x = 0; x < size; x++) {
+          if (data[(y * size + x) * 4 + 3] > 20) return true;
+        }
+        return false;
+      };
+      let top = 0;
+      while (top < size && !rowHasPixel(top)) top++;
+      let bottomRow = size - 1;
+      while (bottomRow > top && !rowHasPixel(bottomRow)) bottomRow--;
+      if (top >= size) return fallback; // 전부 투명(비정상 이미지)
+      const bounds = {
+        topRatio: top / size,
+        visibleRatio: Math.max(0.05, (bottomRow - top + 1) / size),
+      };
+      imgBoundsCache.current[key] = bounds;
+      return bounds;
+    } catch {
+      return fallback; // 캔버스 사용 불가 시 이미지 박스 기준으로 동작
+    }
+  };
+
+  // 현재 캐릭터 단계 (이미지 규칙과 동일한 분기)
+  const charStage: "default" | "child" | "adult" =
+    !charTeam || charLevel <= 1 ? "default" : charLevel >= 5 ? "adult" : "child";
+
+  // 캐릭터 크기 통일: 보이는 높이가 단계별 목표(CHAR_VISIBLE_TARGET)가 되도록 강제 적용
+  // ※ CSS 클래스에 !important 가 있어도 이기도록 setProperty(..., "important") 사용
+  const applyCharacterScale = () => {
+    const img = charImgRef.current;
+    if (!img) return;
+    if (!img.complete || img.naturalWidth === 0) return; // 로드 전이면 onLoad 때 다시 옴
+    const bounds = getVisibleBounds(img);
+    // 인라인 크기를 잠시 지워 CSS 기본 박스 높이(baseH)를 측정
+    img.style.removeProperty("height");
+    img.style.removeProperty("width");
+    const baseH = img.getBoundingClientRect().height;
+    if (baseH > 0 && bounds.visibleRatio > 0) {
+      const scale = Math.min(1.6, Math.max(0.5, CHAR_VISIBLE_TARGET[charStage] / bounds.visibleRatio));
+      img.style.setProperty("height", `${Math.round(baseH * scale)}px`, "important");
+      img.style.setProperty("width", "auto", "important"); // 비율 유지
+    }
+  };
+
+  useEffect(() => {
+    applyCharacterScale();
+    window.addEventListener("resize", applyCharacterScale);
+    return () => window.removeEventListener("resize", applyCharacterScale);
+    // 캐릭터 이미지가 바뀌면 재계산 (이미지 로드 완료 시엔 <img onLoad>가 호출)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterSrc, imgFailed, charStage]);
+
+  // 말풍선 본체 — 완전 고정 위치 (가로 정중앙 + 카드 상단에서 BUBBLE_TOP_PX), 꼬리 없음
+  const speechBubbleStyle: CSSProperties = {
+    position: "absolute",
+    left: "50%",
+    top: BUBBLE_TOP_PX,
+    transform: "translateX(-50%)",
+    maxWidth: "82%",
+    background: "#fff",
+    border: "2px solid #0f172a",
+    borderRadius: 14,
+    padding: "9px 14px",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#0f172a",
+    textAlign: "center",
+    lineHeight: 1.4,
+    zIndex: 5,
+    boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+  };
 
   useEffect(() => {
     setImgFailed(false);
@@ -869,7 +981,11 @@ export default function AttendanceCheckIn({
         </div>
       </section>
 
-      <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
+      <section
+        className="tamagotchi-field-card"
+        aria-label="캐릭터 영역"
+        style={{ position: "relative" }}
+      >
         {/* 무소속인데 레벨이 2 이상이면 안내: 팀을 선택해야 캐릭터가 성장한 모습으로 보임 */}
         {levelLockedByNoTeam ? (
           <div
@@ -891,13 +1007,16 @@ export default function AttendanceCheckIn({
             ⚠️ 2레벨 이상은 팀 선택을 해야 가능합니다.
           </div>
         ) : null}
-        <div className="tamagotchi-speech-bubble">
+        {/* 말풍선: 완전 고정 위치 (BUBBLE_TOP_PX), 가로 정중앙, 꼬리 없음 */}
+        <div style={speechBubbleStyle}>
           {dailyState.speechText}
         </div>
         <img
+          ref={charImgRef}
           className="tamagotchi-character-img"
           src={imgFailed ? FALLBACK_CHARACTER_SRC : characterSrc}
           alt="야구짝꿍 캐릭터"
+          onLoad={applyCharacterScale}
           onError={() => setImgFailed(true)}
         />
       </section>
@@ -1030,6 +1149,7 @@ export default function AttendanceCheckIn({
             {" · "}단계: {(!charTeam || charLevel <= 1) ? "default(기본)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
             {" · "}경로: <code>{characterSrc}</code>
           </div>
+
         </section>
       ) : null}
 
