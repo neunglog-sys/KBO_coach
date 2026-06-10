@@ -104,6 +104,19 @@
   font-size: 0.95rem;
 }
 
+/* 채팅 헤더 위 三 버튼 — 팀 컬러 배경에 맞춰 chat-iconbtn과 같은 톤으로 보정 */
+.chat-header-actions .app-menu-button {
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.chat-header-actions .app-menu-button svg {
+  width: 20px;
+  height: 20px;
+}
+
 /* 검색바 */
 .chat-search {
   display: flex;

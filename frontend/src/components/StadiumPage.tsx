@@ -7,8 +7,12 @@ import { StadiumGuideTab } from "./StadiumGuideTab";
 import { StadiumRegionTab } from "./StadiumRegionTab";
 import { StadiumSearchBar } from "./StadiumSearchBar";
 import { StadiumTabs, type StadiumTab } from "./StadiumTabs";
-import { StadiumTopMenu, type StadiumMenuTarget } from "./StadiumTopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import "./StadiumPage.css";
+
+type StadiumMenuTarget = TopMenuTarget;
 
 interface StadiumPageProps {
   onClose: () => void;
@@ -22,6 +26,7 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   const [searchValue, setSearchValue] = useState("");
   const [notice, setNotice] = useState("구장정보를 불러오는 중입니다.");
   const [isTeamListOpen, setIsTeamListOpen] = useState(false);
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,10 +84,15 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
       <header className="stadium-page-header">
         <AppBackButton onClick={onClose} />
         <h2>구장정보</h2>
-        <span className="app-screen-title-spacer" />
+        <MenuButton onClick={() => setSideMenuOpen(true)} />
       </header>
 
-      <StadiumTopMenu onNavigate={handleNavigate} />
+      <SideMenu
+        isOpen={sideMenuOpen}
+        active="stadium"
+        onNavigate={handleNavigate}
+        onClose={() => setSideMenuOpen(false)}
+      />
       <StadiumSearchBar
         value={searchValue}
         onChange={setSearchValue}

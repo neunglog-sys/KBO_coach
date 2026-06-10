@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiUrl } from "../api";
 import { AppBackButton } from "./AppBackButton";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import "./MyRecordsView.css";
 
 interface MyRecordsViewProps {
@@ -93,6 +95,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [closing, setClosing] = useState(false); // 뒤로가기 슬라이드 아웃용
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   async function reload() {
     if (!authToken) {
@@ -250,7 +253,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     }
   }
 
-  function handleTopMenuNavigate(target: TopMenuTarget) {
+  function handleSideMenuNavigate(target: TopMenuTarget) {
     if (target === "record") return;
     onNavigate?.(target);
   }
@@ -266,10 +269,15 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
       <header className="records-top">
         <AppBackButton onClick={handleBack} />
         <h1>나만의 야구기록</h1>
-        <span className="app-screen-title-spacer" />
+        <MenuButton onClick={() => setSideMenuOpen(true)} />
       </header>
 
-      <TopMenu active="record" className="records-top-menu" onNavigate={handleTopMenuNavigate} />
+      <SideMenu
+        isOpen={sideMenuOpen}
+        active="record"
+        onNavigate={handleSideMenuNavigate}
+        onClose={() => setSideMenuOpen(false)}
+      />
 
       <div className="streak-card" style={streakStyle}>
         <div className="streak-card-head">
