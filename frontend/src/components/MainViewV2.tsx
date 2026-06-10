@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
@@ -159,6 +159,10 @@ export function MainViewV2({
   const [inputFocused, setInputFocused] = useState(false);
   // 채팅 시트 접힘 여부 — 손잡이를 아래로 끌면 메시지 영역을 접어 캐릭터를 더 보이게 한다.
   const [chatCollapsed, setChatCollapsed] = useState(false);
+  // 손가락 드래그로 조절한 채팅 로그 최대 높이(px). null이면 기본 CSS(--stage-chat-limit) 사용.
+  const [chatHeight, setChatHeight] = useState<number | null>(null);
+  // 드래그 중에는 높이 transition을 꺼 손가락에 즉시 따라오게 한다.
+  const [isResizingChat, setIsResizingChat] = useState(false);
   // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
   const [greetSignal, setGreetSignal] = useState(0);
   // 값이 증가할 때마다 캐릭터가 잠깐 뛰는(빠른 걷기) 모션을 재생.
@@ -240,8 +244,11 @@ export function MainViewV2({
   // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
   // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
   const submitQuestionRef = useRef<(raw: string) => void>(() => { });
-  // 채팅 시트 손잡이 드래그 시작 Y좌표 (아래로 끌면 접기 / 위로 끌면 펼치기)
-  const chatDragStartY = useRef<number | null>(null);
+  // 채팅 시트 / 캐릭터 DOM 참조 — 드래그 리사이즈 시 최대 높이(발 밑) 계산에 사용.
+  const chatSectionRef = useRef<HTMLElement | null>(null);
+  const characterRef = useRef<HTMLDivElement | null>(null);
+  // 손잡이 드래그 상태: 시작 Y/높이, 직전 높이, 실제 이동 여부(탭 구분용).
+  const chatResizeRef = useRef<{ startY: number; startHeight: number; lastHeight: number; moved: boolean } | null>(null);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -1063,6 +1070,55 @@ export function MainViewV2({
     switchToMenuTarget(key);
   }
 
+  // 채팅 로그가 커질 수 있는 최대 높이(px) — 시트 윗변이 캐릭터 발 밑(캔버스 하단)을 넘지 않도록.
+  // (시트 전체높이 = 채팅로그 + 손잡이/입력바/패딩 'chrome'. 발 밑까지 남은 공간에서 chrome을 뺀다.)
+  const computeMaxChatHeight = () => {
+    const section = chatSectionRef.current;
+    const log = chatLogRef.current;
+    if (!section || !log) return Number.POSITIVE_INFINITY;
+    const chrome = section.offsetHeight - log.offsetHeight; // 채팅로그 외 영역 높이
+    const feetY = characterRef.current?.getBoundingClientRect().bottom ?? 0; // 캐릭터 발 밑 라인
+    const gap = 8; // 발 밑과 시트 사이 약간의 여백
+    return Math.max(80, window.innerHeight - feetY - gap - chrome);
+  };
+
+  // 손잡이 드래그 시작: 현재 높이와 시작 좌표 기록.
+  const handleChatHandleDown = (e: ReactPointerEvent) => {
+    const startHeight = chatCollapsed ? 0 : (chatLogRef.current?.offsetHeight ?? 0);
+    chatResizeRef.current = { startY: e.clientY, startHeight, lastHeight: startHeight, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsResizingChat(true);
+  };
+
+  // 드래그 이동: 위로 끌면 커지고 아래로 끌면 작아진다. 발 밑(최대)까지로 제한.
+  const handleChatHandleMove = (e: ReactPointerEvent) => {
+    const d = chatResizeRef.current;
+    if (!d) return;
+    const dy = e.clientY - d.startY;
+    if (Math.abs(dy) > 3) d.moved = true;
+    const maxH = computeMaxChatHeight();
+    const next = Math.min(maxH, Math.max(0, d.startHeight - dy));
+    d.lastHeight = next;
+    if (chatCollapsed && next > 8) setChatCollapsed(false);
+    setChatHeight(next);
+  };
+
+  // 드래그 끝: 이동 없으면 탭으로 보고 접기/펼치기 토글. 아주 작게 줄였으면 접는다.
+  const handleChatHandleUp = () => {
+    const d = chatResizeRef.current;
+    chatResizeRef.current = null;
+    setIsResizingChat(false);
+    if (!d) return;
+    if (!d.moved) {
+      setChatCollapsed((v) => !v);
+      return;
+    }
+    if (d.lastHeight < 40) {
+      setChatCollapsed(true);
+      setChatHeight(null); // 접을 땐 기본 높이로 리셋(다시 펼치면 기본 크기부터)
+    }
+  };
+
   return (
     <section className="stage-view" aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
@@ -1088,42 +1144,43 @@ export function MainViewV2({
 
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
-      <div className="stage-character" aria-hidden="false">
+      <div className="stage-character" aria-hidden="false" ref={characterRef}>
         <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />
 
       <section
+        ref={chatSectionRef}
         className={`stage-chat ${chatCollapsed ? "is-collapsed" : ""}`}
         aria-label="야구 코치 채팅"
       >
-        {/* 손잡이: 아래로 끌면 접기 / 위로 끌면 펼치기 / 탭이면 토글 */}
+        {/* 손잡이: 드래그로 크기 조절(발 밑까지) / 탭이면 접기·펼치기 토글 */}
         <div
           className="stage-chat-handle"
           role="button"
           tabIndex={0}
-          aria-label={chatCollapsed ? "채팅창 올리기" : "채팅창 내리기"}
-          onPointerDown={(e) => {
-            chatDragStartY.current = e.clientY;
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerUp={(e) => {
-            const start = chatDragStartY.current;
-            chatDragStartY.current = null;
-            if (start == null) return;
-            const dy = e.clientY - start;
-            if (dy > 24) setChatCollapsed(true);
-            else if (dy < -24) setChatCollapsed(false);
-            else setChatCollapsed((v) => !v);
-          }}
+          aria-label={chatCollapsed ? "채팅창 올리기" : "채팅창 크기 조절"}
+          onPointerDown={handleChatHandleDown}
+          onPointerMove={handleChatHandleMove}
+          onPointerUp={handleChatHandleUp}
+          onPointerCancel={handleChatHandleUp}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setChatCollapsed((v) => !v);
           }}
         >
           <span className="stage-chat-grip" aria-hidden="true" />
         </div>
-        <div className="stage-chatlog" ref={chatLogRef} aria-live="polite">
+        <div
+          className="stage-chatlog"
+          ref={chatLogRef}
+          aria-live="polite"
+          style={
+            chatHeight != null
+              ? { maxHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
+              : undefined
+          }
+        >
           {messages.map((message) => (
             <div key={message.id} className={`stage-msg ${message.type}`}>
               {message.text}

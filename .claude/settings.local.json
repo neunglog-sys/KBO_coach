@@ -10,7 +10,16 @@
       "Bash(npx --yes @gltf-transform/cli@latest inspect 260609_Rig_opt.glb)",
       "Bash(findstr /C:\"\\\\\"build\\\\\"\" /C:\"\\\\\"sync\\\\\"\" /C:\"\\\\\"dev\\\\\"\")",
       "Bash(gradlew.bat installDebug)",
-      "Bash(./gradlew.bat installDebug)"
+      "Bash(./gradlew.bat installDebug)",
+      "Bash(git add *)",
+      "Bash(findstr /i \"model\")",
+      "Bash(awk '{printf \"%6.1f MB\\\\t%s\\\\n\", $1/1048576, $2}')",
+      "Bash(git restore *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit --amend -m '3D 모델 파일 git 포함 \\(웹 테스트용\\)' -m '- 100MB 이하 모델 파일 전부 추가 \\(public/model/3d, model/3d, model-work\\) *)",
+      "Bash(git push *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)"
     ]
   }
 }
