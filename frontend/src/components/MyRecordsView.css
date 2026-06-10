@@ -8,7 +8,6 @@
   color: #1c2536;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
-  /* 메인에서 넘어올 때 오른쪽에서 슬라이드 + 페이드 */
   animation: records-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
 }
@@ -18,14 +17,12 @@
     opacity: 0.4;
     transform: translateX(8%);
   }
-
   to {
     opacity: 1;
     transform: translateX(0);
   }
 }
 
-/* 뒤로가기: 오른쪽으로 슬라이드 아웃 + 페이드 */
 .records-view.closing {
   animation: records-exit 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) both;
 }
@@ -35,7 +32,6 @@
     opacity: 1;
     transform: translateX(0);
   }
-
   to {
     opacity: 0;
     transform: translateX(12%);
@@ -43,7 +39,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .records-view,
   .records-view.closing {
     animation: none;
@@ -60,7 +55,6 @@
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
   background: #f4f6fb;
 }
-
 .records-top h1 {
   flex: 1;
   margin: 0;
@@ -69,7 +63,6 @@
   font-weight: 900;
 }
 
-/* 연속 기록 도전 카드 */
 .records-top-menu {
   position: relative;
   z-index: 2;
@@ -78,90 +71,110 @@
 }
 
 .streak-card {
-  margin: 4px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  margin: 16px 16px 22px;
   padding: 20px;
   border-radius: 22px;
   color: #fff;
-  background: linear-gradient(135deg,
-      var(--streak-c0, #8b5cf6),
-      var(--streak-c1, #c084fc) 55%,
-      var(--streak-c2, #f0abfc));
-  box-shadow: 0 14px 30px var(--streak-shadow, rgba(139, 92, 246, 0.32));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--streak-c0, #8b5cf6) 86%, transparent),
+    color-mix(in srgb, var(--streak-c1, #c084fc) 78%, transparent) 55%,
+    color-mix(in srgb, var(--streak-c2, #f0abfc) 72%, transparent)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  box-shadow:
+    0 6px 12px var(--streak-shadow, rgba(139, 92, 246, 0.2)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -10px 18px rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
 }
-
+.streak-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.45), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06) 55%, rgba(255, 255, 255, 0.16));
+}
+.streak-card > * {
+  position: relative;
+  z-index: 1;
+}
 .streak-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-
 .streak-eyebrow {
   margin: 0 0 4px;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 500;
   opacity: 0.92;
 }
-
 .streak-card-head h2 {
   margin: 0;
   font-size: 1.7rem;
   font-weight: 900;
 }
-
 .streak-flame {
   font-size: 2.4rem;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
-
 .streak-char {
   width: 104px;
   height: 104px;
   object-fit: contain;
   flex: 0 0 auto;
 }
-
 .streak-goalrow {
   display: flex;
   justify-content: space-between;
   margin: 16px 0 8px;
   font-size: 0.9rem;
+  font-weight: 500;
+}
+.streak-goalrow span:first-child {
   font-weight: 700;
 }
-
 .streak-bar {
   height: 14px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.35);
   overflow: hidden;
 }
-
 .streak-bar-fill {
   height: 100%;
   border-radius: 999px;
   background: #ffffff;
   transition: width 0.4s ease;
 }
-
 .streak-actions {
   margin-top: 14px;
 }
-
 .streak-goalbtn {
   width: 100%;
   min-height: 44px;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.58);
   color: #7c3aed;
   font-weight: 800;
+  box-shadow:
+    0 4px 8px rgba(28, 37, 54, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -6px 10px rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
 }
-
 .goal-editor {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 .goal-editor input {
   width: 80px;
   min-height: 42px;
@@ -173,11 +186,9 @@
   font-weight: 800;
   text-align: center;
 }
-
-.goal-editor>span {
+.goal-editor > span {
   font-weight: 800;
 }
-
 .goal-save,
 .goal-cancel {
   min-height: 42px;
@@ -186,50 +197,59 @@
   border-radius: 12px;
   font-weight: 800;
 }
-
 .goal-save {
   background: #fff;
   color: #7c3aed;
 }
-
 .goal-cancel {
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
 
-/* 내 팀 */
 .myteam-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 20px 14px;
+  margin: 0 16px 14px 32px;
 }
-
 .myteam-label {
   font-size: 0.9rem;
   font-weight: 800;
   color: #5b6577;
 }
-
 .myteam-chip {
+  position: relative;
+  overflow: hidden;
   padding: 8px 14px;
   border-radius: 999px;
   color: #fff;
   font-weight: 800;
   font-size: 0.92rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -7px 12px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
 }
-
+.myteam-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), transparent 55%, rgba(255, 255, 255, 0.12));
+}
 .myteam-picker {
   width: 100%;
 }
-
 .myteam-picker-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
-
 .myteam-picker-list button {
   padding: 8px 12px;
   border: 0;
@@ -239,47 +259,70 @@
   font-size: 0.85rem;
 }
 
-/* 캘린더 */
 .cal-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   margin: 0 16px;
-  padding: 16px;
+  min-height: 430px;
+  padding: 16px 16px 36px;
   border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 8px 22px rgba(28, 37, 54, 0.08);
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -12px 18px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
 }
-
+.cal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.58), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 54%, rgba(255, 255, 255, 0.12));
+}
+.cal-card > * {
+  position: relative;
+  z-index: 1;
+}
 .cal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
 }
-
 .cal-head strong {
   font-size: 1.1rem;
   font-weight: 900;
 }
-
 .cal-head button {
   width: 36px;
   height: 36px;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 10px;
-  background: #f1f3f9;
+  background: rgba(241, 243, 249, 0.56);
   font-size: 1.2rem;
   color: #475069;
+  box-shadow:
+    0 4px 8px rgba(28, 37, 54, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -6px 10px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
 }
-
 .cal-weekdays,
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
-
 .cal-weekdays {
   margin-bottom: 6px;
 }
-
 .cal-weekdays span {
   text-align: center;
   font-size: 0.78rem;
@@ -287,23 +330,22 @@
   color: #8a93a6;
   padding: 4px 0;
 }
-
 .cal-weekdays .sun {
   color: #ef4444;
 }
-
 .cal-weekdays .sat {
   color: #3b82f6;
 }
-
 .cal-grid {
+  flex: 1;
   gap: 2px;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
 }
-
 .cal-cell {
   position: relative;
-  aspect-ratio: 1 / 1;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -317,32 +359,51 @@
   color: #2b3242;
   font-size: 0.9rem;
 }
-
 .cal-cell.empty {
   visibility: hidden;
 }
-
 .cal-day {
   font-size: 1.05rem;
   font-weight: 800;
   color: #1c2536;
 }
-
+.cal-cell.today {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1.5px solid #3b82f6;
+  box-shadow:
+    0 4px 8px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -5px 8px rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px) saturate(130%);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
+}
 .cal-cell.today .cal-day {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #ede9fe;
-  color: #7c3aed;
+  color: #3b82f6;
   font-weight: 900;
 }
-
 .cal-cell.has-record {
-  background: #faf7ff;
+  background: rgba(250, 247, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 4px 8px rgba(28, 37, 54, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -5px 8px rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px) saturate(130%);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
 }
-
+.cal-cell.has-record::before,
+.cal-cell.has-game::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 58%, rgba(255, 255, 255, 0.1));
+}
+.cal-cell > * {
+  position: relative;
+  z-index: 1;
+}
 .cal-stamp {
   width: 20px;
   height: 20px;
@@ -352,15 +413,13 @@
   font-size: 0.72rem;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
-
-/* 예정 경기 상대팀 배지 */
 .cal-opp {
   max-width: 100%;
   padding: 1px 4px;
   border-radius: 8px;
   color: #fff;
   font-size: 0.58rem;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1.4;
   letter-spacing: -0.3px;
   white-space: nowrap;
@@ -368,18 +427,32 @@
   text-overflow: ellipsis;
   box-sizing: border-box;
 }
-
 .cal-cell.has-game {
-  background: #f7f9ff;
+  background: rgba(247, 249, 255, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 4px 8px rgba(28, 37, 54, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -5px 8px rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px) saturate(130%);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
 }
-
+.cal-cell.today.has-record,
+.cal-cell.today.has-game {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1.5px solid #3b82f6;
+  box-shadow:
+    0 4px 8px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -5px 8px rgba(255, 255, 255, 0.14);
+}
 .cal-legend {
+  flex: 0 0 auto;
   margin: 12px 2px 0;
   font-size: 0.72rem;
   color: #8a93a6;
   text-align: center;
 }
-
 .rec-nogame {
   margin: 24px 0;
   text-align: center;
@@ -387,7 +460,6 @@
   color: #6b7689;
 }
 
-/* 기록 모달 */
 .rec-backdrop {
   position: fixed;
   inset: 0;
@@ -399,7 +471,6 @@
   padding: 20px;
   animation: rec-fade 0.18s ease both;
 }
-
 .rec-modal {
   width: 100%;
   max-width: 460px;
@@ -417,36 +488,30 @@
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
 }
-
 @keyframes rec-pop {
   from {
     opacity: 0;
     transform: scale(0.9);
   }
-
   to {
     opacity: 1;
     transform: scale(1);
   }
 }
-
 .rec-modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-
 .rec-modal-head strong {
   font-size: 1.15rem;
   font-weight: 900;
 }
-
 .rec-close {
   width: 34px;
   height: 34px;
@@ -456,7 +521,6 @@
   font-size: 1rem;
   color: #475069;
 }
-
 .rec-matchup {
   display: flex;
   align-items: center;
@@ -464,7 +528,6 @@
   gap: 12px;
   margin-bottom: 4px;
 }
-
 .rec-myteam,
 .rec-oppbox {
   min-width: 92px;
@@ -474,30 +537,25 @@
   font-weight: 900;
   color: #fff;
 }
-
 .rec-oppbox {
   background: #e9edf5;
   color: #5b6577;
 }
-
 .rec-vs {
   font-weight: 900;
   color: #94a0b4;
 }
-
 .rec-field-label {
   margin: 16px 0 8px;
   font-size: 0.88rem;
   font-weight: 800;
   color: #5b6577;
 }
-
 .rec-opp-list {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
-
 .rec-opp {
   min-height: 42px;
   border: 1px solid #e3e8f0;
@@ -507,11 +565,9 @@
   font-size: 0.82rem;
   color: #2b3242;
 }
-
 .rec-opp.on {
   border-color: transparent;
 }
-
 .rec-input {
   width: 100%;
   min-height: 48px;
@@ -522,19 +578,16 @@
   font-size: 0.95rem;
   outline: none;
 }
-
 .rec-input:focus {
   border-color: #a78bfa;
   background: #fff;
   box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.18);
 }
-
 .rec-mood-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
-
 .rec-mood {
   display: flex;
   flex-direction: column;
@@ -549,21 +602,17 @@
   font-size: 0.85rem;
   color: #2b3242;
 }
-
 .rec-mood span {
   font-size: 1.4rem;
 }
-
 .rec-mood.on {
   background: #faf7ff;
 }
-
 .rec-actions {
   display: flex;
   gap: 10px;
   margin-top: 22px;
 }
-
 .rec-delete {
   flex: 0 0 auto;
   min-height: 50px;
@@ -574,7 +623,6 @@
   color: #dc2626;
   font-weight: 800;
 }
-
 .rec-save {
   flex: 1;
   min-height: 50px;
@@ -585,7 +633,6 @@
   font-weight: 900;
   font-size: 1rem;
 }
-
 .rec-save:disabled {
   opacity: 0.5;
 }
