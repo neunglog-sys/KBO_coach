@@ -5,7 +5,7 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
-import { clearMouth, setActiveSyllable, setActiveViseme } from "../lipSync";
+import { clearMouth, setActiveSyllablePhase, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
 import SettingsView from "./SettingsView";
@@ -218,6 +218,11 @@ export function MainViewV2({
   }, [authToken]);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
+  // 사용자가 지금 맨 아래에 붙어 있는지 여부. 스크롤할 때마다 갱신한다.
+  // 스트리밍(봇 글자 갱신) 중에는 true일 때만 따라 내린다(위로 읽는 중이면 유지).
+  const pinnedToBottomRef = useRef(true);
+  // 직전 렌더의 메시지 개수 — 새 말풍선 추가(턴 시작)와 스트리밍 글자 갱신을 구분한다.
+  const prevMsgCountRef = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   // Web Audio 스트리밍 재생 정지 핸들 — stopSpeaking이 즉시 멈추도록.
@@ -242,11 +247,32 @@ export function MainViewV2({
     typeof window !== "undefined" &&
     Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 
+  // 사용자의 스크롤을 추적해 "맨 아래에 붙어 있는지"를 갱신한다.
+  // 위로 올리면 pinned=false가 되어 자동 스크롤이 멈추고, 다시 맨 아래로 내려오면 pinned=true.
   useEffect(() => {
-    chatLogRef.current?.scrollTo({
-      top: chatLogRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    const el = chatLogRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      pinnedToBottomRef.current =
+        el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // 자동 스크롤 규칙:
+  //  - 새 말풍선이 추가되면(user/bot 새 채팅) 위로 올려놨어도 무조건 맨 아래로 내린다.
+  //  - 기존 봇 말풍선의 글자만 늘어나는 스트리밍 중에는 맨 아래 붙어 있을 때만 따라간다(읽는 중 방해 X).
+  // 즉시 이동(scrollTop 직접 설정)으로 애니메이션 충돌·버벅임을 피한다.
+  useEffect(() => {
+    const el = chatLogRef.current;
+    if (!el) return;
+    const isNewMessage = messages.length > prevMsgCountRef.current;
+    prevMsgCountRef.current = messages.length;
+    if (isNewMessage || pinnedToBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+      pinnedToBottomRef.current = true;
+    }
   }, [messages]);
 
   // 앱이 백그라운드로 가거나(웹뷰 숨김) 페이지가 사라지면 재생 중인 음성을 멈춘다.
@@ -524,7 +550,16 @@ export function MainViewV2({
           if (starts[i] <= tt) spoken = i + 1;
           else break;
         }
-        setActiveSyllable(spoken > 0 ? chars[spoken - 1] : "");
+        // viseme식 입모양: 지금 음절의 진행률(phase)로 초성→모음→받침 자음까지 반영.
+        if (spoken > 0) {
+          const ci = spoken - 1;
+          const st = starts[ci];
+          const en = ci + 1 < starts.length ? starts[ci + 1] : st + 0.18; // 마지막 글자는 길이 추정
+          const phase = Math.min(1, Math.max(0, (tt - st) / Math.max(0.06, en - st)));
+          setActiveSyllablePhase(chars[ci], phase);
+        } else {
+          setActiveSyllablePhase("", 0);
+        }
         if (cleanLen > 0) {
           const frac = Math.min(1, spoken / cleanLen);
           const spokenChars = Math.ceil(text.length * frac); // clean→원본 텍스트 글자수 환산

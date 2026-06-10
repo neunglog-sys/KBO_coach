@@ -68,6 +68,41 @@ export function setActiveSyllable(ch: string): void {
   target = next;
 }
 
+// ── viseme식 자음 디테일: 음절 내 위상(앞=초성/중간=모음/끝=받침)에 따라 입모양 전환 ──
+// 초성 인덱스: ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ (0~18)
+const ONSET_LABIAL = new Set([6, 7, 8, 17]);      // ㅁㅂㅃㅍ → 입술 다묾
+const ONSET_SIBILANT = new Set([9, 10, 12, 13, 14]); // ㅅㅆㅈㅉㅊ → 이 사이(I)
+// 종성 인덱스(0=없음): ...ㄻ(10) ㄿ(14) ㅁ(16) ㅂ(17) ㅄ(18) ㅍ(26) 등
+const CODA_LABIAL = new Set([10, 14, 16, 17, 18, 26]); // ㅁㅂㅍ계 받침 → 입술 다묾
+const CODA_SIBILANT = new Set([19, 20, 22, 23]);       // ㅅㅆㅈㅊ 받침 → I
+const CODA_SOFT = new Set([4, 8, 21]);                  // ㄴㄹㅇ 받침 → 살짝 E
+
+/** viseme처럼: 음절 + 그 음절 안 진행률(phase 0~1)로 입모양 설정.
+ *  앞(~22%)은 초성 자음, 중간은 모음, 끝(70%~)은 받침 자음을 반영한다. */
+export function setActiveSyllablePhase(ch: string, phase: number): void {
+  const code = ch ? ch.charCodeAt(0) : 0;
+  if (code < 0xac00 || code > 0xd7a3) {
+    target = { ...ZERO };   // 비음절(공백·문장부호) → 다문 입
+    return;
+  }
+  const idx = code - 0xac00;
+  const onset = Math.floor(idx / 588);          // 588 = 21*28
+  const medial = Math.floor(idx / 28) % 21;
+  const coda = idx % 28;
+  let shape: MouthShape | null = MEDIAL_TO_SHAPE[medial] ?? "A";
+  if (phase < 0.22) {
+    if (ONSET_LABIAL.has(onset)) shape = null;
+    else if (ONSET_SIBILANT.has(onset)) shape = "I";
+  } else if (phase > 0.7 && coda > 0) {
+    if (CODA_LABIAL.has(coda)) shape = null;
+    else if (CODA_SIBILANT.has(coda)) shape = "I";
+    else if (CODA_SOFT.has(coda)) shape = "E";
+  }
+  const next: MouthWeights = { ...ZERO };
+  if (shape) next[shape] = 1;
+  target = next;
+}
+
 /** 다문 입(전부 0)으로. 발화 종료/중단 시 호출. */
 export function clearMouth(): void {
   target = { ...ZERO };
