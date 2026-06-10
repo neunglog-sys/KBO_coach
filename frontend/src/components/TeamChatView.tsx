@@ -259,19 +259,6 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
               🔍
             </button>
 
-            <button
-              className="chat-iconbtn"
-              type="button"
-              onClick={() => {
-                setSwitchOpen((v) => !v);
-                setSearchOpen(false);
-                setQuery("");
-              }}
-              aria-label="팀 변경"
-            >
-              ☰
-            </button>
-
             <MenuButton onClick={() => setSideMenuOpen(true)} />
           </div>
         </div>
