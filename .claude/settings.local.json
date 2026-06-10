@@ -19,7 +19,8 @@
       "Bash(git commit --amend -m '3D 모델 파일 git 포함 \\(웹 테스트용\\)' -m '- 100MB 이하 모델 파일 전부 추가 \\(public/model/3d, model/3d, model-work\\) *)",
       "Bash(git push *)",
       "Bash(git stash *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "PowerShell(& \"$PWD\\\\frontend\\\\android\\\\gradlew.bat\" -p \"$PWD\\\\frontend\\\\android\" installDebug 2>&1 | Select-Object -Last 6)"
     ]
   }
 }
