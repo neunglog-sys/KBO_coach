@@ -47,6 +47,21 @@ const TEAM_HOME_STADIUM: Record<string, string> = {
   LT: "사직야구장",
 };
 
+// 응원팀별 보내기 버튼 색상. 응원팀이 없으면 기본 주황색(SEND_COLOR_DEFAULT)을 쓴다.
+const SEND_COLOR_DEFAULT = "#ff7a18";
+const TEAM_SEND_COLOR: Record<string, string> = {
+  OB: "#131230",
+  LT: "#041E42",
+  SS: "#074CA1",
+  SK: "#CE0E2D",
+  LG: "#C30452",
+  NC: "#315288",
+  WO: "#7B0F1F",
+  KT: "#2B2B2B",
+  HT: "#C8102E",
+  HH: "#FA5C1E",
+};
+
 interface MainViewV2Props {
   authToken: string;
   favTeamCode?: string;
@@ -191,6 +206,8 @@ export function MainViewV2({
     { id: 0, type: "bot", text: "야구공: 무엇을 도와줄까?" },
   ]);
   const [input, setInput] = useState("");
+  // 응원팀별 보내기 버튼 색상(응원팀 없으면 기본 주황). 그림자도 같은 색의 반투명으로 맞춘다.
+  const sendColor = TEAM_SEND_COLOR[favTeamCode ?? ""] ?? SEND_COLOR_DEFAULT;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
@@ -1250,6 +1267,8 @@ export function MainViewV2({
               className="stage-send-arrow"
               aria-label="보내기"
               title="보내기"
+              // 응원팀 색상으로 버튼/그림자 색을 덮어쓴다(8자리 hex의 끝 4d ≈ 30% 투명도).
+              style={{ background: sendColor, boxShadow: `0 6px 14px ${sendColor}4d` }}
               // 버튼 탭 시 입력창 포커스(키보드)가 풀리지 않게 → 연속 전송 가능
               onMouseDown={(e) => e.preventDefault()}
             >

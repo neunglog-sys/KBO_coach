@@ -20,7 +20,10 @@
       "Bash(git push *)",
       "Bash(git stash *)",
       "Bash(git merge *)",
-      "PowerShell(& \"$PWD\\\\frontend\\\\android\\\\gradlew.bat\" -p \"$PWD\\\\frontend\\\\android\" installDebug 2>&1 | Select-Object -Last 6)"
+      "PowerShell(& \"$PWD\\\\frontend\\\\android\\\\gradlew.bat\" -p \"$PWD\\\\frontend\\\\android\" installDebug 2>&1 | Select-Object -Last 6)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import numpy, scipy; print\\('numpy', numpy.__version__, 'scipy', scipy.__version__\\)\")",
+      "Bash(python -c \"import PIL; print\\('PIL', PIL.__version__\\)\")"
     ]
   }
 }

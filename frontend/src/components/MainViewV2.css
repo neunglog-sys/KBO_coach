@@ -339,9 +339,9 @@
   gap: 8px;
   width: var(--stage-content-width);
   min-height: 62px;
-  padding: 7px;
+  padding: 7px 10px;
   border: 1px solid rgba(13, 31, 54, 0.1);
-  border-radius: 18px;
+  border-radius: 999px;
   background: #ffffff;
   box-shadow: 0 8px 22px rgba(23, 42, 75, 0.16);
 }
@@ -385,8 +385,8 @@
 }
 
 .stage-stop svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .stage-stop:disabled {
@@ -406,8 +406,8 @@
 }
 
 .stage-mic svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .stage-mic.is-on {
@@ -437,8 +437,8 @@
 }
 
 .stage-send-arrow svg {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
 }
 
 .stage-send-arrow:active {
