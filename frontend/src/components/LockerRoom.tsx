@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   getCharacterImage,
   getRewardSrc,
@@ -45,6 +45,22 @@ const ALL_SLOTS: Array<{ level: number; label: string }> = [
 // 빈 라커 이미지 (frontend/public/equipment/locker.png)
 const EMPTY_LOCKER_BG = "/equipment/locker.png";
 
+// =====================================================================
+// 라커·캐릭터: 크기·위치 고정 / 배경: cover로 영역을 항상 가득 채움
+//  - 배경(/locker/{팀}.png, 1536×1024 가로형)은 cover — 화면에 맞춰 채우고 옆은 잘림
+//  - 라커·캐릭터는 투명한 "고정 평면"(아래 px 크기, 하단 중앙 정렬) 안에 배치되어
+//    해상도가 어떻게 변해도 확대/축소 없이 항상 같은 크기·같은 자리
+// =====================================================================
+const PLANE_W_PX = 330;                // 고정 평면 너비 (350×750에서 완벽했던 화면 기준)
+const PLANE_H_PX = 495;                // 고정 평면 높이
+const CHAR_FOOT_PAD_RATIO = 107 / 543; // 표준 규격의 하단 투명 여백 비율 (측정 실패 시 대체값)
+const LOCKER_LEFT_PCT = -9.4;          // 빈 라커 왼쪽 (평면 가로 %)
+const LOCKER_BOTTOM_PCT = 2;           // 빈 라커 바닥 = 발바닥 라인 (평면 세로 %)
+const LOCKER_HEIGHT_PCT = 74;          // 빈 라커 높이 (평면 세로 %)
+const CHAR_LEFT_PCT = 76;              // 캐릭터 중심 가로 (평면 가로 %)
+const CHAR_BOTTOM_PCT = 2;             // 캐릭터 발바닥 라인 (라커 바닥과 동일)
+const CHAR_HEIGHT_PCT = 58.3;          // 캐릭터 이미지 박스 높이 (평면 세로 %)
+
 // 라커 안 물건 배치: 레벨 키별 위치/크기 + 레이어 순서(zIndex)
 // 레이어(뒤→앞): 수건(3) → 고급배트(8) → 고급글러브(9) → 모자(4) → 야구공(7)
 const LOCKER_ITEM_POS: Record<number, { left: string; top: string; width: string; rotate: number; z: number }> = {
@@ -61,6 +77,45 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
   const lockerBg = getLockerBg(teamCode);
   // 클릭한 장비 슬롯의 레벨 키 (null이면 설명창 닫힘)
   const [selected, setSelected] = useState<number | null>(null);
+
+  // 캐릭터 하단 투명 여백 비율: 이미지의 알파를 직접 읽어 발 위치 보정 (이미지별 캐시)
+  const [footPadRatio, setFootPadRatio] = useState(CHAR_FOOT_PAD_RATIO);
+  const footPadCache = useRef<Record<string, number>>({});
+  const measureFootPad = (img: HTMLImageElement) => {
+    const key = img.currentSrc || img.src;
+    const cached = footPadCache.current[key];
+    if (cached !== undefined) {
+      setFootPadRatio(cached);
+      return;
+    }
+    if (!img.complete || img.naturalWidth === 0) return;
+    try {
+      const size = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let lastRow = size - 1;
+      outer: for (let y = size - 1; y >= 0; y--) {
+        for (let x = 0; x < size; x++) {
+          if (data[(y * size + x) * 4 + 3] > 20) {
+            lastRow = y;
+            break outer;
+          }
+        }
+      }
+      const ratio = (size - 1 - lastRow) / size;
+      footPadCache.current[key] = ratio;
+      setFootPadRatio(ratio);
+    } catch {
+      setFootPadRatio(CHAR_FOOT_PAD_RATIO); // 측정 불가 시 표준 비율로 동작
+    }
+  };
+  // 보이는 발이 바닥 라인에 오도록, 자기 키 기준(translateY %)으로 여백만큼 내림
+  const footShiftPct = (footPadRatio * 100).toFixed(2);
 
   return (
     <div
@@ -113,42 +168,58 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
           ✕
         </button>
 
-        {/* 제목 */}
+        {/* 제목 (반투명 칩 배경으로 어떤 배경에서도 잘 보이게) */}
         <div
           style={{
             position: "absolute",
-            top: 14,
-            left: 16,
+            top: 12,
+            left: 14,
             color: "#fff",
             fontWeight: 800,
-            fontSize: 18,
-            textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+            fontSize: 17,
+            textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+            background: "rgba(0,0,0,0.55)",
+            padding: "6px 14px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.25)",
             zIndex: 5,
           }}
         >
           🧢 꾸미기 - 라커룸
         </div>
 
-        {/* 배경 + 캐릭터 영역 (위쪽을 가득 채움) */}
+        {/* 배경 + 캐릭터 영역: 배경은 cover로 영역 전체를 채움 (넓은 배경이라 옆이 잘려도 OK) */}
         <div
           style={{
             position: "relative",
             flex: 1,
             minHeight: 0,
+            overflow: "hidden",
             backgroundImage: `url(${lockerBg})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
-          {/* 왼쪽: 빈 라커 + 획득한 물건 연출 (레벨업 시 하나씩 채워짐) */}
-          {/* 캐릭터(height 58%)와 같은 단순 % 방식이라 기기 비율이 달라도 크기 일정 */}
-          {/* 350×750 기준 시뮬레이션으로 검증: 벽~라커 간격 ≈ 라커~캐릭터 간격 */}
+          {/* 고정 평면(투명): 라커·캐릭터의 크기·위치만 고정하는 틀 — 해상도와 무관하게 항상 같은 크기 */}
+          {/* 하단 중앙 정렬 */}
           <div
             style={{
               position: "absolute",
-              left: "-11%",
-              bottom: "2%",
-              height: "74%",
+              left: "50%",
+              bottom: 0,
+              transform: "translateX(-50%)",
+              width: PLANE_W_PX,
+              height: PLANE_H_PX,
+            }}
+          >
+          {/* 왼쪽: 빈 라커 + 획득한 물건 연출 (레벨업 시 하나씩 채워짐) */}
+          {/* 배경 평면 좌표(%) — 배경 그림에 접착되어 함께 움직임 */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${LOCKER_LEFT_PCT}%`,
+              bottom: `${LOCKER_BOTTOM_PCT}%`,
+              height: `${LOCKER_HEIGHT_PCT}%`,
               aspectRatio: "1024 / 1536",
               backgroundImage: `url(${EMPTY_LOCKER_BG})`,
               backgroundSize: "contain",
@@ -183,27 +254,27 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             })}
           </div>
 
-          {/* 캐릭터: 우측 아래, 하단 도감보다 위에 서 있도록 배치 */}
+          {/* 캐릭터: 배경 평면 좌표(%) 접착. 보이는 발은 관물대 바닥 라인에 자동 정렬 */}
           <img
             src={characterSrc}
             alt="내 다마고치 캐릭터"
+            onLoad={(e) => measureFootPad(e.currentTarget)}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = `/character/default_${gender === "girl" ? "girl" : "man"}.png`;
             }}
             style={{
               position: "absolute",
-              left: "80%",
-              bottom: "2%",
-              // 여자 이미지가 더 작게 그려져 있어 여자를 더 키워 남자와 크기를 맞춤
-              transform: gender === "girl"
-                ? "translateX(-50%) scale(1.22)"
-                : "translateX(-50%) scale(1.08)",
+              left: `${CHAR_LEFT_PCT}%`,
+              bottom: `${CHAR_BOTTOM_PCT}%`,
+              // 하단 투명 여백만큼 자기 키 기준으로 내려서 발을 바닥 라인에
+              transform: `translateX(-50%) translateY(${footShiftPct}%)`,
               transformOrigin: "bottom center",
-              height: "54%",
+              height: `${CHAR_HEIGHT_PCT}%`,
               objectFit: "contain",
               filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
             }}
           />
+          </div>
         </div>
 
         {/* 장비 선반 (도감): 레벨 도달 시 영구 해금. 5칸을 하나씩 모으는 방식 */}

@@ -81,21 +81,26 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 const SHOW_TEST_PANEL = true;
 
 // =====================================================================
-// 말풍선: 완전 고정 위치 (측정·계산 없음 — 어떤 캐릭터든 항상 같은 자리)
-//  - 가로: 정중앙 / 세로: 카드 상단에서 아래 px 만큼
+// 말풍선 위치: [카드 상단 ~ 캐릭터 머리] 공백을 위아래 똑같이 나누는 자리
+//  - 머리 위치는 캐릭터 PNG의 투명 영역(알파)을 직접 읽어 정확히 측정
+//    · 꼬마: 파일 규격이 전부 동일 → 항상 같은 자리 (고정)
+//    · 어른: 어른 키에 맞는 대칭 자리가 자동 적용 (가림 방지)
+//  - 측정 불가 시 표준 여백 비율(아래)로 대체
 // =====================================================================
-const BUBBLE_TOP_PX = 14;
+const CHAR_HEAD_PAD_RATIO = 108 / 543; // 표준 규격(남자 꼬마 기준) 머리 위 여백 비율
+const BUBBLE_MIN_TOP_PX = 8;           // 공간이 모자랄 때의 최소 상단 여백
+const BUBBLE_FONT_PX = 13;             // 말풍선 글자 크기(px, 고정 — 말풍선이 글 길이에 맞춰 늘어남)
 
 // =====================================================================
 // 캐릭터 크기 배율 (수동 조절표)
-//  - PNG마다 그림 크기가 달라서 남/녀가 다르게 보이는 것을 숫자로 보정
-//  - 1.0 = CSS 기본 크기. 키우려면 1.1, 1.2... / 줄이려면 0.9, 0.85...
-//  - 화면 보면서 숫자만 바꾸면 됨 (새로고침 필요 없음, 저장하면 바로 반영)
+//  - 꼬마(child) 이미지는 파일 자체를 남자 기준 규격으로 통일 완료 → 1.0 고정
+//  - 어른(adult)도 이미지 차이가 보이면 같은 방식으로 파일 통일 권장 (임시로 숫자 보정 가능)
+//  - 1.0 = CSS 기본 크기. 키우려면 1.1... / 줄이려면 0.9...
 // =====================================================================
 const CHAR_SIZE_SCALE: Record<"default" | "child" | "adult", { man: number; girl: number }> = {
-  default: { man: 1.0, girl: 1.0 },   // 1레벨/무소속 기본 캐릭터
-  child: { man: 1.2, girl: 0.86 },    // 2~4레벨 꼬마 (남↑ 여↓ 로 크기 통일)
-  adult: { man: 1.05, girl: 0.95 },   // 5레벨↑ 어른
+  default: { man: 1.0, girl: 1.0 },
+  child: { man: 1.0, girl: 1.0 },
+  adult: { man: 1.0, girl: 1.0 },
 };
 
 // =====================================================================
@@ -425,10 +430,11 @@ export default function AttendanceCheckIn({
     [charLevel, charTeam, charGender],
   );
 
-  // 캐릭터 크기 보정 (말풍선은 BUBBLE_TOP_PX 완전 고정 — 측정 없음)
+  // 캐릭터 크기 보정 + 말풍선 대칭 배치용 ref
   const charImgRef = useRef<HTMLImageElement | null>(null);
-  // 🔍 크기 보정 진단용 (테스트 패널에 표시, 문제 해결 후 제거 예정)
-  const [charScaleDebug, setCharScaleDebug] = useState("아직 실행 안 됨");
+  const fieldCardRef = useRef<HTMLElement | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const [bubbleTopPx, setBubbleTopPx] = useState<number | null>(null);
 
   // 현재 캐릭터 단계 (이미지 규칙과 동일한 분기)
   const charStage: "default" | "child" | "adult" =
@@ -438,14 +444,8 @@ export default function AttendanceCheckIn({
   // ※ CSS 클래스에 !important 가 있어도 이기도록 setProperty(..., "important") 사용
   const applyCharacterScale = () => {
     const img = charImgRef.current;
-    if (!img) {
-      setCharScaleDebug("img ref 없음");
-      return;
-    }
-    if (!img.complete || img.naturalWidth === 0) {
-      setCharScaleDebug("이미지 로드 대기 중 (onLoad에서 재시도)");
-      return; // 로드 전이면 onLoad 때 다시 옴
-    }
+    if (!img) return;
+    if (!img.complete || img.naturalWidth === 0) return; // 로드 전이면 onLoad 때 다시 옴
     // 인라인 크기를 잠시 지워 CSS 기본 박스 높이(baseH)를 측정
     img.style.removeProperty("height");
     img.style.removeProperty("width");
@@ -453,41 +453,87 @@ export default function AttendanceCheckIn({
     if (baseH > 0) {
       const genderKey = charGender === "girl" ? "girl" : "man";
       const scale = CHAR_SIZE_SCALE[charStage][genderKey];
-      const targetH = Math.round(baseH * scale);
-      img.style.setProperty("height", `${targetH}px`, "important");
-      img.style.setProperty("width", "auto", "important"); // 비율 유지
-      // 적용 직후 실제 결과 확인
-      const afterH = Math.round(img.getBoundingClientRect().height);
-      setCharScaleDebug(
-        `${charStage}/${genderKey} 배율 ${scale} | 기본 ${Math.round(baseH)}px → 목표 ${targetH}px → 실제 ${afterH}px${
-          Math.abs(afterH - targetH) > 2 ? " ⚠️ 적용 안 됨(CSS 충돌)" : " ✅"
-        }`,
-      );
-    } else {
-      setCharScaleDebug("기본 높이 측정 실패 (baseH=0)");
+      if (scale !== 1.0) {
+        img.style.setProperty("height", `${Math.round(baseH * scale)}px`, "important");
+        img.style.setProperty("width", "auto", "important"); // 비율 유지
+      }
     }
   };
 
-  useEffect(() => {
-    applyCharacterScale();
-    window.addEventListener("resize", applyCharacterScale);
-    return () => window.removeEventListener("resize", applyCharacterScale);
-    // 캐릭터 이미지가 바뀌면 재계산 (이미지 로드 완료 시엔 <img onLoad>가 호출)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characterSrc, imgFailed, charStage, charGender]);
+  // 말풍선 위치 계산: [카드 상단 ~ 머리] 공백을 위아래 똑같이 나눔
+  // 머리 위치는 이미지의 투명 영역(알파)을 스캔해 정확히 측정 (이미지별 1회 후 캐시)
+  const headPadCache = useRef<Record<string, number>>({});
+  const getHeadPadRatio = (img: HTMLImageElement): number => {
+    const key = img.currentSrc || img.src;
+    const cached = headPadCache.current[key];
+    if (cached !== undefined) return cached;
+    if (!img.complete || img.naturalWidth === 0) return CHAR_HEAD_PAD_RATIO;
+    try {
+      const size = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return CHAR_HEAD_PAD_RATIO;
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let ratio = CHAR_HEAD_PAD_RATIO;
+      outer: for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (data[(y * size + x) * 4 + 3] > 20) {
+            ratio = y / size;
+            break outer;
+          }
+        }
+      }
+      headPadCache.current[key] = ratio;
+      return ratio;
+    } catch {
+      return CHAR_HEAD_PAD_RATIO; // 측정 불가 시 표준 비율로 동작
+    }
+  };
 
-  // 말풍선 본체 — 완전 고정 위치 (가로 정중앙 + 카드 상단에서 BUBBLE_TOP_PX), 꼬리 없음
+  const measureBubbleTop = () => {
+    const field = fieldCardRef.current;
+    const img = charImgRef.current;
+    if (!field || !img) return;
+    const fieldRect = field.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    if (fieldRect.height === 0 || imgRect.height === 0) return;
+    // --- 위아래 공백 대칭 지점 계산 ---
+    const headTopY = imgRect.top - fieldRect.top + imgRect.height * getHeadPadRatio(img);
+    const bubbleH = bubbleRef.current ? bubbleRef.current.offsetHeight : 0;
+    const top = Math.max(BUBBLE_MIN_TOP_PX, (headTopY - bubbleH) / 2);
+    setBubbleTopPx(Math.round(top));
+  };
+
+  // 크기 적용 → 말풍선 계산 순서로 함께 실행
+  const refreshCharacterLayout = () => {
+    applyCharacterScale();
+    measureBubbleTop();
+  };
+
+  useEffect(() => {
+    refreshCharacterLayout();
+    window.addEventListener("resize", refreshCharacterLayout);
+    return () => window.removeEventListener("resize", refreshCharacterLayout);
+    // 캐릭터/문구가 바뀌면 재계산 (이미지 로드 완료 시엔 <img onLoad>가 호출)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterSrc, imgFailed, charStage, charGender, dailyState.speechText]);
+
+  // 말풍선 본체 — 가로 정중앙, 한 줄 고정(글 길이에 맞춰 자동 확장), 위아래 공백 대칭 (꼬리 없음)
   const speechBubbleStyle: CSSProperties = {
     position: "absolute",
     left: "50%",
-    top: BUBBLE_TOP_PX,
+    top: bubbleTopPx ?? 0,
     transform: "translateX(-50%)",
-    maxWidth: "82%",
+    visibility: bubbleTopPx === null ? "hidden" : "visible",
+    whiteSpace: "nowrap",
     background: "#fff",
     border: "2px solid #0f172a",
     borderRadius: 14,
     padding: "9px 14px",
-    fontSize: 13,
+    fontSize: BUBBLE_FONT_PX,
     fontWeight: 700,
     color: "#0f172a",
     textAlign: "center",
@@ -962,6 +1008,7 @@ export default function AttendanceCheckIn({
         className="tamagotchi-field-card"
         aria-label="캐릭터 영역"
         style={{ position: "relative" }}
+        ref={fieldCardRef}
       >
         {/* 무소속인데 레벨이 2 이상이면 안내: 팀을 선택해야 캐릭터가 성장한 모습으로 보임 */}
         {levelLockedByNoTeam ? (
@@ -984,8 +1031,8 @@ export default function AttendanceCheckIn({
             ⚠️ 2레벨 이상은 팀 선택을 해야 가능합니다.
           </div>
         ) : null}
-        {/* 말풍선: 완전 고정 위치 (BUBBLE_TOP_PX), 가로 정중앙, 꼬리 없음 */}
-        <div style={speechBubbleStyle}>
+        {/* 말풍선: 가로 정중앙, 위아래 공백 대칭 지점 고정 (measureBubbleTop 참고), 꼬리 없음 */}
+        <div ref={bubbleRef} style={speechBubbleStyle}>
           {dailyState.speechText}
         </div>
         <img
@@ -993,7 +1040,7 @@ export default function AttendanceCheckIn({
           className="tamagotchi-character-img"
           src={imgFailed ? FALLBACK_CHARACTER_SRC : characterSrc}
           alt="야구짝꿍 캐릭터"
-          onLoad={applyCharacterScale}
+          onLoad={refreshCharacterLayout}
           onError={() => setImgFailed(true)}
         />
       </section>
@@ -1125,10 +1172,6 @@ export default function AttendanceCheckIn({
             성별: {charGender === "girl" ? "여자(girl)" : "남자(man)"}
             {" · "}단계: {(!charTeam || charLevel <= 1) ? "default(기본)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
             {" · "}경로: <code>{characterSrc}</code>
-          </div>
-          {/* 🔍 크기 보정 진단 (문제 해결 후 제거 예정) */}
-          <div style={{ marginTop: 6, padding: "6px 8px", background: "#fef3c7", borderRadius: 8, fontSize: 12, fontFamily: "monospace" }}>
-            🔍 크기보정: {charScaleDebug}
           </div>
 
         </section>
