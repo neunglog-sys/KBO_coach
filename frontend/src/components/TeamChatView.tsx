@@ -273,7 +273,13 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           <span>{teamObj?.name ?? "응원톡"} 팀 채팅방</span>
         </div>
 
-        {notice ? <div className="chat-notice">📢 {notice}</div> : null}
+        {notice ? (
+          <div className="chat-notice-window">
+            <div className="chat-notice-glass-bg" aria-hidden="true" />
+            <div className="chat-notice-light" aria-hidden="true" />
+            <p className="chat-notice-copy">📢 {notice}</p>
+          </div>
+        ) : null}
       </header>
 
       <SideMenu
