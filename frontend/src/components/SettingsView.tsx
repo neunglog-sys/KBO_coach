@@ -4,7 +4,9 @@ import { AppBackButton } from "./AppBackButton";
 import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
 import { apiUrl } from "../api";
 import "./SettingsView.css";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 
 type SettingsScreen = "main" | "myInfo" | "password" | "team";
 
@@ -94,16 +96,21 @@ function SettingsHeader({
   title,
   onBack,
   onClose,
+  onMenuOpen,
 }: {
   title: string;
   onBack: () => void;
   onClose?: () => void;
+  onMenuOpen: () => void;
 }) {
   return (
     <header className="settings-header">
       <AppBackButton onClick={onBack} />
       <h2>{title}</h2>
-      {onClose ? <CloseButton onClick={onClose} /> : <span className="app-screen-title-spacer" />}
+      <div className="settings-header-actions">
+        <MenuButton onClick={onMenuOpen} />
+        {onClose ? <CloseButton onClick={onClose} /> : null}
+      </div>
     </header>
   );
 }
@@ -193,6 +200,7 @@ export default function SettingsView({
     newPassword: "",
     confirmPassword: "",
   });
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"logout" | "delete" | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -378,15 +386,7 @@ export default function SettingsView({
       <div className="settings-screen-anim" key={screen}>
       {screen === "main" ? (
         <>
-          <SettingsHeader title="환경 설정" onBack={goBack} />
-          <TopMenu
-            active="settings"
-            className="settings-top-menu"
-            onNavigate={(target) => {
-              if (target === "settings") return;
-              onNavigate?.(target);
-            }}
-          />
+          <SettingsHeader title="환경 설정" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
 
           <div className="settings-stack">
             <MenuCard
@@ -416,7 +416,7 @@ export default function SettingsView({
 
       {screen === "myInfo" ? (
         <>
-          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <div className="settings-account-card">
             <ImgCircle src={SETTING_ICONS.profile} />
             <div className="settings-row-text">
@@ -452,7 +452,7 @@ export default function SettingsView({
 
       {screen === "password" ? (
         <>
-          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
             <label>
               <span>현재 비밀번호</span>
@@ -500,7 +500,7 @@ export default function SettingsView({
 
       {screen === "team" ? (
         <>
-          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-team-card" onSubmit={handleTeamSubmit}>
             <fieldset>
               <legend className="hidden">응원구단 선택</legend>
@@ -526,6 +526,13 @@ export default function SettingsView({
         </>
       ) : null}
       </div>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
+        active="settings"
+        onNavigate={(target) => onNavigate?.(target)}
+        onClose={() => setSideMenuOpen(false)}
+      />
 
       <div className="settings-stadium-decoration" aria-hidden="true">
         <span />

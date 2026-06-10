@@ -22,7 +22,9 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
@@ -378,6 +380,7 @@ export default function AttendanceCheckIn({
 
   // 꾸미기(라커룸) 오버레이 열림 여부
   const [showLocker, setShowLocker] = useState(false);
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -831,10 +834,15 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
-      <TopMenu
+      <div className="tamagotchi-menu-bar">
+        <MenuButton onClick={() => setSideMenuOpen(true)} />
+      </div>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
         active="tamagotchi"
-        className="tamagotchi-nav"
         onNavigate={(target) => onNavigate?.(target)}
+        onClose={() => setSideMenuOpen(false)}
       />
 
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">

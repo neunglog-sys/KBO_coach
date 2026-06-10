@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiUrl } from "../api";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import "./TeamChatView.css";
 
 interface TeamChatViewProps {
@@ -93,6 +95,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [switchOpen, setSwitchOpen] = useState(false);
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   const logRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
@@ -202,7 +205,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     else setClosing(true);
   }
 
-  function handleTopMenuNavigate(target: TopMenuTarget) {
+  function handleSideMenuNavigate(target: TopMenuTarget) {
     if (target === "chat") return;
     onNavigate?.(target);
   }
@@ -268,6 +271,8 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
             >
               ☰
             </button>
+
+            <MenuButton onClick={() => setSideMenuOpen(true)} />
           </div>
         </div>
 
@@ -275,6 +280,13 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           <strong>{teamObj?.name ?? "응원톡"}</strong>
         </div>
       </header>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
+        active="chat"
+        onNavigate={handleSideMenuNavigate}
+        onClose={() => setSideMenuOpen(false)}
+      />
 
       {searchOpen ? (
         <div className="chat-search">
