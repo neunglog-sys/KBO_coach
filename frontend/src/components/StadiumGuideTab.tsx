@@ -1,21 +1,39 @@
 import { Lightbulb, MapPin } from "lucide-react";
 import type { Stadium } from "../data/stadiumData";
+import { StadiumMap } from "./StadiumMap";
 
-export function StadiumGuideTab({ stadium }: { stadium: Stadium }) {
+export function StadiumGuideTab({ stadium, stadiums }: { stadium: Stadium; stadiums: Stadium[] }) {
   return (
     <section className="stadium-page-tab-panel" role="tabpanel">
       <article className="stadium-page-guide-card">
-        <img src={stadium.imageUrl} alt={`${stadium.stadiumName} 전경`} />
+        <img
+          src={stadium.imageUrl}
+          alt={`${stadium.stadiumName} 전경`}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = "/img/background.png";
+          }}
+        />
         <div className="stadium-page-guide-copy">
           <h3>{stadium.stadiumName}</h3>
-          <p className="stadium-page-home-team">{stadium.teamNames.join(" / ")}</p>
-          <p className="stadium-page-address">
-            <MapPin aria-hidden="true" />
-            <span>{stadium.address}</span>
-          </p>
-          <p className="stadium-page-description">{stadium.description}</p>
+          <div className="stadium-page-guide-details">
+            <p className="stadium-page-home-team">{stadium.teamNames.join(" / ")}</p>
+            <p className="stadium-page-address">
+              <MapPin aria-hidden="true" />
+              <span>{stadium.address}</span>
+            </p>
+            <p className="stadium-page-description">{stadium.description}</p>
+          </div>
         </div>
       </article>
+
+      <section className="stadium-page-map-card">
+        <h3 className="stadium-page-section-title">
+          <MapPin aria-hidden="true" />
+          구장 위치
+        </h3>
+        <StadiumMap stadiums={stadiums} selectedTeamCode={stadium.teamCode} />
+      </section>
 
       <section className="stadium-page-tips">
         <h3>

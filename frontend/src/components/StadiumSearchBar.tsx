@@ -28,8 +28,8 @@ export function StadiumSearchBar({
         <input
           type="search"
           value={value}
-          placeholder="구단명, 구장명 또는 지역 검색"
-          aria-label="구단명, 구장명 또는 지역 검색"
+          placeholder="구단명, 구장명 또는 지역 이름"
+          aria-label="구단명, 구장명 또는 지역 이름"
           onChange={(event) => onChange(event.target.value)}
         />
       </label>

@@ -1,16 +1,14 @@
-import type { LucideIcon } from "lucide-react";
-
 interface RegionInfoCardProps {
-  icon: LucideIcon;
+  iconSrc: string;
   title: string;
   items: string[];
 }
 
-export function RegionInfoCard({ icon: Icon, title, items }: RegionInfoCardProps) {
+export function RegionInfoCard({ iconSrc, title, items }: RegionInfoCardProps) {
   return (
     <article className="stadium-page-region-card">
       <span aria-hidden="true">
-        <Icon strokeWidth={2.5} />
+        <img src={iconSrc} alt="" />
       </span>
       <div>
         <h3>{title}</h3>
