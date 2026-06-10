@@ -138,6 +138,7 @@
 }
 
 .stadium-page-search {
+  --search-control-height: 48px;
   position: relative;
   z-index: 1;
   display: flex;
@@ -159,7 +160,8 @@
   align-items: center;
   box-sizing: border-box;
   min-width: 0;
-  height: 48px;
+  height: var(--search-control-height);
+  margin: 0;
   border: 1px solid #d7e5f2;
   border-radius: 12px;
   padding: 0 10px;
@@ -245,7 +247,8 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  height: 48px;
+  height: var(--search-control-height);
+  margin: 0;
   padding: 0;
   border-radius: 12px;
   font-size: 0.92rem;
@@ -264,7 +267,7 @@
 
 .stadium-page-search-button {
   width: 68px;
-  border: 0;
+  border: 1px solid transparent;
   color: #fff;
   background: #108d55;
 }
@@ -277,6 +280,8 @@
   font-weight: 800;
 }
 
+.stadium-page-search-button:focus,
+.stadium-page-search-button:focus-visible,
 .stadium-page-team-button:focus,
 .stadium-page-team-button:focus-visible {
   outline: none;
