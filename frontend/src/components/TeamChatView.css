@@ -250,21 +250,70 @@
 }
 
 /* 운영 공지 */
-.chat-notice {
+/* 운영 공지 */
+.chat-notice-window {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   margin: 0 var(--chat-align-x);
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.48);
-  color: #1c2330;
-  font-size: 0.82rem;
-  line-height: 1.4;
+  padding: 13px 16px;
+  border-radius: 18px;
+  color: #ffffff;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.02);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 32px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+.chat-notice-glass-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.015) 42%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+  pointer-events: none;
+}
+
+.chat-notice-light {
+  position: absolute;
+  top: -80%;
+  left: -38%;
+  z-index: -1;
+  width: 58%;
+  height: 260%;
+  background:
+    linear-gradient(
+      108deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(255, 255, 255, 0.34) 47%,
+      rgba(255, 255, 255, 0.08) 58%,
+      transparent 76%
+    );
+  transform: rotate(14deg);
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.chat-notice-copy {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
 }
 
 /* 메시지 로그 */
