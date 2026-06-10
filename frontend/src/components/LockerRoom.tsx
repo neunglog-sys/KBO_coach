@@ -52,7 +52,7 @@ const LOCKER_ITEM_POS: Record<number, { left: string; top: string; width: string
   8: { left: "66.2%", top: "63.1%", width: "57%",   rotate: 148, z: 2 }, // 고급배트
   9: { left: "48.8%", top: "75.9%", width: "37%",   rotate: 0,   z: 3 }, // 고급글러브
   4: { left: "38%",   top: "76%",   width: "26%",   rotate: 11,  z: 4 }, // 모자 (글러브보다 앞)
-  7: { left: "72%",   top: "81%",   width: "14%",   rotate: 0,   z: 5 }, // 야구공 (맨 앞, 배트 오른쪽 구석)
+  7: { left: "69.1%", top: "79%",   width: "14%",   rotate: 0,   z: 5 }, // 야구공 (맨 앞, 라커 구석)
 };
 
 export default function LockerRoom({ level, teamCode, gender, onClose }: LockerRoomProps) {

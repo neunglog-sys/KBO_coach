@@ -22,9 +22,7 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import type { TopMenuTarget } from "./TopMenu";
-import { MenuButton } from "./MenuButton";
-import { SideMenu } from "./SideMenu";
+import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
@@ -114,7 +112,7 @@ export interface RewardItem { src: string; name: string; teamBased?: boolean; te
 
 export const LEVEL_REWARDS: Record<number, RewardItem> = {
   3: { src: "/equipment/HT_towel.png", name: "응원 수건", teamBased: true, teamSuffix: "towel" },
-  4: { src: "/equipment/HT_cap.png", name: "모자", teamBased: true, teamSuffix: "cap" },
+  4: { src: "/equipment/HT_cap.png", name: "야구 모자", teamBased: true, teamSuffix: "cap" },
   7: { src: "/equipment/ball_high_level.png", name: "고급 야구공" },
   8: { src: "/equipment/bat_high_level.png", name: "고급 배트" },
   9: { src: "/equipment/glove_high_level.png", name: "고급 글러브" },
@@ -364,7 +362,7 @@ export default function AttendanceCheckIn({
   const [nickname, setNickname] = useState(initialNickname || "");
   const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
   const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
-    loadDailyState(stateStorageKey, initialNickname)
+    loadDailyState(stateStorageKey, initialBuddyNickname || initialNickname)
   );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
@@ -380,7 +378,6 @@ export default function AttendanceCheckIn({
 
   // 꾸미기(라커룸) 오버레이 열림 여부
   const [showLocker, setShowLocker] = useState(false);
-  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -393,9 +390,15 @@ export default function AttendanceCheckIn({
   // 짝꿍 별명 (dev에서 추가됨)
   const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
-  const charLevel = SHOW_TEST_PANEL ? testLevel : status.level;
   const charTeam = SHOW_TEST_PANEL ? testTeam : favTeamCode;
   const charGender = SHOW_TEST_PANEL ? testGender : gender;
+
+  // 무소속(팀 미선택)이면 레벨을 1로 제한 — 어떤 경로(테스트 패널/실제 경험치)로 레벨이 올라도
+  // 캐릭터/보상/라커룸 화면은 2레벨 이상을 그리지 않음 (구단별 이미지가 없는 화면 노출 방지)
+  const rawLevel = SHOW_TEST_PANEL ? testLevel : status.level;
+  const charLevel = !charTeam ? Math.min(rawLevel, 1) : rawLevel;
+  // 무소속인데 실제 레벨이 2 이상이면 안내 배너 표시용
+  const levelLockedByNoTeam = !charTeam && rawLevel >= 2;
 
   const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 3);
   const displayProgress = SHOW_TEST_PANEL ? 0 : (progress || 60);
@@ -496,7 +499,7 @@ export default function AttendanceCheckIn({
       onBuddyNicknameChange?.(nextBuddyNickname);
       updateDailyState((current) => ({
         ...current,
-        speechText: randomSpeech(DEFAULT_SPEECHES, nickname),
+        speechText: randomSpeech(DEFAULT_SPEECHES, nextBuddyNickname),
       }));
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
@@ -616,7 +619,7 @@ export default function AttendanceCheckIn({
         const initialized = initializeTamagotchiState(
           serverState,
           todayKey(),
-          randomSpeech(DEFAULT_SPEECHES, nickname),
+          randomSpeech(DEFAULT_SPEECHES, buddyNickname || nickname),
         );
         setDailyState(initialized);
         saveDailyState(stateStorageKey, initialized);
@@ -686,13 +689,13 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(authToken, data);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(authToken, status);
       setStatus(next);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } finally {
@@ -752,7 +755,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    const speech = randomSpeech(CHEER_SPEECHES, nickname);
+    const speech = randomSpeech(CHEER_SPEECHES, displayBuddyNickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
     setNotice(speech);
   }
@@ -834,15 +837,10 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
-      <div className="tamagotchi-menu-bar">
-        <MenuButton onClick={() => setSideMenuOpen(true)} />
-      </div>
-
-      <SideMenu
-        isOpen={sideMenuOpen}
+      <TopMenu
         active="tamagotchi"
+        className="tamagotchi-nav"
         onNavigate={(target) => onNavigate?.(target)}
-        onClose={() => setSideMenuOpen(false)}
       />
 
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
@@ -872,6 +870,27 @@ export default function AttendanceCheckIn({
       </section>
 
       <section className="tamagotchi-field-card" aria-label="캐릭터 영역" style={{ position: "relative" }}>
+        {/* 무소속인데 레벨이 2 이상이면 안내: 팀을 선택해야 캐릭터가 성장한 모습으로 보임 */}
+        {levelLockedByNoTeam ? (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: 8,
+              transform: "translateX(-50%)",
+              background: "rgba(220, 38, 38, 0.92)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "6px 12px",
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+              zIndex: 3,
+            }}
+          >
+            ⚠️ 2레벨 이상은 팀 선택을 해야 가능합니다.
+          </div>
+        ) : null}
         <div className="tamagotchi-speech-bubble">
           {dailyState.speechText}
         </div>
@@ -901,17 +920,29 @@ export default function AttendanceCheckIn({
             🧪 테스트 패널 (배포 시 SHOW_TEST_PANEL=false)
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <span style={{ width: 32, color: "#6b7280" }}>레벨</span>
             <input
               type="range"
               min={1}
               max={10}
               value={testLevel}
-              onChange={(e) => setTestLevel(Number(e.target.value))}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                setTestLevel(next);
+                // 규칙: 1레벨 = 무조건 무소속, 2레벨 이상 = 무조건 구단 소속
+                if (next === 1) {
+                  setTestTeam("");
+                } else if (!testTeam) {
+                  setTestTeam("HT"); // 2레벨 진입 시 구단 미선택이면 기본 구단 자동 선택
+                }
+              }}
               style={{ flex: 1 }}
             />
             <strong style={{ width: 24, textAlign: "right" }}>{testLevel}</strong>
+          </div>
+          <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 10 }}>
+            1레벨 = 무소속 고정 · 2레벨부터 구단 소속 (무소속 불가)
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -919,9 +950,11 @@ export default function AttendanceCheckIn({
             <select
               value={testTeam}
               onChange={(e) => setTestTeam(e.target.value)}
-              style={{ flex: 1, padding: "4px 6px", borderRadius: 6 }}
+              disabled={testLevel === 1}
+              title={testLevel === 1 ? "1레벨은 무소속 고정입니다. 레벨을 올리면 구단을 선택할 수 있어요." : undefined}
+              style={{ flex: 1, padding: "4px 6px", borderRadius: 6, opacity: testLevel === 1 ? 0.5 : 1, cursor: testLevel === 1 ? "not-allowed" : "pointer" }}
             >
-              <option value="">무소속(default)</option>
+              <option value="" disabled={testLevel >= 2}>무소속(default)</option>
               <option value="HT">KIA (HT)</option>
               <option value="SS">삼성 (SS)</option>
               <option value="HH">한화 (HH)</option>
@@ -971,21 +1004,21 @@ export default function AttendanceCheckIn({
             <span style={{ width: 32, color: "#6b7280" }}>단계</span>
             <button
               type="button"
-              onClick={() => setTestLevel(1)}
+              onClick={() => { setTestLevel(1); setTestTeam(""); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel <= 1 ? "#ede9fe" : "#fff" }}
             >
               1레벨(default)
             </button>
             <button
               type="button"
-              onClick={() => setTestLevel(4)}
+              onClick={() => { setTestLevel(4); if (!testTeam) setTestTeam("HT"); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: (charLevel >= 2 && charLevel <= 4) ? "#ede9fe" : "#fff" }}
             >
               4레벨(child)
             </button>
             <button
               type="button"
-              onClick={() => setTestLevel(5)}
+              onClick={() => { setTestLevel(5); if (!testTeam) setTestTeam("HT"); }}
               style={{ flex: 1, padding: "5px 0", borderRadius: 8, cursor: "pointer", border: "1px solid #cbd5e1", background: charLevel >= 5 ? "#ede9fe" : "#fff" }}
             >
               5레벨(adult)
