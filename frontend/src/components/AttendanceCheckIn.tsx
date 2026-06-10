@@ -87,16 +87,15 @@ const SHOW_TEST_PANEL = true;
 const BUBBLE_TOP_PX = 14;
 
 // =====================================================================
-// 캐릭터 크기 자동 통일
-//  - PNG마다 그림이 캔버스를 채우는 비율이 달라서(여백 차이),
-//    같은 단계인데도 남/녀 크기가 달라 보이는 문제를 픽셀 스캔으로 보정
-//  - 아래 값 = "보이는 캐릭터 높이"를 기본 CSS 높이의 몇 배로 만들지
-//    (단계별 숫자만 조절하면 전체 크기가 바뀜. 남녀는 항상 같게 유지됨)
+// 캐릭터 크기 배율 (수동 조절표)
+//  - PNG마다 그림 크기가 달라서 남/녀가 다르게 보이는 것을 숫자로 보정
+//  - 1.0 = CSS 기본 크기. 키우려면 1.1, 1.2... / 줄이려면 0.9, 0.85...
+//  - 화면 보면서 숫자만 바꾸면 됨 (새로고침 필요 없음, 저장하면 바로 반영)
 // =====================================================================
-const CHAR_VISIBLE_TARGET: Record<"default" | "child" | "adult", number> = {
-  default: 0.82, // 1레벨/무소속 기본 캐릭터
-  child: 0.88,   // 2~4레벨 꼬마
-  adult: 0.98,   // 5레벨↑ 어른
+const CHAR_SIZE_SCALE: Record<"default" | "child" | "adult", { man: number; girl: number }> = {
+  default: { man: 1.0, girl: 1.0 },   // 1레벨/무소속 기본 캐릭터
+  child: { man: 1.2, girl: 0.86 },    // 2~4레벨 꼬마 (남↑ 여↓ 로 크기 통일)
+  adult: { man: 1.05, girl: 0.95 },   // 5레벨↑ 어른
 };
 
 // =====================================================================
@@ -426,68 +425,46 @@ export default function AttendanceCheckIn({
     [charLevel, charTeam, charGender],
   );
 
-  // 캐릭터 크기 자동 통일 (말풍선은 BUBBLE_TOP_PX 완전 고정 — 측정 없음)
+  // 캐릭터 크기 보정 (말풍선은 BUBBLE_TOP_PX 완전 고정 — 측정 없음)
   const charImgRef = useRef<HTMLImageElement | null>(null);
-  // 이미지별 픽셀 경계 캐시: 위/아래 투명 여백 비율 (0~1, 이미지 높이 대비)
-  const imgBoundsCache = useRef<Record<string, { topRatio: number; visibleRatio: number }>>({});
-
-  // 이미지를 64x64로 축소해 위/아래에서 첫 불투명 픽셀이 나오는 행을 찾음
-  const getVisibleBounds = (img: HTMLImageElement): { topRatio: number; visibleRatio: number } => {
-    const fallback = { topRatio: 0, visibleRatio: 1 };
-    const key = img.currentSrc || img.src;
-    const cached = imgBoundsCache.current[key];
-    if (cached !== undefined) return cached;
-    if (!img.complete || img.naturalWidth === 0) return fallback;
-    try {
-      const size = 64;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return fallback;
-      ctx.drawImage(img, 0, 0, size, size);
-      const data = ctx.getImageData(0, 0, size, size).data;
-      const rowHasPixel = (y: number) => {
-        for (let x = 0; x < size; x++) {
-          if (data[(y * size + x) * 4 + 3] > 20) return true;
-        }
-        return false;
-      };
-      let top = 0;
-      while (top < size && !rowHasPixel(top)) top++;
-      let bottomRow = size - 1;
-      while (bottomRow > top && !rowHasPixel(bottomRow)) bottomRow--;
-      if (top >= size) return fallback; // 전부 투명(비정상 이미지)
-      const bounds = {
-        topRatio: top / size,
-        visibleRatio: Math.max(0.05, (bottomRow - top + 1) / size),
-      };
-      imgBoundsCache.current[key] = bounds;
-      return bounds;
-    } catch {
-      return fallback; // 캔버스 사용 불가 시 이미지 박스 기준으로 동작
-    }
-  };
+  // 🔍 크기 보정 진단용 (테스트 패널에 표시, 문제 해결 후 제거 예정)
+  const [charScaleDebug, setCharScaleDebug] = useState("아직 실행 안 됨");
 
   // 현재 캐릭터 단계 (이미지 규칙과 동일한 분기)
   const charStage: "default" | "child" | "adult" =
     !charTeam || charLevel <= 1 ? "default" : charLevel >= 5 ? "adult" : "child";
 
-  // 캐릭터 크기 통일: 보이는 높이가 단계별 목표(CHAR_VISIBLE_TARGET)가 되도록 강제 적용
+  // 캐릭터 크기 적용: CHAR_SIZE_SCALE 의 단계×성별 배율을 CSS 기본 높이에 곱해 강제 적용
   // ※ CSS 클래스에 !important 가 있어도 이기도록 setProperty(..., "important") 사용
   const applyCharacterScale = () => {
     const img = charImgRef.current;
-    if (!img) return;
-    if (!img.complete || img.naturalWidth === 0) return; // 로드 전이면 onLoad 때 다시 옴
-    const bounds = getVisibleBounds(img);
+    if (!img) {
+      setCharScaleDebug("img ref 없음");
+      return;
+    }
+    if (!img.complete || img.naturalWidth === 0) {
+      setCharScaleDebug("이미지 로드 대기 중 (onLoad에서 재시도)");
+      return; // 로드 전이면 onLoad 때 다시 옴
+    }
     // 인라인 크기를 잠시 지워 CSS 기본 박스 높이(baseH)를 측정
     img.style.removeProperty("height");
     img.style.removeProperty("width");
     const baseH = img.getBoundingClientRect().height;
-    if (baseH > 0 && bounds.visibleRatio > 0) {
-      const scale = Math.min(1.6, Math.max(0.5, CHAR_VISIBLE_TARGET[charStage] / bounds.visibleRatio));
-      img.style.setProperty("height", `${Math.round(baseH * scale)}px`, "important");
+    if (baseH > 0) {
+      const genderKey = charGender === "girl" ? "girl" : "man";
+      const scale = CHAR_SIZE_SCALE[charStage][genderKey];
+      const targetH = Math.round(baseH * scale);
+      img.style.setProperty("height", `${targetH}px`, "important");
       img.style.setProperty("width", "auto", "important"); // 비율 유지
+      // 적용 직후 실제 결과 확인
+      const afterH = Math.round(img.getBoundingClientRect().height);
+      setCharScaleDebug(
+        `${charStage}/${genderKey} 배율 ${scale} | 기본 ${Math.round(baseH)}px → 목표 ${targetH}px → 실제 ${afterH}px${
+          Math.abs(afterH - targetH) > 2 ? " ⚠️ 적용 안 됨(CSS 충돌)" : " ✅"
+        }`,
+      );
+    } else {
+      setCharScaleDebug("기본 높이 측정 실패 (baseH=0)");
     }
   };
 
@@ -497,7 +474,7 @@ export default function AttendanceCheckIn({
     return () => window.removeEventListener("resize", applyCharacterScale);
     // 캐릭터 이미지가 바뀌면 재계산 (이미지 로드 완료 시엔 <img onLoad>가 호출)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characterSrc, imgFailed, charStage]);
+  }, [characterSrc, imgFailed, charStage, charGender]);
 
   // 말풍선 본체 — 완전 고정 위치 (가로 정중앙 + 카드 상단에서 BUBBLE_TOP_PX), 꼬리 없음
   const speechBubbleStyle: CSSProperties = {
@@ -1148,6 +1125,10 @@ export default function AttendanceCheckIn({
             성별: {charGender === "girl" ? "여자(girl)" : "남자(man)"}
             {" · "}단계: {(!charTeam || charLevel <= 1) ? "default(기본)" : charLevel >= 5 ? "adult(5레벨↑)" : "child(2~4레벨)"}
             {" · "}경로: <code>{characterSrc}</code>
+          </div>
+          {/* 🔍 크기 보정 진단 (문제 해결 후 제거 예정) */}
+          <div style={{ marginTop: 6, padding: "6px 8px", background: "#fef3c7", borderRadius: 8, fontSize: 12, fontFamily: "monospace" }}>
+            🔍 크기보정: {charScaleDebug}
           </div>
 
         </section>
