@@ -1,5 +1,4 @@
 import { FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
@@ -133,6 +132,45 @@ function buildLocalFallbackAnswer(question: string) {
   return (
     matched?.answer ??
     "백엔드 서버 연결이 아직 준비되지 않아서 기본 답변으로 도와줄게. 야구 규칙, 포지션, 스트라이크, 볼넷처럼 궁금한 단어를 물어보면 쉽게 설명해줄 수 있어."
+  );
+}
+
+// 보내기(전송) 버튼 아이콘 — 위쪽 화살표. stroke=currentColor라 감싼 버튼의 color를 따른다.
+function SendArrowIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 19V5" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+      <path
+        d="M6.5 10.5L12 5L17.5 10.5"
+        stroke="currentColor"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// 일시정지(음성 정지) 버튼 아이콘. fill=currentColor라 감싼 버튼의 color를 따른다.
+function PauseIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="7" y="5" width="3.8" height="14" rx="1.9" fill="currentColor" />
+      <rect x="13.2" y="5" width="3.8" height="14" rx="1.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+// 음성 입력 버튼 아이콘(마이크 대신 쓰는 음성 웨이브 모양).
+// fill=currentColor라 감싼 버튼의 color를 그대로 따른다(평소 남색 / 듣는 중 흰색).
+function VoiceWaveIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="9" width="2.4" height="6" rx="1.2" fill="currentColor" />
+      <rect x="8.5" y="6" width="2.4" height="12" rx="1.2" fill="currentColor" />
+      <rect x="13" y="10" width="2.4" height="4" rx="1.2" fill="currentColor" />
+      <rect x="17.5" y="7.5" width="2.4" height="9" rx="1.2" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -1127,16 +1165,10 @@ export function MainViewV2({
           <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
           <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
         </div>
-        {/* 경기장 레이어 (앞, 빠르게) — background_1~4를 이어붙이고, 같은 세트를 2번 반복해 끊김 없이 루프 */}
+        {/* 경기장 레이어 (앞, 빠르게) — 같은 이미지 2장으로 끊김 없이 루프(-50% 이동 시 두 번째 장이 첫 장 위치로) */}
         <div className="stage-bg-track stage-bg-ground">
-          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_1.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_2.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_3.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_4.png" alt="" />
+          <img className="stage-bg-image" src="/img/main_background_exact.svg" alt="" />
+          <img className="stage-bg-image" src="/img/main_background_exact.svg" alt="" />
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
@@ -1198,7 +1230,7 @@ export function MainViewV2({
             aria-label="음성 정지"
             title="음성 정지"
           >
-            <span aria-hidden="true">⏸</span>
+            <PauseIcon />
           </button>
 
           <input
@@ -1221,7 +1253,7 @@ export function MainViewV2({
               // 버튼 탭 시 입력창 포커스(키보드)가 풀리지 않게 → 연속 전송 가능
               onMouseDown={(e) => e.preventDefault()}
             >
-              <ArrowUp strokeWidth={3} aria-hidden="true" />
+              <SendArrowIcon />
             </button>
           ) : (
             <button
@@ -1233,7 +1265,7 @@ export function MainViewV2({
               aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
               title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
             >
-              <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
+              <VoiceWaveIcon />
             </button>
           )}
         </form>
