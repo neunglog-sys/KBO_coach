@@ -14,13 +14,18 @@ interface TopMenuProps {
   className?: string;
 }
 
-const MENU_ITEMS = [
+const MENU_ITEMS: ReadonlyArray<{
+  readonly target: TopMenuTarget;
+  readonly icon: string;
+  readonly imgSrc?: string;
+  readonly label: string;
+}> = [
   { target: "chat", icon: "💬", label: "채팅방" },
   { target: "record", icon: "📒", label: "나만의 기록" },
   { target: "tamagotchi", icon: "🥕", label: "야구짝꿍" },
   { target: "stadium", icon: "🏟️", label: "구장정보" },
-  { target: "settings", icon: "⚙️", label: "설정" },
-] as const;
+  { target: "settings", icon: "⚙️", imgSrc: "/img/baseball_icons2/settings.svg", label: "설정" },
+];
 
 export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
   return (
@@ -31,13 +36,16 @@ export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
           <button
             key={item.target}
             type="button"
+            data-target={item.target}
             className={isActive ? "is-active" : ""}
             aria-current={isActive ? "page" : undefined}
             aria-label={`${item.label} 열기`}
             onClick={() => onNavigate(item.target)}
           >
             <span className="app-top-menu-icon" aria-hidden="true">
-              {item.icon}
+              {item.imgSrc
+                ? <img src={item.imgSrc} alt="" />
+                : item.icon}
             </span>
             <span className="app-top-menu-label">{item.label}</span>
           </button>

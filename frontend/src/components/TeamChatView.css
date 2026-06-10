@@ -5,9 +5,17 @@
   z-index: 55;
   display: flex;
   flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
   color: #1c2330;
   animation: chat-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
+  --chat-align-x: 12px;
+}
+@supports not (height: 100dvh) {
+  .chat-view {
+    height: 100vh;
+  }
 }
 @keyframes chat-enter {
   from {
@@ -42,23 +50,33 @@
 /* 헤더 (팀색) */
 .chat-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px;
+  flex-direction: column;
+  gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 14px;
   color: #fff;
 }
+.chat-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .chat-back {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   border: 0;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
 }
 .chat-title {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -83,14 +101,27 @@
 }
 
 .chat-iconbtn {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   border: 0;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+}
+
+/* 채팅 헤더 위 三 버튼 — 팀 컬러 배경에 맞춰 chat-iconbtn과 같은 톤으로 보정 */
+.chat-header-actions .app-menu-button {
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.chat-header-actions .app-menu-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* 검색바 */
@@ -123,13 +154,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: 50%;
   background: #eef1f6;
   color: #6b7280;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -154,9 +185,25 @@
   font-size: 0.86rem;
 }
 
+/* 큰 둥근 채팅 카드 */
+.chat-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: -8px 0 0;
+  padding: 8px 0 0;
+  border-radius: 18px 18px 0 0;
+  background: rgba(255, 255, 255, 0.96);
+  overflow: hidden;
+}
+.chat-panel.search-open {
+  margin-top: 0;
+}
+
 /* 운영 공지 */
 .chat-notice {
-  margin: 8px 12px 0;
+  margin: 0 var(--chat-align-x) 0;
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.32);
@@ -167,10 +214,10 @@
 
 /* 메시지 로그 */
 .chat-log {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px var(--chat-align-x);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -193,6 +240,9 @@
   gap: 3px;
   max-width: 84%;
   animation: chat-msg-in 0.26s ease both;
+}
+.chat-msg:not(.mine) {
+  align-self: flex-start;
 }
 @keyframes chat-msg-in {
   from {
@@ -269,9 +319,11 @@
 
 /* 입력바 */
 .chat-inputbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  margin-top: auto;
   padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(0, 0, 0, 0.07);

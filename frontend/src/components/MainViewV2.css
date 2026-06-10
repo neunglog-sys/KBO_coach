@@ -8,9 +8,10 @@
   background: #ffffff;
   isolation: isolate;
   --stage-side: clamp(14px, 4vw, 24px);
-  --stage-nav-top: calc(env(safe-area-inset-top, 0px) + 8px);
-  --stage-character-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 9vh, 92px));
-  --stage-character-size: clamp(280px, min(88vw, 48vh), 440px);
+  /* 상단 간격을 양옆 간격(--stage-side)과 동일하게 (노치 안전영역 제외하고 대칭) */
+  --stage-nav-top: calc(env(safe-area-inset-top, 0px) + var(--stage-side));
+  --stage-character-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 14vh, 140px));
+  --stage-character-size: clamp(320px, min(96vw, 54vh), 500px);
   --stage-bg-rise: clamp(90px, 30vh, 240px);
   /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
   --stage-chat-limit: clamp(210px, 34vh, 390px);
@@ -28,7 +29,8 @@
   z-index: 0;
   overflow: hidden;
   background: #afe1ff;
-  /* 배경을 위로 끌어올림 → 필드가 캐릭터 발쪽으로, 아래는 흰색으로 빠짐 */
+  /* 배경을 위로 끌어올리되(필드가 캐릭터 발쪽으로), 올린 만큼 아래로 늘려 하단 흰 영역까지 필드로 채움 */
+  bottom: calc(-1 * var(--stage-bg-rise, 0px));
   transform: translateY(calc(-1 * var(--stage-bg-rise, 0px)));
 }
 
@@ -43,13 +45,19 @@
 
 /* ▼▼▼ 배경 스크롤 속도 조절 (숫자 클수록 느림) ▼▼▼ */
 .stage-bg-sky {
-  z-index: 0; /* 하늘 = 뒤 */
-  animation: stage-bg-scroll 80s linear infinite; /* ← 하늘 속도 */
+  z-index: 0;
+  /* 하늘 = 뒤 */
+  animation: stage-bg-scroll 80s linear infinite;
+  /* ← 하늘 속도 */
 }
+
 .stage-bg-ground {
-  z-index: 1; /* 경기장 = 앞 */
-  animation: stage-bg-scroll 40s linear infinite; /* ← 경기장 속도 */
+  z-index: 1;
+  /* 경기장 = 앞 */
+  animation: stage-bg-scroll 40s linear infinite;
+  /* ← 경기장 속도 */
 }
+
 /* ▲▲▲ 위 두 숫자(80s / 40s)만 바꾸면 됩니다 ▲▲▲ */
 
 .stage-bg-image {
@@ -75,12 +83,12 @@
 .stage-white-fade {
   z-index: 1;
   top: auto;
-  height: 48%;
+  height: 38%;
+  /* 캐릭터 영역만 은은하게 밝힘 — 채팅 시트 위로 배경이 보여 둥근 모서리가 드러나게 (완전 흰색 X) */
   background: linear-gradient(180deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.62) 34%,
-      rgba(255, 255, 255, 0.94) 58%,
-      #ffffff 78%);
+      rgba(255, 255, 255, 0.28) 55%,
+      rgba(255, 255, 255, 0.45) 100%);
 }
 
 /* 상단 메뉴 영역 그라데이션 오버레이: 배경 이미지 위에 자연스럽게 어둡게 */
@@ -144,6 +152,42 @@
   word-break: keep-all;
 }
 
+/* ── 메인 상단바(stage-nav)만 SVG 아이콘으로 교체 ──
+   공용 TopMenu(이모지)는 그대로 두고, 메인 화면에서만 CSS로 덮어쓴다(팀원 충돌 방지).
+   버튼 순서: 1 채팅방 / 2 나만의 기록 / 3 야구짝꿍 / 4 구장정보 / 5 설정 */
+/* 메인만 아이콘 크기 키움 (다른 화면은 TopMenu.css 기본 36px 유지) */
+.app-top-menu.stage-nav {
+  --top-menu-icon-size: 48px;
+}
+
+.app-top-menu.stage-nav .app-top-menu-icon {
+  font-size: 0;
+  /* 이모지 글자 숨김 */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.app-top-menu.stage-nav button:nth-child(1) .app-top-menu-icon {
+  background-image: url("/img/baseball_icons2/chat.svg");
+}
+
+.app-top-menu.stage-nav button:nth-child(2) .app-top-menu-icon {
+  background-image: url("/img/baseball_icons2/record.svg");
+}
+
+.app-top-menu.stage-nav button:nth-child(3) .app-top-menu-icon {
+  background-image: url("/img/baseball_icons2/pet.svg");
+}
+
+.app-top-menu.stage-nav button:nth-child(4) .app-top-menu-icon {
+  background-image: url("/img/baseball_icons2/stadium.svg");
+}
+
+.app-top-menu.stage-nav button:nth-child(5) .app-top-menu-icon {
+  background-image: url("/img/baseball_icons2/settings.svg");
+}
+
 .stage-character {
   position: absolute;
   top: var(--stage-character-top);
@@ -168,18 +212,55 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px var(--stage-side) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding: 16px var(--stage-side) calc(env(safe-area-inset-bottom, 0px) + 14px);
   background: #ffffff;
+  /* 그라데이션 페이드 대신 둥근 위 모서리(시트 카드 느낌) */
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -3px 12px rgba(22, 35, 56, 0.08);
 }
 
+/* 상단 흐림 페이드 제거 — 둥근 모서리 시트로 대체 */
 .stage-chat::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 90px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff);
+  display: none;
+}
+
+/* 채팅 시트 손잡이 (드래그로 접기/펼치기) */
+.stage-chat-handle {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: -6px;
+  padding: 4px 0 2px;
+  cursor: grab;
+  touch-action: none;
+  /* 드래그 제스처가 스크롤로 새지 않게 */
+}
+
+.stage-chat-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(22, 35, 56, 0.2);
+}
+
+.stage-chat-handle:active {
+  cursor: grabbing;
+}
+
+/* 접힘: 메시지 로그를 부드럽게 접음(손잡이+입력바만 남음) */
+.stage-chatlog {
+  transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
+}
+
+.stage-chat.is-collapsed .stage-chatlog {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 
@@ -188,7 +269,7 @@
   flex: 0 1 auto;
   flex-direction: column;
   align-self: center;
-  gap: 8px;
+  gap: 20px;
   width: var(--stage-content-width);
   max-height: var(--stage-chat-limit);
   min-height: 0;
@@ -211,7 +292,7 @@
   letter-spacing: 0;
   word-break: keep-all;
   overflow-wrap: anywhere;
-  box-shadow: 0 5px 14px rgba(22, 35, 56, 0.12);
+  box-shadow: 0 5px 14px rgba(22, 35, 56, 0.10);
 }
 
 .stage-msg.bot {
@@ -231,7 +312,7 @@
 
 .stage-inputbar {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
   align-self: center;
   gap: 8px;
@@ -310,6 +391,29 @@
   animation: none;
 }
 
+/* 키보드 올라왔을 때 오른쪽 보내기(↑) 버튼 — 원형 */
+.stage-send-arrow {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #ff7a18;
+  box-shadow: 0 6px 14px rgba(255, 122, 24, 0.3);
+  cursor: pointer;
+}
+
+.stage-send-arrow svg {
+  width: 22px;
+  height: 22px;
+}
+
+.stage-send-arrow:active {
+  transform: scale(0.94);
+}
+
 @keyframes stage-mic-pulse {
 
   0%,
@@ -342,26 +446,22 @@
   }
 
   .stage-inputbar {
-    grid-template-columns: 44px minmax(0, 1fr) auto auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
     gap: 6px;
   }
 
   .stage-mic,
-  .stage-stop {
+  .stage-stop,
+  .stage-send-arrow {
     width: 42px;
     height: 42px;
-  }
-
-  .stage-send {
-    min-width: 66px;
-    padding: 0 13px;
   }
 }
 
 @media (min-width: 768px) {
   .stage-view {
     --stage-content-width: min(680px, calc(100vw - 48px));
-    --stage-nav-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    --stage-nav-top: calc(env(safe-area-inset-top, 0px) + var(--stage-side));
   }
 
   .stage-nav {

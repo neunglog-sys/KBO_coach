@@ -5,7 +5,9 @@
       "Bash(adb devices *)",
       "Bash(./gradlew installDebug)",
       "Bash(grep -nA 18 \"^.settings-window {\" src/components/SettingsView.css)",
-      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|webp\\)$\")"
+      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|webp\\)$\")",
+      "Bash(grep -n 'className=\"stage-chat\"\\\\|stage-chatlog\\\\|stage-inputbar\\\\|className={`stage-chat' MainViewV2.tsx)",
+      "Bash(npx --yes @gltf-transform/cli@latest inspect 260609_Rig_opt.glb)"
     ]
   }
 }

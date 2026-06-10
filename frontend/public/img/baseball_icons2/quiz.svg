@@ -1,0 +1,38 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="quiz">
+  <defs>
+    <linearGradient id="bg_quiz" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ad9a0"/>
+      <stop offset="1" stop-color="#27ae73"/>
+    </linearGradient>
+    <linearGradient id="gloss_quiz" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="ds_quiz" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <!-- 배경 카드 -->
+  <rect x="8" y="8" width="104" height="104" rx="26" fill="url(#bg_quiz)" filter="url(#ds_quiz)"/>
+  <!-- 상단 광택 -->
+  <rect x="8" y="8" width="104" height="60" rx="26" fill="url(#gloss_quiz)"/>
+  <!-- 심볼 -->
+  <g transform="translate(60,60)">
+    
+  <!-- O 카드 (왼쪽, 살짝 기울임) -->
+  <g transform="translate(-11,-2) rotate(-10)">
+    <rect x="-15" y="-18" width="30" height="36" rx="6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="9" fill="none" stroke="#27ae73" stroke-width="3.4"/>
+  </g>
+  <!-- X 카드 (오른쪽, 위에 겹침) -->
+  <g transform="translate(11,3) rotate(10)">
+    <rect x="-15" y="-18" width="30" height="36" rx="6" fill="#ffffff" stroke="#eef7f1" stroke-width="1"/>
+    <g stroke="#e0573a" stroke-width="3.4" stroke-linecap="round">
+      <line x1="-6" y1="-6" x2="6" y2="6"/>
+      <line x1="6" y1="-6" x2="-6" y2="6"/>
+    </g>
+  </g>
+
+  </g>
+</svg>

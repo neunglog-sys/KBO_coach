@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { ArrowUp } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import Character3D from "./Character3D";
 import PetModal from "./PetModal";
-import { clearMouth, setActiveViseme } from "../lipSync";
+import { clearMouth, setActiveSyllable, setActiveViseme } from "../lipSync";
 import AttendanceCheckIn from "./AttendanceCheckIn";
 import { MyRecordsView } from "./MyRecordsView";
 import SettingsView from "./SettingsView";
@@ -14,8 +15,24 @@ import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import { WeatherFx, type WeatherCondition } from "./WeatherFx";
 import "./MainViewV2.css";
 
-// 인사말 감지용 (안녕/안뇽/하이/헬로/hi/hello/hey/반가). 소문자로 매칭.
-const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가)/;
+// 인사말 감지용 (안녕/안뇽/하이/헬로/hi/hello/hey/반가/반갑). 소문자로 매칭.
+const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가|반갑)/;
+// 걷기/뛰기 감지용 — 답변/질문에 이 단어가 있으면 캐릭터가 잠깐 움직인다(평소엔 멈춤).
+const RUN_RE = /(도루|걷다|걷는|걷고|걷자|걸어|걸으|뛴다|뛰어|뛰는|뛰자|뛰며|달린다|달려|달리|달릴|질주|내달)/;
+
+// 음성(TTS)에서 키워드가 "발음되는 순간"에 모션을 발동하기 위한 큐.
+// at = 원본 텍스트에서 그 키워드가 다 읽힌 글자 위치(=시작+길이). 재생 중 발음된 글자 수가
+// 이 값을 넘으면 해당 모션을 1회 발동한다. (텍스트 등장 시점이 아니라 음성 타이밍 기준)
+type MotionKind = "greet" | "run";
+function buildMotionCues(text: string): Array<{ at: number; kind: MotionKind }> {
+  const cues: Array<{ at: number; kind: MotionKind }> = [];
+  const lower = text.toLowerCase();
+  const g = lower.match(GREET_RE);
+  if (g && g.index != null) cues.push({ at: g.index + g[0].length, kind: "greet" });
+  const r = text.match(RUN_RE);
+  if (r && r.index != null) cues.push({ at: r.index + r[0].length, kind: "run" });
+  return cues;
+}
 
 // 팀 코드 → 홈 구장 (weather.py STADIUMS 키와 일치)
 const TEAM_HOME_STADIUM: Record<string, string> = {
@@ -138,8 +155,14 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
+  const [inputFocused, setInputFocused] = useState(false);
+  // 채팅 시트 접힘 여부 — 손잡이를 아래로 끌면 메시지 영역을 접어 캐릭터를 더 보이게 한다.
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   // 값이 증가할 때마다 캐릭터가 손 흔들기(인사) 모션을 1회 재생.
   const [greetSignal, setGreetSignal] = useState(0);
+  // 값이 증가할 때마다 캐릭터가 잠깐 뛰는(빠른 걷기) 모션을 재생.
+  const [runSignal, setRunSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
@@ -151,7 +174,7 @@ export function MainViewV2({
 
   // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
   useEffect(() => {
-    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => {});
+    fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => { });
   }, []);
 
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
@@ -197,9 +220,23 @@ export function MainViewV2({
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio 스트리밍 재생 정지 핸들 — stopSpeaking이 즉시 멈추도록.
+  const audioStopRef = useRef<(() => void) | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const overlayCloseTimerRef = useRef<number | null>(null);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
+  // 답변 텍스트에서 키워드를 미리 탐지해 둔 "대기 중인 모션" 플래그.
+  // 텍스트 출력 시점이 아니라 TTS(음성)가 실제로 시작될 때 발동시키기 위해 ref로 보관한다.
+  const pendingGreetRef = useRef(false);
+  const pendingRunRef = useRef(false);
+  // isSpeaking false→true 전환(=TTS 시작)을 감지하기 위한 직전 값.
+  const prevSpeakingRef = useRef(false);
+  // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
+  // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
+  const submitQuestionRef = useRef<(raw: string) => void>(() => { });
+  // 채팅 시트 손잡이 드래그 시작 Y좌표 (아래로 끌면 접기 / 위로 끌면 펼치기)
+  const chatDragStartY = useRef<number | null>(null);
 
   const supportsSTT =
     typeof window !== "undefined" &&
@@ -238,7 +275,7 @@ export function MainViewV2({
     recognition.addEventListener("result", (event) => {
       const transcript = event.results[0]?.[0]?.transcript?.trim() ?? "";
       setIsListening(false);
-      if (transcript) void submitQuestion(transcript);
+      if (transcript) void submitQuestionRef.current(transcript);   // 최신 submitQuestion 사용
     });
     recognition.addEventListener("end", () => setIsListening(false));
     recognition.addEventListener("error", () => setIsListening(false));
@@ -300,89 +337,352 @@ export function MainViewV2({
     setShowChat(key === "chat");
   }
 
+  // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
+  // visemes는 '미스케일'(Azure 타임라인). 재생 길이(effDurMs)가 잡히면 scale로 보정한다.
+  //   - 스트리밍: 재생 중 audio.duration이 Infinity → azEndMs/estMs로 추정, 끝나면 실측으로 정확.
+  //   - 블로킹: 서버가 이미 el길이로 스케일 → azEndMs=마지막offset이라 scale≈1(이중스케일 X).
+  function playTtsAudio(
+    audio: HTMLAudioElement,
+    text: string,
+    visemes: Array<{ offset: number; id: number }>,
+    azEndMs: number,
+    estMs: number,
+    onReveal?: (revealed: string) => void,
+    boundaries?: Array<{ offset: number; textOffset: number; length: number }>,
+  ): Promise<{ ok: boolean; started: boolean }> {
+    ttsAudioRef.current = audio;
+    // 키워드가 실제로 발음되는 순간 모션 발동(단어 경계 offset 기준). 발동된 종류는 시작 effect가
+    // 중복 발동하지 않도록 pending 플래그를 미리 끈다(질문에만 있던 키워드는 그대로 둬 시작 시 폴백).
+    const cues = buildMotionCues(text);
+    const fired = new Set<MotionKind>();
+    const fireCuesUpTo = (spokenChars: number) => {
+      for (const c of cues) {
+        if (!fired.has(c.kind) && spokenChars >= c.at) {
+          fired.add(c.kind);
+          if (c.kind === "run") setRunSignal((n) => n + 1);
+          else setGreetSignal((n) => n + 1);
+        }
+      }
+    };
+    const bnds = boundaries ?? [];
+    return new Promise((resolve) => {
+      let settled = false;
+      let started = false;
+      let lipRaf = 0;
+      const clamp = (v: number) => Math.min(2.5, Math.max(0.5, v));
+
+      const drive = () => {
+        const tMs = audio.currentTime * 1000;
+        const dur = audio.duration;
+        const effDurMs =
+          isFinite(dur) && dur > 0 ? dur * 1000 : azEndMs > 0 ? azEndMs : estMs;
+        const scale = azEndMs > 0 && effDurMs > 0 ? clamp(effDurMs / azEndMs) : 1;
+        let activeId = 0;
+        for (let i = 0; i < visemes.length; i++) {
+          if (visemes[i].offset * scale <= tMs) activeId = visemes[i].id;
+          else break;
+        }
+        setActiveViseme(activeId);
+        // 자막은 재생 중인 실제 오디오의 진행률에 묶는다(시간비례).
+        if (onReveal && effDurMs > 0) {
+          const ratio = Math.min(1, tMs / effDurMs);
+          const revealed = text.slice(0, Math.ceil(text.length * ratio));
+          if (revealed) onReveal(revealed);
+        }
+        // 모션 발동: 단어 경계가 있으면 '지금까지 발음된 단어의 끝 글자수'로 정확히, 없으면 시간비례로.
+        if (cues.length) {
+          let spoken: number;
+          if (bnds.length) {
+            spoken = 0;
+            for (const b of bnds) {
+              if (b.offset * scale <= tMs) spoken = b.textOffset + b.length;
+              else break;
+            }
+          } else {
+            spoken = effDurMs > 0 ? Math.ceil(text.length * Math.min(1, tMs / effDurMs)) : 0;
+          }
+          fireCuesUpTo(spoken);
+        }
+        lipRaf = requestAnimationFrame(drive);
+      };
+
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(lipRaf);
+        clearMouth();
+        setIsSpeaking(false);
+        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
+        resolve({ ok, started });
+      };
+
+      audio.onplay = () => {
+        started = true;
+        // 이 경로가 단어 타이밍으로 직접 발동하므로, 해당 종류는 시작 effect의 폴백 발동을 끈다.
+        for (const c of cues) {
+          if (c.kind === "run") pendingRunRef.current = false;
+          else pendingGreetRef.current = false;
+        }
+        setIsSpeaking(true);
+        lipRaf = requestAnimationFrame(drive);
+      };
+      audio.onended = () => finish(true);
+      audio.onerror = () => finish(false);
+      audio.play().catch(() => finish(false));
+    });
+  }
+
+  // 타임스탬프 스트리밍 재생(구단 보이스) — Web Audio API로 PCM 청크를 gapless 스케줄 재생.
+  // MSE(mp3)는 안드 WebView에서 안 먹혀서 Web Audio+PCM으로. ElevenLabs 글자 타임스탬프
+  // (c=글자, t=시작초)로 자막·입모양을 '실제 음성' 기준 정확히 맞춘다.
+  //   - 자막: 발음된 글자 수/정제길이(cleanLen) 비율을 원본 텍스트에 적용(원본 표시 유지).
+  //   - 입모양: 지금 발음 중인 글자의 모음으로 setActiveSyllable.
+  // Web Audio 미지원/빈 응답이면 {ok:false, started:false} → 호출부가 블로킹으로 폴백.
+  function playWebAudioStream(
+    streamUrl: string,
+    text: string,
+    cleanLen: number,
+    sampleRate: number,
+    onReveal?: (revealed: string) => void,
+    isCancelled?: () => boolean,
+  ): Promise<{ ok: boolean; started: boolean }> {
+    return new Promise((resolve) => {
+      let ctx = audioCtxRef.current;
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AC) {
+          resolve({ ok: false, started: false });   // Web Audio 미지원 → 블로킹 폴백
+          return;
+        }
+        if (!ctx) {
+          ctx = new AC();
+          audioCtxRef.current = ctx;
+        }
+      } catch {
+        resolve({ ok: false, started: false });
+        return;
+      }
+      const audioCtx = ctx;
+      void audioCtx.resume().catch(() => { });   // 자동재생 정책: 제스처 후 재개
+
+      // 키워드가 발음되는 순간 모션 발동(글자 타임스탬프 기준).
+      const cues = buildMotionCues(text);
+      const fired = new Set<MotionKind>();
+      const fireCuesUpTo = (spokenChars: number) => {
+        for (const c of cues) {
+          if (!fired.has(c.kind) && spokenChars >= c.at) {
+            fired.add(c.kind);
+            if (c.kind === "run") setRunSignal((n) => n + 1);
+            else setGreetSignal((n) => n + 1);
+          }
+        }
+      };
+
+      const chars: string[] = [];
+      const starts: number[] = [];
+      const sources: AudioBufferSourceNode[] = [];
+      let leftover = new Uint8Array(0);   // 홀수바이트 경계 이월
+      let originTime = 0;                  // 재생 시작 ctx 시각(playbackTime 기준)
+      let nextTime = 0;                    // 다음 청크 스케줄 시각
+      let endTime = 0;                     // 마지막 청크 끝나는 시각
+      let streamDone = false;
+      let started = false;
+      let settled = false;
+      let raf = 0;
+      const ac = new AbortController();
+
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(raf);
+        ac.abort();
+        for (const s of sources) {
+          try {
+            s.onended = null;
+            s.stop();
+          } catch {
+            /* 이미 끝남 */
+          }
+        }
+        audioStopRef.current = null;
+        clearMouth();
+        setIsSpeaking(false);
+        if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
+        resolve({ ok, started });
+      };
+      audioStopRef.current = () => finish(started);   // stopSpeaking이 즉시 호출
+
+      const drive = () => {
+        if (isCancelled?.()) {
+          finish(started);
+          return;
+        }
+        const tt = started ? Math.max(0, audioCtx.currentTime - originTime) : 0;
+        let spoken = 0;
+        for (let i = 0; i < starts.length; i++) {
+          if (starts[i] <= tt) spoken = i + 1;
+          else break;
+        }
+        setActiveSyllable(spoken > 0 ? chars[spoken - 1] : "");
+        if (cleanLen > 0) {
+          const frac = Math.min(1, spoken / cleanLen);
+          const spokenChars = Math.ceil(text.length * frac); // clean→원본 텍스트 글자수 환산
+          if (cues.length) fireCuesUpTo(spokenChars);
+          if (onReveal) {
+            const revealed = text.slice(0, spokenChars);
+            if (revealed) onReveal(revealed);
+          }
+        }
+        // 종료: 스트림 다 받았고 재생이 마지막 청크 끝을 지남
+        if (streamDone && started && audioCtx.currentTime >= endTime - 0.02) {
+          finish(true);
+          return;
+        }
+        raf = requestAnimationFrame(drive);
+      };
+
+      const schedulePcm = (incoming: Uint8Array) => {
+        let data = incoming;
+        if (leftover.length) {   // 이전 홀수바이트와 합쳐 int16 경계 정렬
+          const merged = new Uint8Array(leftover.length + incoming.length);
+          merged.set(leftover, 0);
+          merged.set(incoming, leftover.length);
+          data = merged;
+          leftover = new Uint8Array(0);
+        }
+        const usable = data.length - (data.length % 2);
+        if (usable < data.length) leftover = data.slice(usable);
+        if (usable <= 0) return;
+        const n = usable / 2;
+        const dv = new DataView(data.buffer, data.byteOffset, usable);
+        const buf = audioCtx.createBuffer(1, n, sampleRate);
+        const chData = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) chData[i] = dv.getInt16(i * 2, true) / 32768;
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        if (!started) {
+          started = true;
+          // 이 경로가 단어 타이밍으로 직접 발동 → 해당 종류는 시작 effect 폴백 발동을 끈다.
+          for (const c of cues) {
+            if (c.kind === "run") pendingRunRef.current = false;
+            else pendingGreetRef.current = false;
+          }
+          setIsSpeaking(true);
+          originTime = audioCtx.currentTime + 0.08;   // 약간의 리드(과거 스케줄 방지)
+          nextTime = originTime;
+          raf = requestAnimationFrame(drive);
+        }
+        const startAt = Math.max(nextTime, audioCtx.currentTime);
+        src.start(startAt);
+        nextTime = startAt + buf.duration;
+        endTime = nextTime;
+        sources.push(src);
+      };
+
+      (async () => {
+        try {
+          const resp = await fetch(streamUrl, { signal: ac.signal });
+          if (!resp.ok || !resp.body) {
+            finish(false);
+            return;
+          }
+          const reader = resp.body.getReader();
+          const dec = new TextDecoder();
+          let acc = "";
+          for (; ;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            acc += dec.decode(value, { stream: true });
+            let nl: number;
+            while ((nl = acc.indexOf("\n")) >= 0) {
+              const line = acc.slice(0, nl).trim();
+              acc = acc.slice(nl + 1);
+              if (!line) continue;
+              const obj = JSON.parse(line) as { a?: string; c?: string[]; t?: number[] };
+              if (Array.isArray(obj.c) && Array.isArray(obj.t)) {
+                for (let i = 0; i < obj.c.length; i++) {
+                  chars.push(obj.c[i]);
+                  starts.push(obj.t[i]);
+                }
+              }
+              if (obj.a) {
+                const bin = atob(obj.a);
+                const u8 = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                schedulePcm(u8);
+              }
+            }
+          }
+          streamDone = true;
+          if (!started) finish(false);   // 빈 응답(합성 실패) → 폴백. started면 drive가 종료 처리.
+        } catch {
+          if (!started) finish(false);   // 시작 전 끊김 → 폴백
+        }
+      })();
+    });
+  }
+
   async function speakWithAzure(
     text: string,
     onReveal?: (revealed: string) => void,
     isCancelled?: () => boolean,
   ): Promise<boolean> {
-    try {
-      if (ttsAudioRef.current) {
-        ttsAudioRef.current.pause();
-        ttsAudioRef.current = null;
-      }
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+    audioStopRef.current?.();   // 이전 Web Audio 스트림 정지
 
+    // 1) 타임스탬프 스트리밍(구단 보이스) — 통문장 1콜 그대로(사투리 유지), 첫 소리까지 대기 최소화.
+    //    prepare: 토큰+정제길이 / stream: PCM+글자타임스탬프(NDJSON)를 Web Audio로 progressive 재생.
+    try {
+      const pr = await fetch(apiUrl("/tts/prepare"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, team_code: favTeamCode || null }),
+      });
+      if (pr.ok) {
+        const pd = await pr.json();
+        if (isCancelled?.()) return true;
+        if (pd.token && !pd.fallback) {
+          const url = apiUrl(`/tts/stream?token=${encodeURIComponent(pd.token)}`);
+          const r = await playWebAudioStream(
+            url, text, pd.cleanLen || text.length, pd.sampleRate || 24000, onReveal, isCancelled,
+          );
+          // 정상종료 or 일부라도 재생됨 → 디바이스 음성으로 중복 재생하지 않음.
+          if (r.ok || r.started) return true;
+          // 재생 전 실패(빈 응답·Web Audio 미지원 등)만 → 아래 블로킹으로 폴백.
+        }
+      }
+    } catch (err) {
+      console.warn("[TTS] stream prepare failed; trying blocking", err);
+    }
+
+    // 2) 블로킹 경로 — 표준어팀(Azure 단독) 또는 스트리밍 실패 시(ElevenLabs 통째 base64).
+    try {
+      if (isCancelled?.()) return true;
       const resp = await fetch(apiUrl("/tts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, team_code: favTeamCode || null }),
       });
       if (!resp.ok) return false;
-
       const data = await resp.json();
       if (!data.audio) return false;
-      // 응답을 받는 사이 중단됐으면 재생하지 않음(폴백도 막기 위해 처리완료로 반환).
       if (isCancelled?.()) return true;
-
       const visemes: Array<{ offset: number; id: number }> = Array.isArray(data.visemes)
         ? data.visemes
         : [];
+      const azEndMs = visemes.length ? visemes[visemes.length - 1].offset : 0;
       const boundaries: Array<{ offset: number; textOffset: number; length: number }> =
         Array.isArray(data.boundaries) ? data.boundaries : [];
       const audio = new Audio(`data:${data.mime || "audio/mpeg"};base64,${data.audio}`);
-      ttsAudioRef.current = audio;
-
-      return await new Promise<boolean>((resolve) => {
-        let settled = false;
-        let lipRaf = 0;
-
-        const driveLipSync = () => {
-          const tMs = audio.currentTime * 1000;
-          let activeId = 0;
-          for (let i = 0; i < visemes.length; i++) {
-            if (visemes[i].offset <= tMs) activeId = visemes[i].id;
-            else break;
-          }
-          setActiveViseme(activeId);
-          // 음성 진행에 맞춰 텍스트를 드러냄 — 단어경계 우선, 없으면 시간 비례로 폴백
-          if (onReveal) {
-            let revealed = "";
-            if (boundaries.length) {
-              let end = 0;
-              for (let i = 0; i < boundaries.length; i++) {
-                if (boundaries[i].offset <= tMs) end = Math.max(end, boundaries[i].textOffset + boundaries[i].length);
-                else break;
-              }
-              revealed = text.slice(0, end);
-            } else if (audio.duration) {
-              const ratio = Math.min(1, audio.currentTime / audio.duration);
-              revealed = text.slice(0, Math.floor(text.length * ratio));
-            }
-            if (revealed) onReveal(revealed);
-          }
-          lipRaf = requestAnimationFrame(driveLipSync);
-        };
-
-        const finish = (ok: boolean) => {
-          if (settled) return;
-          settled = true;
-          cancelAnimationFrame(lipRaf);
-          clearMouth();
-          setIsSpeaking(false);
-          if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
-          if (ok && onReveal) onReveal(text);   // 끝나면 전체 텍스트 보장
-          resolve(ok);
-        };
-
-        audio.onplay = () => {
-          setIsSpeaking(true);
-          lipRaf = requestAnimationFrame(driveLipSync);
-        };
-        audio.onended = () => finish(true);
-        audio.onerror = () => finish(false);
-        audio.play().catch(() => finish(false));
-      });
+      const r = await playTtsAudio(audio, text, visemes, azEndMs, 0, onReveal, boundaries);
+      return r.ok || r.started;
     } catch (err) {
-      console.warn("[TTS] Azure failed; falling back to device speech", err);
+      console.warn("[TTS] blocking failed; falling back to device speech", err);
       return false;
     }
   }
@@ -562,7 +862,7 @@ export function MainViewV2({
       let buf = "";
       while (true) {
         if (cancelled()) {
-          reader.cancel().catch(() => {});
+          reader.cancel().catch(() => { });
           break;
         }
         const { value, done } = await reader.read();
@@ -625,6 +925,21 @@ export function MainViewV2({
     const question = raw.trim();
     if (!question) return;
 
+    setChatCollapsed(false); // 메시지 보내면 접혀있어도 펼쳐서 답변을 보이게
+
+    // Web Audio 잠금 해제 — 제스처(전송) 시점에 AudioContext 생성·재개해 두면
+    // 안드 WebView 자동재생 정책으로 스트리밍 음성이 suspended로 멈추는 것 방지.
+    try {
+      const AC = window.AudioContext
+        || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AC) {
+        if (!audioCtxRef.current) audioCtxRef.current = new AC();
+        void audioCtxRef.current.resume().catch(() => { });
+      }
+    } catch {
+      /* Web Audio 미지원 — 블로킹 폴백이 받음 */
+    }
+
     const baseId = Date.now();
     const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
@@ -633,30 +948,14 @@ export function MainViewV2({
     const setBot = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
-    // 인사말이 "말로 나오는 순간"에 손을 흔들도록 — 누적 텍스트가 인사말을 지나가면 1회.
-    // (스트리밍이라 답변 전체를 미리 모르므로, 드러난 텍스트에서 실시간 탐지)
-    let greeted = false;
-    const revealWithGreet = (revealed: string) => {
-      setBot(revealed);
-      if (!greeted) {
-        const m = revealed.toLowerCase().match(GREET_RE);
-        if (m && revealed.length >= (m.index ?? 0) + m[0].length) {
-          greeted = true;
-          setGreetSignal((n) => n + 1);
-        }
-      }
-    };
-
-    // 1) 스트리밍 음성 파이프라인 — 첫 문장부터 바로 재생(대기 최소화)
-    const streamed = await speakAnswerStream(question, revealWithGreet);
-    if (streamed.ok) {
-      setBot(streamed.text);
-      return;
-    }
-
-    // 2) 폴백 — 스트림 실패 시 기존 경로(전체 답변 받고 한 번에 음성)
+    // 통문장 — 답변 전체를 한 번에 합성해야 ElevenLabs가 문맥을 보고 사투리 억양을 살린다.
+    // (청킹은 문장마다 따로 합성돼 억양이 평평해져 표준어처럼 들림 → 사용 안 함)
     const answer = await fetchAnswer(question);
-    await speakAnswer(answer, revealWithGreet);
+    // 키워드 탐지는 여기서 하되, 실제 모션 발동은 TTS(음성)가 시작될 때로 미룬다.
+    // (텍스트가 화면에 나오는 시점이 아니라 캐릭터가 "말하기 시작하는" 순간에 맞춰 움직이도록)
+    pendingGreetRef.current = GREET_RE.test(answer) || GREET_RE.test(question);
+    pendingRunRef.current = RUN_RE.test(answer) || RUN_RE.test(question);
+    await speakAnswer(answer, setBot);
     setBot(answer);
   }
 
@@ -665,15 +964,38 @@ export function MainViewV2({
     void submitQuestion(input);
   }
 
+  // 음성인식 리스너가 항상 최신 submitQuestion(최신 favTeamCode)을 쓰도록 매 렌더마다 갱신.
+  useEffect(() => {
+    submitQuestionRef.current = submitQuestion;
+  });
+
+  // TTS 시작 순간(isSpeaking false→true)에 대기 중이던 모션을 발동한다.
+  // 키워드는 submitQuestion에서 미리 탐지해 pending 플래그에 담아두고, 여기서 음성과 타이밍을 맞춘다.
+  // 플래그는 발동 즉시 소비(false) → 발화 중 isSpeaking이 여러 번 토글돼도 답변당 1회만 재생.
+  useEffect(() => {
+    if (isSpeaking && !prevSpeakingRef.current) {
+      if (pendingGreetRef.current) {
+        pendingGreetRef.current = false;
+        setGreetSignal((n) => n + 1);
+      }
+      if (pendingRunRef.current) {
+        pendingRunRef.current = false;
+        setRunSignal((n) => n + 1);
+      }
+    }
+    prevSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
   // 모든 TTS(오디오 엘리먼트 / 네이티브 / 웹 음성)를 즉시 중단 + 입모양 정리.
   function stopSpeaking() {
     speakTokenRef.current++; // 진행 중/예정된 발화를 무효화 (폴백 음성 race 방지)
+    audioStopRef.current?.(); // Web Audio 스트리밍 재생 즉시 중단
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
       ttsAudioRef.current.src = "";
       ttsAudioRef.current = null;
     }
-    TextToSpeech.stop().catch(() => {}); // 네이티브(Capacitor) 음성 중단
+    TextToSpeech.stop().catch(() => { }); // 네이티브(Capacitor) 음성 중단
     window.speechSynthesis?.cancel();    // 웹 음성 중단
     clearMouth();
     setIsSpeaking(false);
@@ -732,12 +1054,40 @@ export function MainViewV2({
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />
 
-      <section className="stage-chat" aria-label="야구 코치 채팅">
+      <section
+        className={`stage-chat ${chatCollapsed ? "is-collapsed" : ""}`}
+        aria-label="야구 코치 채팅"
+      >
+        {/* 손잡이: 아래로 끌면 접기 / 위로 끌면 펼치기 / 탭이면 토글 */}
+        <div
+          className="stage-chat-handle"
+          role="button"
+          tabIndex={0}
+          aria-label={chatCollapsed ? "채팅창 올리기" : "채팅창 내리기"}
+          onPointerDown={(e) => {
+            chatDragStartY.current = e.clientY;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerUp={(e) => {
+            const start = chatDragStartY.current;
+            chatDragStartY.current = null;
+            if (start == null) return;
+            const dy = e.clientY - start;
+            if (dy > 24) setChatCollapsed(true);
+            else if (dy < -24) setChatCollapsed(false);
+            else setChatCollapsed((v) => !v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setChatCollapsed((v) => !v);
+          }}
+        >
+          <span className="stage-chat-grip" aria-hidden="true" />
+        </div>
         <div className="stage-chatlog" ref={chatLogRef} aria-live="polite">
           {messages.map((message) => (
             <div key={message.id} className={`stage-msg ${message.type}`}>
@@ -747,26 +1097,7 @@ export function MainViewV2({
         </div>
 
         <form className="stage-inputbar" onSubmit={handleSubmit}>
-          <button
-            type="button"
-            className={`stage-mic ${isListening ? "is-on" : ""}`}
-            onClick={toggleMic}
-            disabled={!supportsSTT}
-            aria-pressed={isListening}
-            aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
-            title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
-          >
-            <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
-          </button>
-
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="텍스트 입력 창"
-            aria-label="질문 입력"
-          />
-
+          {/* 왼쪽: 음성 일시정지 (항상) */}
           <button
             type="button"
             className="stage-stop"
@@ -778,9 +1109,41 @@ export function MainViewV2({
             <span aria-hidden="true">⏸</span>
           </button>
 
-          <button type="submit" className="stage-send">
-            보내기
-          </button>
+          <input
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder="텍스트 입력 창"
+            aria-label="질문 입력"
+          />
+
+          {/* 오른쪽: 키보드 내려감 → 마이크 / 키보드 올라옴 → 보내기(↑) */}
+          {inputFocused ? (
+            <button
+              type="submit"
+              className="stage-send-arrow"
+              aria-label="보내기"
+              title="보내기"
+              // 버튼 탭 시 입력창 포커스(키보드)가 풀리지 않게 → 연속 전송 가능
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <ArrowUp strokeWidth={3} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`stage-mic ${isListening ? "is-on" : ""}`}
+              onClick={toggleMic}
+              disabled={!supportsSTT}
+              aria-pressed={isListening}
+              aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
+              title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
+            >
+              <span aria-hidden="true">{isListening ? "●" : "🎙️"}</span>
+            </button>
+          )}
         </form>
       </section>
 

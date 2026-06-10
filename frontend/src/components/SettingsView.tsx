@@ -1,21 +1,12 @@
 import { FormEvent, useState } from "react";
-import {
-  Bell,
-  ChevronRight,
-  LogOut,
-  LockKeyhole,
-  Moon,
-  Trophy,
-  User,
-  UserX,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { AppBackButton } from "./AppBackButton";
 import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
 import { apiUrl } from "../api";
 import "./SettingsView.css";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import type { TopMenuTarget } from "./TopMenu";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 
 type SettingsScreen = "main" | "myInfo" | "password" | "team";
 
@@ -62,16 +53,33 @@ const CODE_TO_TEAM: Record<string, string> = Object.fromEntries(
   Object.entries(TEAM_CODE).map(([name, code]) => [code, name]),
 );
 
-function IconCircle({
-  icon: Icon,
+const SETTING_ICONS = {
+  profile: "/img/baseball_icons2/profile.svg",
+  password: "/img/baseball_icons2/password.svg",
+  teamChange: "/img/baseball_icons2/team_change.svg",
+  logout: "/img/baseball_icons2/logout.svg",
+  withdraw: "/img/baseball_icons2/withdraw.svg",
+  notification: "/img/baseball_icons2/notification.svg",
+  darkmode: "/img/baseball_icons2/darkmode.svg",
+  settings: "/img/baseball_icons2/settings.svg",
+} as const;
+
+function roParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return "으로";
+  return code % 28 === 0 || code % 28 === 8 ? "로" : "으로";
+}
+
+function ImgCircle({
+  src,
   className = "",
 }: {
-  icon: LucideIcon;
+  src: string;
   className?: string;
 }) {
   return (
-    <span className={`settings-icon-circle ${className}`} aria-hidden="true">
-      <Icon strokeWidth={2.6} />
+    <span className={`settings-img-circle ${className}`} aria-hidden="true">
+      <img src={src} alt="" className="setting-icon" />
     </span>
   );
 }
@@ -88,34 +96,39 @@ function SettingsHeader({
   title,
   onBack,
   onClose,
+  onMenuOpen,
 }: {
   title: string;
   onBack: () => void;
   onClose?: () => void;
+  onMenuOpen: () => void;
 }) {
   return (
     <header className="settings-header">
       <AppBackButton onClick={onBack} />
       <h2>{title}</h2>
-      {onClose ? <CloseButton onClick={onClose} /> : <span className="app-screen-title-spacer" />}
+      <div className="settings-header-actions">
+        <MenuButton onClick={onMenuOpen} />
+        {onClose ? <CloseButton onClick={onClose} /> : null}
+      </div>
     </header>
   );
 }
 
 function ToggleRow({
-  icon,
+  iconSrc,
   title,
   checked,
   onChange,
 }: {
-  icon: LucideIcon;
+  iconSrc: string;
   title: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
     <div className="settings-toggle-row">
-      <IconCircle icon={icon} />
+      <ImgCircle src={iconSrc} />
       <div className="settings-row-text">
         <strong>{title}</strong>
         <span>on/off</span>
@@ -135,13 +148,13 @@ function ToggleRow({
 }
 
 function MenuCard({
-  icon,
+  iconSrc,
   title,
   description,
   danger,
   onClick,
 }: {
-  icon: LucideIcon;
+  iconSrc: string;
   title: string;
   description?: string;
   danger?: boolean;
@@ -153,7 +166,7 @@ function MenuCard({
       type="button"
       onClick={onClick}
     >
-      <IconCircle icon={icon} className={danger ? "is-danger" : ""} />
+      <ImgCircle src={iconSrc} className={danger ? "is-danger" : ""} />
       <span className="settings-row-text">
         <strong>{title}</strong>
         {description ? <span>{description}</span> : null}
@@ -187,6 +200,7 @@ export default function SettingsView({
     newPassword: "",
     confirmPassword: "",
   });
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"logout" | "delete" | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -343,9 +357,10 @@ export default function SettingsView({
       setNotice("알 수 없는 팀입니다.");
       return;
     }
-    if (!authToken) {   // 비로그인/데모: 전역 상태만 갱신
+    if (!authToken) {
       onFavTeamChange?.(code);
-      setNotice(`${selectedTeam}으로 응원구단을 변경했습니다.`);
+      setNotice(`${selectedTeam}${roParticle(selectedTeam)} 응원구단을 변경했습니다.`);
+      window.setTimeout(() => { setNotice(""); setScreen("myInfo"); }, 1000);
       return;
     }
     try {
@@ -355,8 +370,9 @@ export default function SettingsView({
         body: JSON.stringify({ fav_team_code: code }),
       });
       if (!res.ok) throw new Error("update failed");
-      onFavTeamChange?.(code);   // 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗 동기화
-      setNotice(`${selectedTeam}으로 응원구단을 변경했습니다.`);
+      onFavTeamChange?.(code);
+      setNotice(`${selectedTeam}${roParticle(selectedTeam)} 응원구단을 변경했습니다.`);
+      window.setTimeout(() => { setNotice(""); setScreen("myInfo"); }, 1000);
       return;
     } catch {
       setNotice("응원구단 변경에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -370,33 +386,25 @@ export default function SettingsView({
       <div className="settings-screen-anim" key={screen}>
       {screen === "main" ? (
         <>
-          <SettingsHeader title="환경 설정" onBack={goBack} />
-          <TopMenu
-            active="settings"
-            className="settings-top-menu"
-            onNavigate={(target) => {
-              if (target === "settings") return;
-              onNavigate?.(target);
-            }}
-          />
+          <SettingsHeader title="환경 설정" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
 
           <div className="settings-stack">
             <MenuCard
-              icon={User}
+              iconSrc={SETTING_ICONS.profile}
               title="내 정보"
               description="프로필 및 계정 정보를 확인하고 관리합니다."
               onClick={() => setScreen("myInfo")}
             />
             <div className="settings-large-card">
               <ToggleRow
-                icon={Bell}
+                iconSrc={SETTING_ICONS.notification}
                 title="알림 기능"
                 checked={notificationEnabled}
                 onChange={handleNotificationChange}
               />
               <div className="settings-divider" />
               <ToggleRow
-                icon={Moon}
+                iconSrc={SETTING_ICONS.darkmode}
                 title="다크모드"
                 checked={darkModeEnabled}
                 onChange={handleDarkModeChange}
@@ -408,19 +416,19 @@ export default function SettingsView({
 
       {screen === "myInfo" ? (
         <>
-          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <div className="settings-account-card">
-            <IconCircle icon={User} />
+            <ImgCircle src={SETTING_ICONS.profile} />
             <div className="settings-row-text">
               <strong>{nickname?.trim() || "사용자"}</strong>
               <span>내 계정</span>
             </div>
           </div>
           <div className="settings-card-list">
-            <MenuCard icon={LockKeyhole} title="비밀번호 변경" onClick={() => setScreen("password")} />
-            <MenuCard icon={Trophy} title="응원구단 변경" onClick={() => setScreen("team")} />
+            <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
+            <MenuCard iconSrc={SETTING_ICONS.teamChange} title="응원구단 변경" onClick={() => setScreen("team")} />
             <MenuCard
-              icon={LogOut}
+              iconSrc={SETTING_ICONS.logout}
               title="로그아웃"
               onClick={() => {
                 setNotice("");
@@ -428,7 +436,7 @@ export default function SettingsView({
               }}
             />
             <MenuCard
-              icon={UserX}
+              iconSrc={SETTING_ICONS.withdraw}
               title="회원탈퇴"
               danger
               onClick={() => {
@@ -444,7 +452,7 @@ export default function SettingsView({
 
       {screen === "password" ? (
         <>
-          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
             <label>
               <span>현재 비밀번호</span>
@@ -492,7 +500,7 @@ export default function SettingsView({
 
       {screen === "team" ? (
         <>
-          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} />
+          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-team-card" onSubmit={handleTeamSubmit}>
             <fieldset>
               <legend className="hidden">응원구단 선택</legend>
@@ -518,6 +526,13 @@ export default function SettingsView({
         </>
       ) : null}
       </div>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
+        active="settings"
+        onNavigate={(target) => onNavigate?.(target)}
+        onClose={() => setSideMenuOpen(false)}
+      />
 
       <div className="settings-stadium-decoration" aria-hidden="true">
         <span />

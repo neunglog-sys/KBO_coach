@@ -277,10 +277,36 @@ html.theme-dark .app-back-button {
   color: #f8fafc;
 }
 
-/* Spacer that balances the back button on the right side of a header */
-.app-screen-title-spacer {
+/* 다마고치 화면 — 헤더가 따로 없어 三 버튼을 우측 상단에 단독 배치 */
+.tamagotchi-menu-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+/* Shared header menu (☰) button — opens the floating side menu */
+.app-menu-button {
+  display: grid;
+  place-items: center;
   width: 40px;
+  height: 40px;
   flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(28, 37, 54, 0.1);
+  cursor: pointer;
+}
+
+.app-menu-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+html.theme-dark .app-menu-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
 }
 
 /* Secondary buttons */
