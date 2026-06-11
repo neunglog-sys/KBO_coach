@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { apiUrl } from "./api";
 import { loadAppSettings, saveAppSettings } from "./appSettings";
 import { disablePush, registerPush } from "./push";
@@ -95,18 +97,32 @@ function saveAuthSession(
   }
 }
 
-function readKakaoAuthSession(): AuthSession | null {
-  const hash = window.location.hash.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash;
-  if (!hash) return null;
+function readKakaoAuthSession(url = window.location.href): AuthSession | null {
+  let rawSession: string | null = null;
 
-  const params = new URLSearchParams(hash);
-  const rawSession = params.get("kakao_session");
+  try {
+    const parsedUrl = new URL(url);
+    rawSession = parsedUrl.searchParams.get("kakao_session");
+
+    const hash = parsedUrl.hash.startsWith("#")
+      ? parsedUrl.hash.slice(1)
+      : parsedUrl.hash;
+    if (!rawSession && hash) {
+      rawSession = new URLSearchParams(hash).get("kakao_session");
+    }
+  } catch {
+    const hash = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    rawSession = hash ? new URLSearchParams(hash).get("kakao_session") : null;
+  }
+
   if (!rawSession) return null;
 
   const session = parseAuthSession(rawSession);
-  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  if (url === window.location.href) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
   return session?.isLoggedIn && session.authToken ? session : null;
 }
 
@@ -139,10 +155,7 @@ export function App() {
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
 
-  useEffect(() => {
-    const kakaoSession = readKakaoAuthSession();
-    if (!kakaoSession) return;
-
+  function applyKakaoSession(kakaoSession: AuthSession) {
     setAuthToken(kakaoSession.authToken);
     setFavTeamCode(kakaoSession.favTeamCode);
     setNickname(kakaoSession.nickname);
@@ -155,6 +168,28 @@ export function App() {
       kakaoSession.buddyNickname,
       true,
     );
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  useEffect(() => {
+    const kakaoSession = readKakaoAuthSession();
+    if (!kakaoSession) return;
+    applyKakaoSession(kakaoSession);
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listener = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+      const kakaoSession = readKakaoAuthSession(url);
+      if (kakaoSession) {
+        applyKakaoSession(kakaoSession);
+      }
+    });
+
+    return () => {
+      void listener.then((handle) => handle.remove());
+    };
   }, []);
 
   // 앱 시작 시 로컬 SQLite 초기화 (채팅이력·직관기록 저장소)
@@ -293,7 +328,8 @@ export function App() {
   function handleKakaoLogin() {
     setLoginError("");
     setLoginNotice("");
-    window.location.href = apiUrl("/auth/kakao/start");
+    const source = Capacitor.isNativePlatform() ? "?from=app" : "";
+    window.location.href = apiUrl(`/auth/kakao/start${source}`);
   }
 
   async function handleRegister(
