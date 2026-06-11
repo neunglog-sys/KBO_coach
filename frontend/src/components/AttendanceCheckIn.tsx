@@ -80,6 +80,13 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 //   git에 올릴 땐 false 권장. 테스트할 때만 true 로 바꾸세요.
 const SHOW_TEST_PANEL = true;
 
+// 설정 화면 안내문/라벨 들여쓰기 (px) — 성별 카드 시작선에 맞춤, 숫자로 조절
+const SETUP_TEXT_INDENT_PX = 12;
+
+// 다마고치 전체 폰트 (Pretendard) — index.css 에 Pretendard @import 필요 (적용 안내 참고)
+const TAMAGOTCHI_FONT =
+  '"Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif';
+
 // =====================================================================
 // 말풍선 위치: [카드 상단 ~ 캐릭터 머리] 공백을 위아래 똑같이 나누는 자리
 //  - 머리 위치는 캐릭터 PNG의 투명 영역(알파)을 직접 읽어 정확히 측정
@@ -908,11 +915,14 @@ export default function AttendanceCheckIn({
   // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
   if (!gender || !buddyNickname.trim()) {
     return (
-      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정">
+      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정" style={{ fontFamily: TAMAGOTCHI_FONT }}>
         <div className="tamagotchi-setup-card">
           <p className="eyebrow">Start</p>
           <h2>야구짝꿍을 설정해주세요</h2>
-          <p className="attendance-message">
+          <p
+            className="attendance-message"
+            style={{ fontSize: 13, textAlign: "center" }}
+          >
             함께 성장할 야구짝꿍의 성별과 닉네임을 정해주세요.
           </p>
           <div className="tamagotchi-gender-options" role="group" aria-label="성별 선택">
@@ -944,7 +954,7 @@ export default function AttendanceCheckIn({
             </button>
           </div>
           <label className="tamagotchi-nickname-field">
-            <span>야구짝꿍 닉네임</span>
+            <span style={{ paddingLeft: SETUP_TEXT_INDENT_PX }}>야구짝꿍 닉네임</span>
             <input
               type="text"
               value={buddyNicknameInput}
@@ -971,7 +981,7 @@ export default function AttendanceCheckIn({
   }
 
   return (
-    <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
+    <section className="tamagotchi-dashboard" aria-label="야구짝꿍" style={{ fontFamily: TAMAGOTCHI_FONT }}>
       <TopMenu
         active="tamagotchi"
         className="tamagotchi-nav"
@@ -1042,6 +1052,7 @@ export default function AttendanceCheckIn({
           alt="야구짝꿍 캐릭터"
           onLoad={refreshCharacterLayout}
           onError={() => setImgFailed(true)}
+          style={{ filter: "none" }} // 캐릭터 그림자 제거
         />
       </section>
 
