@@ -1,0 +1,210 @@
+.app-top-menu {
+  --top-menu-icon-size: 36px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* 기본(메인 화면): 그라데이션 오버레이 위 → 흰색 텍스트, 약한 그림자 */
+.app-top-menu button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 66px;
+  min-height: 64px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 6px 4px;
+  color: #ffffff;
+  background: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* 활성 상태: 큰 흰 박스 대신 아이콘 아래 작은 도트 표시 */
+.app-top-menu button.is-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.app-top-menu button.is-active::after {
+  content: none;
+}
+
+.app-top-menu-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--top-menu-icon-size);
+  width: var(--top-menu-icon-size);
+  height: var(--top-menu-icon-size);
+  font-size: var(--top-menu-icon-size);
+  line-height: 1;
+}
+
+.app-top-menu-icon :is(img, svg) {
+  width: var(--top-menu-icon-size);
+  height: var(--top-menu-icon-size);
+  object-fit: contain;
+}
+
+/* width: 100% 로 버튼 전체 너비를 점유해야 text-align: center 가 정확히 동작 */
+.app-top-menu-label {
+  display: block;
+  width: 100%;
+  color: #ffffff;
+  font-size: clamp(0.7rem, 0.9vw, 0.84rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* ────────────────────────────────────────────────
+   설정 / 구장정보 / 다마고치: 밝은 배경 위 → 어두운 텍스트
+   ──────────────────────────────────────────────── */
+.app-top-menu.settings-top-menu,
+.app-top-menu.stadium-page-top-menu,
+.app-top-menu.tamagotchi-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(4px, 1vw, 10px);
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-top-menu.settings-top-menu,
+.app-top-menu.stadium-page-top-menu {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 18px;
+}
+
+.app-top-menu.settings-top-menu button,
+.app-top-menu.stadium-page-top-menu button,
+.app-top-menu.tamagotchi-nav button {
+  position: relative;
+  gap: 4px;
+  height: 66px;
+  min-height: 64px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 6px 4px;
+  color: #0f172a;
+  background: transparent;
+  font-size: inherit;
+  text-shadow: none;
+}
+
+.app-top-menu.settings-top-menu button.is-active,
+.app-top-menu.stadium-page-top-menu button.is-active,
+.app-top-menu.tamagotchi-nav button.is-active {
+  color: #126dff;
+  background: rgba(22, 119, 255, 0.1);
+  border-color: rgba(22, 119, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.18);
+}
+
+/* 밝은 배경 화면의 활성 도트는 파란색 */
+.app-top-menu.settings-top-menu button.is-active::after,
+.app-top-menu.stadium-page-top-menu button.is-active::after,
+.app-top-menu.tamagotchi-nav button.is-active::after {
+  content: none;
+}
+
+.app-top-menu.tamagotchi-nav button.is-active {
+  position: relative;
+}
+
+.app-top-menu.settings-top-menu .app-top-menu-icon,
+.app-top-menu.stadium-page-top-menu .app-top-menu-icon,
+.app-top-menu.tamagotchi-nav .app-top-menu-icon {
+  flex-basis: var(--top-menu-icon-size);
+  width: var(--top-menu-icon-size);
+  height: var(--top-menu-icon-size);
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--top-menu-icon-size);
+}
+
+.app-top-menu.settings-top-menu .app-top-menu-label,
+.app-top-menu.stadium-page-top-menu .app-top-menu-label,
+.app-top-menu.tamagotchi-nav .app-top-menu-label {
+  width: 100%;
+  color: #0f172a;
+  font-size: clamp(0.7rem, 0.9vw, 0.84rem);
+  line-height: 1.15;
+  text-shadow: none;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+.app-top-menu.settings-top-menu button.is-active .app-top-menu-label,
+.app-top-menu.stadium-page-top-menu button.is-active .app-top-menu-label,
+.app-top-menu.tamagotchi-nav button.is-active .app-top-menu-label {
+  color: #126dff;
+}
+
+/* ────────────────────────────────────────────────
+   반응형
+   ──────────────────────────────────────────────── */
+/* 설정 아이콘: 레이아웃 변경 없이 시각적으로 약 12% 확대 */
+.app-top-menu [data-target="settings"] .app-top-menu-icon img {
+  transform: scale(1.12);
+}
+
+@media (max-width: 360px) {
+
+  .app-top-menu-label,
+  .app-top-menu.settings-top-menu .app-top-menu-label,
+  .app-top-menu.stadium-page-top-menu .app-top-menu-label,
+  .app-top-menu.tamagotchi-nav .app-top-menu-label {
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 720px) {
+
+  .app-top-menu,
+  .app-top-menu.settings-top-menu,
+  .app-top-menu.stadium-page-top-menu,
+  .app-top-menu.tamagotchi-nav {
+    gap: 2px;
+  }
+
+  .app-top-menu button,
+  .app-top-menu.settings-top-menu button,
+  .app-top-menu.stadium-page-top-menu button,
+  .app-top-menu.tamagotchi-nav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 62px;
+    height: 62px;
+    border-radius: 10px;
+    padding: 0 2px;
+  }
+
+  .app-top-menu-label,
+  .app-top-menu.settings-top-menu .app-top-menu-label,
+  .app-top-menu.stadium-page-top-menu .app-top-menu-label,
+  .app-top-menu.tamagotchi-nav .app-top-menu-label {
+    width: 100%;
+    font-size: 0.7rem;
+  }
+}
