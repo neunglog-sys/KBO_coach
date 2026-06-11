@@ -375,7 +375,7 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
 }
 
 .streak-card .goal-editor :is(input, .goal-save, .goal-cancel) {
-  width: 84px;
+  width: 78px;
   min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 12px;
@@ -385,8 +385,13 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
     0 5px 10px rgba(28, 37, 54, 0.08);
 }
 
+.streak-card .goal-editor :is(.goal-save, .goal-cancel) {
+  border-radius: 18px;
+}
+
 .streak-card .goal-editor .goal-save {
-  color: var(--streak-c0, var(--color-primary));
+  color: #fff;
+  background: var(--streak-c0, var(--color-primary));
 }
 
 .streak-card .goal-editor .goal-cancel {
