@@ -96,12 +96,71 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   const [switchOpen, setSwitchOpen] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
+  const rootRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const searchRef = useRef<HTMLDivElement | null>(null);
+  const switchRef = useRef<HTMLDivElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
+  const inputBarRef = useRef<HTMLFormElement | null>(null);
   const lastIdRef = useRef(0);
   const msgRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const teamObj = teamByCode(team);
   const chatSideSpace = 12;
+
+  function updateChatLayout() {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const searchHeight = searchRef.current?.getBoundingClientRect().height ?? 0;
+    const switchHeight = switchRef.current?.getBoundingClientRect().height ?? 0;
+    const inputHeight = inputBarRef.current?.getBoundingClientRect().height ?? 0;
+
+    root.style.setProperty("--chat-viewport-height", `${Math.ceil(viewportHeight)}px`);
+    root.style.setProperty("--chat-header-height", `${Math.ceil(headerHeight)}px`);
+    root.style.setProperty("--chat-search-height", `${Math.ceil(searchHeight)}px`);
+    root.style.setProperty("--chat-switch-height", `${Math.ceil(switchHeight)}px`);
+    root.style.setProperty("--chat-inputbar-space", `${Math.ceil(inputHeight)}px`);
+  }
+
+  function scrollToBottom(behavior: ScrollBehavior = "smooth") {
+    window.requestAnimationFrame(() => {
+      updateChatLayout();
+
+      window.requestAnimationFrame(() => {
+        const log = logRef.current;
+        if (!log) return;
+        log.scrollTo({ top: log.scrollHeight, behavior });
+      });
+    });
+  }
+
+  useEffect(() => {
+    updateChatLayout();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateChatLayout) : null;
+
+    [headerRef.current, searchRef.current, switchRef.current, inputBarRef.current]
+      .filter(Boolean)
+      .forEach((el) => resizeObserver?.observe(el as Element));
+
+    const frameId = window.requestAnimationFrame(updateChatLayout);
+
+    window.addEventListener("resize", updateChatLayout);
+    window.visualViewport?.addEventListener("resize", updateChatLayout);
+    window.visualViewport?.addEventListener("scroll", updateChatLayout);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateChatLayout);
+      window.visualViewport?.removeEventListener("resize", updateChatLayout);
+      window.visualViewport?.removeEventListener("scroll", updateChatLayout);
+    };
+  }, [searchOpen, switchOpen, notice, team]);
 
   useEffect(() => {
     if (!authToken) return;
@@ -161,7 +220,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
   useEffect(() => {
     if (query) return;
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
+    scrollToBottom("smooth");
   }, [messages, query]);
 
   const matchIds = useMemo(() => {
@@ -231,6 +290,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
   return (
     <section
+      ref={rootRef}
       className={`chat-view ${closing ? "closing" : ""}`}
       aria-label="팀 응원톡"
       style={{
@@ -241,6 +301,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       }}
     >
       <header
+        ref={headerRef}
         className="chat-header"
         style={{
           background: `linear-gradient(135deg, ${headerGradientStart} 0%, ${headerColor} 100%)`,
@@ -290,7 +351,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       />
 
       {searchOpen ? (
-        <div className="chat-search">
+        <div className="chat-search" ref={searchRef}>
           <input
             type="text"
             value={query}
@@ -315,7 +376,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       ) : null}
 
       {switchOpen ? (
-        <div className="chat-switch" role="menu">
+        <div className="chat-switch" ref={switchRef} role="menu">
           {TEAMS.map((t) => (
             <button
               key={t.code}
@@ -379,42 +440,43 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
             })
           )}
         </div>
+      </section>
 
-        <form
-          className="chat-inputbar"
+      <form
+        ref={inputBarRef}
+        className="chat-inputbar"
+        style={{
+          borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.68)}`,
+          background: "#fff",
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          send();
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={authToken ? "응원 메시지 입력" : "로그인 후 이용해주세요"}
+          disabled={!authToken || !team}
+          aria-label="메시지 입력"
           style={{
-            borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.68)}`,
-            background: "#fff",
+            background: mixWithWhite(bubbleBaseColor, 0.9),
           }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            send();
+        />
+        <button
+          type="submit"
+          className="chat-send"
+          disabled={!authToken || !team || !input.trim()}
+          style={{
+            background: bubbleBaseColor,
+            color: "#fff",
           }}
         >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={authToken ? "응원 메시지 입력" : "로그인 후 이용해주세요"}
-            disabled={!authToken || !team}
-            aria-label="메시지 입력"
-            style={{
-              background: mixWithWhite(bubbleBaseColor, 0.9),
-            }}
-          />
-          <button
-            type="submit"
-            className="chat-send"
-            disabled={!authToken || !team || !input.trim()}
-            style={{
-              background: bubbleBaseColor,
-              color: "#fff",
-            }}
-          >
-            전송
-          </button>
-        </form>
-      </section>
+          전송
+        </button>
+      </form>
     </section>
   );
 }

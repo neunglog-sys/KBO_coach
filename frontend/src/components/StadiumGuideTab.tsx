@@ -6,14 +6,17 @@ export function StadiumGuideTab({ stadium, stadiums }: { stadium: Stadium; stadi
   return (
     <section className="stadium-page-tab-panel" role="tabpanel">
       <article className="stadium-page-guide-card">
-        <img
-          src={stadium.imageUrl}
-          alt={`${stadium.stadiumName} 전경`}
-          onError={(event) => {
-            event.currentTarget.onerror = null;
-            event.currentTarget.src = "/img/background.png";
-          }}
-        />
+        <div className="stadium-page-guide-image">
+          <img
+            src={stadium.imageUrl}
+            alt={`${stadium.stadiumName} 전경`}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = "/img/background.png";
+            }}
+          />
+          <span className="stadium-page-ai-image-badge">AI로 만든 이미지입니다.</span>
+        </div>
         <div className="stadium-page-guide-copy">
           <h3>{stadium.stadiumName}</h3>
           <div className="stadium-page-guide-details">

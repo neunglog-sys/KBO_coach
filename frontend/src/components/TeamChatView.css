@@ -6,13 +6,20 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100dvh;
-  min-height: 100dvh;
+  height: var(--chat-viewport-height, 100dvh);
+  min-height: var(--chat-viewport-height, 100dvh);
   overflow: hidden;
   color: #1c2330;
   animation: chat-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
+
+  --chat-header-x: 24px;
   --chat-align-x: 12px;
+  --chat-title-indent: 12px;
+  --chat-bottom-gap: 10px;
+  --chat-header-height: 0px;
+  --chat-search-height: 0px;
+  --chat-switch-height: 0px;
   --chat-inputbar-space: calc(74px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -59,10 +66,12 @@
 /* 헤더 */
 .chat-header {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 18px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) var(--chat-header-x) 24px;
   color: #fff;
 }
 
@@ -131,7 +140,7 @@
   flex-direction: column;
   gap: 4px;
   line-height: 1.15;
-  padding: 2px var(--chat-align-x) 0;
+  padding: 2px var(--chat-title-indent) 0;
 }
 
 .chat-title strong {
@@ -233,16 +242,19 @@
 
 /* 큰 둥근 채팅 카드 */
 .chat-panel {
-  flex: 1 1 auto;
-  min-height: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--chat-header-height) + var(--chat-search-height) + var(--chat-switch-height) - 1px);
+  bottom: var(--chat-inputbar-space);
   display: flex;
   flex-direction: column;
-  margin: -1px 0 0;
-  padding: 12px 0 var(--chat-inputbar-space);
+  min-height: 0;
+  padding: 12px 0 0;
   border-radius: 28px 28px 0 0;
   background: rgba(255, 255, 255, 0.96);
   overflow: hidden;
-  position: relative;
+  z-index: 3;
 }
 
 .chat-panel.search-open {
@@ -250,12 +262,11 @@
 }
 
 /* 운영 공지 */
-/* 운영 공지 */
 .chat-notice-window {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  margin: 0 var(--chat-align-x);
+  margin: 0;
   padding: 13px 16px;
   border-radius: 18px;
   color: #ffffff;
@@ -320,14 +331,14 @@
 .chat-log {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
-  padding: 12px var(--chat-align-x);
-  padding-bottom: 18px;
+  padding: 12px var(--chat-align-x) var(--chat-bottom-gap);
   display: flex;
   flex-direction: column;
   gap: 10px;
   scroll-behavior: smooth;
-  scroll-padding-bottom: var(--chat-inputbar-space);
+  scroll-padding-bottom: var(--chat-bottom-gap);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -435,7 +446,7 @@
 
 /* 입력바 — 모든 화면에서 하단 고정 */
 .chat-inputbar {
-  position: absolute;
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
@@ -447,7 +458,7 @@
   padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(0, 0, 0, 0.07);
-  z-index: 3;
+  z-index: 70;
 }
 
 .chat-inputbar input {
