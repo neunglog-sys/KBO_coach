@@ -23,7 +23,16 @@
       "PowerShell(& \"$PWD\\\\frontend\\\\android\\\\gradlew.bat\" -p \"$PWD\\\\frontend\\\\android\" installDebug 2>&1 | Select-Object -Last 6)",
       "Bash(python -c ' *)",
       "Bash(python -c \"import numpy, scipy; print\\('numpy', numpy.__version__, 'scipy', scipy.__version__\\)\")",
-      "Bash(python -c \"import PIL; print\\('PIL', PIL.__version__\\)\")"
+      "Bash(python -c \"import PIL; print\\('PIL', PIL.__version__\\)\")",
+      "Bash(xargs grep -l -i \"elevenlabs\\\\|text-to-speech\\\\|tts\")",
+      "Bash(npx --yes @gltf-transform/cli@latest inspect \"public/model/3d/260610_Rig.glb\")",
+      "Bash(npx --yes @gltf-transform/cli@latest optimize --help)",
+      "Bash(npx --yes @gltf-transform/cli@latest optimize \"public/model/3d/260610_Rig.glb\" \"public/model/3d/260610_Rig_opt.glb\" --compress draco --simplify true --simplify-error 0.001 --texture-compress webp --texture-size 1024 --flatten false --join false --instance false --palette false)",
+      "Bash(npx --yes @gltf-transform/cli@latest inspect \"public/model/3d/260610_Rig_opt.glb\")",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(adb install *)",
+      "Bash(rm -f \"260610_Rig.glb\")",
+      "Read(//c/c/Users/82102_asozp43/OneDrive/바탕 화면/android/frontend/public/model/**)"
     ]
   }
 }
