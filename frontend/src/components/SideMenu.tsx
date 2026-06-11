@@ -1,4 +1,5 @@
 import { Home, MessageCircle, NotebookPen, PawPrint, MapPin, Settings, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import type { TopMenuTarget } from "./TopMenu";
 import "./SideMenu.css";
 
@@ -23,7 +24,7 @@ const SIDE_MENU_ITEMS: ReadonlyArray<{
 ];
 
 export function SideMenu({ isOpen, active, onNavigate, onClose }: SideMenuProps) {
-  return (
+  return createPortal(
     <>
       <div
         className={`side-menu-backdrop ${isOpen ? "is-open" : ""}`}
@@ -57,6 +58,7 @@ export function SideMenu({ isOpen, active, onNavigate, onClose }: SideMenuProps)
           ))}
         </div>
       </nav>
-    </>
+    </>,
+    document.body,
   );
 }
