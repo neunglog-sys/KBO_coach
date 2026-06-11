@@ -61,7 +61,7 @@ export function StadiumSearchBar({
         type="button"
         onClick={onSelectTeam}
       >
-        선택 팀
+        팀 선택
       </button>
     </form>
   );

@@ -488,9 +488,12 @@ html.theme-dark .stadium-page-header :is(.app-back-button, .app-menu-button) {
 }
 
 /* Stadium cards and pill tabs */
-.stadium-page-search,
 .stadium-page-team-list {
   padding: 12px;
+}
+
+.stadium-page-search {
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .stadium-page-tabs {
@@ -869,6 +872,18 @@ html.theme-dark :is(
   color: var(--color-text);
   background: var(--color-sub-card);
   border-color: var(--color-border);
+}
+
+html.theme-dark .stadium-page-search {
+  background: rgba(19, 34, 56, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.theme-dark :is(
+  .stadium-page-search label,
+  .stadium-page-team-button
+) {
+  background: rgba(30, 48, 72, 0.78);
 }
 
 html.theme-dark .settings-toggle.is-on {
