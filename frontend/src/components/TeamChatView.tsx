@@ -40,6 +40,81 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+
+    h /= 6;
+  }
+
+  return [h, s, l];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  function hueToRgb(p: number, q: number, t: number): number {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  }
+
+  let r: number;
+  let g: number;
+  let b: number;
+
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+
+    r = hueToRgb(p, q, h + 1 / 3);
+    g = hueToRgb(p, q, h);
+    b = hueToRgb(p, q, h - 1 / 3);
+  }
+
+  const toHex = (v: number) =>
+    Math.round(v * 255).toString(16).padStart(2, "0");
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function saturateHex(hex: string, amount = 1.45): string {
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, l] = rgbToHsl(r, g, b);
+
+  return hslToHex(h, clamp(s * amount, 0, 1), l);
+}
+
 function rgba(hex: string, a: number): string {
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${a})`;
@@ -52,7 +127,7 @@ function mixWithWhite(hex: string, whiteAmount: number): string {
 }
 
 function teamBubbleTone(hex: string, messageId: number): string {
-  const tones = [0.82, 0.72, 0.62, 0.52];
+  const tones = [0.58, 0.48, 0.38, 0.28];
   return mixWithWhite(hex, tones[Math.abs(messageId) % tones.length]);
 }
 
@@ -249,9 +324,10 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     onNavigate?.(target);
   }
 
-  const headerColor = teamObj?.color ?? "#444";
-  const bubbleBaseColor = team === "OB" ? "#7AB6E8" : headerColor;
-  const headerGradientStart = mixWithWhite(headerColor, 0.3);
+  const rawHeaderColor = teamObj?.color ?? "#444";
+  const headerColor = saturateHex(rawHeaderColor, 1.45);
+  const bubbleBaseColor = team === "OB" ? saturateHex("#7AB6E8", 1.55) : headerColor;
+  const headerGradientStart = mixWithWhite(headerColor, 0.18);
 
   function bubbleStyle(m: BoardMessage): React.CSSProperties {
     if (m.is_mine) {
@@ -275,7 +351,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       className={`chat-view ${closing ? "closing" : ""}`}
       aria-label="팀 응원톡"
       style={{
-        background: `linear-gradient(180deg, ${rgba(headerColor, 0.1)}, ${rgba(headerColor, 0.22)}), #fff`,
+        background: `linear-gradient(180deg, ${rgba(headerColor, 0.16)}, ${rgba(headerColor, 0.32)}), #fff`,
       }}
       onAnimationEnd={(e) => {
         if (closing && e.target === e.currentTarget) onBack();
@@ -321,24 +397,28 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
       {switchOpen ? (
         <div className="chat-switch" ref={switchRef} role="menu">
-          {TEAMS.map((t) => (
-            <button
-              key={t.code}
-              type="button"
-              className={t.code === team ? "on" : ""}
-              style={{
-                borderColor: t.color,
-                color: t.code === team ? "#fff" : t.color,
-                background: t.code === team ? t.color : "#fff",
-              }}
-              onClick={() => {
-                setTeam(t.code);
-                setSwitchOpen(false);
-              }}
-            >
-              {t.name}
-            </button>
-          ))}
+          {TEAMS.map((t) => {
+            const vividTeamColor = saturateHex(t.color, 1.45);
+
+            return (
+              <button
+                key={t.code}
+                type="button"
+                className={t.code === team ? "on" : ""}
+                style={{
+                  borderColor: vividTeamColor,
+                  color: t.code === team ? "#fff" : vividTeamColor,
+                  background: t.code === team ? vividTeamColor : "#fff",
+                }}
+                onClick={() => {
+                  setTeam(t.code);
+                  setSwitchOpen(false);
+                }}
+              >
+                {t.name}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
@@ -384,7 +464,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         ref={inputBarRef}
         className="chat-inputbar"
         style={{
-          borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.68)}`,
+          borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.5)}`,
           background: "#fff",
         }}
         onSubmit={(e) => {
@@ -400,7 +480,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           disabled={!authToken || !team}
           aria-label="메시지 입력"
           style={{
-            background: mixWithWhite(bubbleBaseColor, 0.9),
+            background: mixWithWhite(bubbleBaseColor, 0.78),
           }}
         />
         <button
