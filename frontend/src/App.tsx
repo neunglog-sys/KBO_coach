@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiUrl } from "./api";
-import { applyDarkMode, loadAppSettings, saveAppSettings } from "./appSettings";
+import { loadAppSettings, saveAppSettings } from "./appSettings";
 import { disablePush, registerPush } from "./push";
 import { initDb } from "./db";
 import { LoginView } from "./components/LoginView";
@@ -16,7 +16,9 @@ const DEMO_AUTH = {
 const AUTH_SESSION_KEY = "baseballCoachAuth";
 
 function loadAuthSession() {
-  const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
+  const saved =
+    sessionStorage.getItem(AUTH_SESSION_KEY) ||
+    localStorage.getItem(AUTH_SESSION_KEY);
   if (!saved) {
     return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
   }
@@ -38,6 +40,7 @@ function loadAuthSession() {
     };
   } catch {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem(AUTH_SESSION_KEY);
     return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
   }
 }
@@ -48,10 +51,15 @@ function saveAuthSession(
   nickname: string,
   buddyNickname = "",
 ) {
-  sessionStorage.setItem(
-    AUTH_SESSION_KEY,
-    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname, buddyNickname }),
-  );
+  const value = JSON.stringify({
+    isLoggedIn: true,
+    authToken,
+    favTeamCode,
+    nickname,
+    buddyNickname,
+  });
+  sessionStorage.setItem(AUTH_SESSION_KEY, value);
+  localStorage.setItem(AUTH_SESSION_KEY, value);
 }
 
 function clearTamagotchiLocalState() {
@@ -91,7 +99,9 @@ export function App() {
   // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
   useEffect(() => {
     saveAppSettings(appSettings);
-    applyDarkMode(appSettings.darkModeEnabled);
+    localStorage.removeItem("baseballCoachDarkModeEnabled");
+    document.documentElement.classList.remove("theme-dark");
+    document.documentElement.style.colorScheme = "light";
   }, [appSettings]);
 
   useEffect(() => {
@@ -213,6 +223,11 @@ export function App() {
     saveAuthSession(authToken, favTeamCode, nickname, nextBuddyNickname);
   }
 
+  function handleNicknameChange(nextNickname: string) {
+    setNickname(nextNickname);
+    saveAuthSession(authToken, favTeamCode, nextNickname, buddyNickname);
+  }
+
   return (
     <main className="app-shell">
       {isLoggedIn ? (
@@ -222,13 +237,10 @@ export function App() {
           nickname={nickname}
           buddyNickname={buddyNickname}
           notificationEnabled={appSettings.notificationEnabled}
-          darkModeEnabled={appSettings.darkModeEnabled}
           onNotificationEnabledChange={(notificationEnabled) =>
             setAppSettings((current) => ({ ...current, notificationEnabled }))
           }
-          onDarkModeEnabledChange={(darkModeEnabled) =>
-            setAppSettings((current) => ({ ...current, darkModeEnabled }))
-          }
+          onNicknameChange={handleNicknameChange}
           onFavTeamChange={handleFavTeamChange}
           onBuddyNicknameChange={handleBuddyNicknameChange}
           onLogout={handleLogout}
