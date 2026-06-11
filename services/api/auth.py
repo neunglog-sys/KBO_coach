@@ -62,8 +62,9 @@ class LoginIn(BaseModel):
     password: str
 
 
-class UpdateFavTeamIn(BaseModel):
-    fav_team_code: str
+class UpdateProfileIn(BaseModel):
+    fav_team_code: str | None = None
+    nickname: str | None = None
 
 
 class UpdateGenderIn(BaseModel):
@@ -189,16 +190,27 @@ def update_buddy(body: UpdateBuddyIn, user_id: int = Depends(current_user_id)):
 
 
 @router.patch("/me")
-def update_fav_team(body: UpdateFavTeamIn, user_id: int = Depends(current_user_id)):
+def update_profile(body: UpdateProfileIn, user_id: int = Depends(current_user_id)):
     """응원구단(fav_team_code) 변경. 성공 시 갱신된 유저 정보 반환."""
+    nickname = body.nickname.strip() if body.nickname is not None else None
+    if body.nickname is not None and not nickname:
+        raise HTTPException(status_code=400, detail="닉네임을 입력해주세요")
+    if nickname is not None and len(nickname) > 50:
+        raise HTTPException(status_code=400, detail="닉네임은 50자 이하로 입력해주세요")
+    if body.fav_team_code is None and nickname is None:
+        raise HTTPException(status_code=400, detail="변경할 정보를 입력해주세요")
+
     conn = get_conn()
     try:
         with conn, conn.cursor() as cur:
             ensure_user_profile_columns(conn)
             cur.execute(
-                "UPDATE users SET fav_team_code = %s WHERE user_id = %s "
+                "UPDATE users "
+                "SET fav_team_code = COALESCE(%s, fav_team_code), "
+                "nickname = COALESCE(%s, nickname) "
+                "WHERE user_id = %s "
                 "RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname, created_at",
-                (body.fav_team_code, user_id))
+                (body.fav_team_code, nickname, user_id))
             user = cur.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="유저 없음")

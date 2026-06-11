@@ -69,9 +69,8 @@ interface MainViewV2Props {
   nickname?: string;
   buddyNickname?: string;
   notificationEnabled: boolean;
-  darkModeEnabled: boolean;
   onNotificationEnabledChange: (enabled: boolean) => void;
-  onDarkModeEnabledChange: (enabled: boolean) => void;
+  onNicknameChange?: (nickname: string) => void;
   onFavTeamChange?: (code: string) => void;
   onBuddyNicknameChange?: (nickname: string) => void;
   onLogout: () => void;
@@ -196,9 +195,8 @@ export function MainViewV2({
   nickname,
   buddyNickname,
   notificationEnabled,
-  darkModeEnabled,
   onNotificationEnabledChange,
-  onDarkModeEnabledChange,
+  onNicknameChange,
   onFavTeamChange,
   onBuddyNicknameChange,
   onLogout,
@@ -1377,9 +1375,8 @@ export function MainViewV2({
               onClose={() => closeOverlay("settings")}
               nickname={nickname}
               notificationEnabled={notificationEnabled}
-              darkModeEnabled={darkModeEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}
-              onDarkModeEnabledChange={onDarkModeEnabledChange}
+              onNicknameChange={onNicknameChange}
               authToken={authToken}
               favTeamCode={favTeamCode}
               onFavTeamChange={onFavTeamChange}

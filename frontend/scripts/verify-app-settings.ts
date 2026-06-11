@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {
-  DARK_MODE_ENABLED_KEY,
   NOTIFICATION_ENABLED_KEY,
   isNotificationEnabled,
   loadAppSettings,
@@ -23,19 +22,13 @@ const storage = new MemoryStorage();
 
 assert.deepEqual(loadAppSettings(storage), {
   notificationEnabled: true,
-  darkModeEnabled: false,
 });
 
-saveAppSettings(
-  { notificationEnabled: false, darkModeEnabled: true },
-  storage,
-);
+saveAppSettings({ notificationEnabled: false }, storage);
 
 assert.equal(storage.getItem(NOTIFICATION_ENABLED_KEY), "false");
-assert.equal(storage.getItem(DARK_MODE_ENABLED_KEY), "true");
 assert.deepEqual(loadAppSettings(storage), {
   notificationEnabled: false,
-  darkModeEnabled: true,
 });
 assert.equal(isNotificationEnabled(storage), false);
 

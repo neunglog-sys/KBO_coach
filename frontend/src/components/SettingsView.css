@@ -168,7 +168,7 @@
   text-align: center;
 }
 
-.settings-top-menu button > span:last-child {
+.settings-top-menu button>span:last-child {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -257,6 +257,7 @@
 
 .settings-menu-card,
 .settings-toggle-row,
+.settings-action-row,
 .settings-account-card {
   display: flex;
   flex-direction: row;
@@ -265,10 +266,12 @@
 }
 
 .settings-menu-card,
+.settings-action-row,
 .settings-account-card {
+  --settings-card-inline-padding: 24px;
   width: 100%;
   min-height: 112px;
-  padding: 16px 24px;
+  padding: 16px var(--settings-card-inline-padding);
   color: #101a36;
   text-align: left;
 }
@@ -277,13 +280,24 @@
   min-height: 112px;
 }
 
+.settings-action-row {
+  width: 100%;
+  min-height: 112px;
+  padding: 0;
+  color: #101a36;
+  background: transparent;
+  text-align: left;
+}
+
 .settings-menu-card .settings-row-text,
+.settings-action-row .settings-row-text,
 .settings-toggle-row .settings-row-text {
   flex: 1;
   min-width: 0;
 }
 
 .settings-menu-card .settings-icon-circle,
+.settings-action-row .settings-icon-circle,
 .settings-toggle-row .settings-icon-circle {
   width: 80px;
   height: 80px;
@@ -541,7 +555,7 @@
   pointer-events: none;
 }
 
-.settings-radio-row > span {
+.settings-radio-row>span {
   position: relative;
   display: block;
   width: 32px;
@@ -550,11 +564,11 @@
   border-radius: 999px;
 }
 
-.settings-radio-row input:checked + span {
+.settings-radio-row input:checked+span {
   border-color: #126dff;
 }
 
-.settings-radio-row input:checked + span::after {
+.settings-radio-row input:checked+span::after {
   content: "";
   position: absolute;
   inset: 5px;
@@ -562,7 +576,7 @@
   background: #126dff;
 }
 
-.settings-radio-row input:focus-visible + span {
+.settings-radio-row input:focus-visible+span {
   box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.16);
 }
 
@@ -694,7 +708,7 @@
     font-size: 0.68rem;
   }
 
-  .settings-top-menu button > span:last-child {
+  .settings-top-menu button>span:last-child {
     min-height: 0;
     line-height: 1.15;
     overflow-wrap: normal;
@@ -719,15 +733,17 @@
 
   .settings-menu-card,
   .settings-toggle-row,
+  .settings-action-row,
   .settings-account-card {
     gap: 16px;
   }
 
   .settings-menu-card,
   .settings-account-card {
+    --settings-card-inline-padding: 16px;
     min-height: 108px;
     border-radius: 24px;
-    padding: 14px 16px;
+    padding: 14px var(--settings-card-inline-padding);
   }
 
   .settings-large-card {
@@ -740,6 +756,7 @@
   }
 
   .settings-menu-card .settings-icon-circle,
+  .settings-action-row .settings-icon-circle,
   .settings-toggle-row .settings-icon-circle {
     width: 80px;
     height: 80px;
@@ -812,7 +829,7 @@
     font-size: 1.08rem;
   }
 
-  .settings-radio-row > span {
+  .settings-radio-row>span {
     width: 28px;
     height: 28px;
   }
@@ -825,6 +842,119 @@
   margin-bottom: 22px;
 }
 
+.settings-nickname-form {
+  min-height: 120px;
+  gap: 20px;
+  padding: 18px var(--settings-card-inline-padding);
+  align-items: center;
+}
+
+.settings-nickname-form .settings-img-circle,
+.settings-nickname-form .setting-icon {
+  width: 80px;
+  height: 80px;
+}
+
+.settings-nickname-fields {
+  --nickname-control-height: 46px;
+  --nickname-button-width: 70px;
+  display: grid;
+  flex: 1;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.settings-nickname-fields label {
+  margin: 0;
+  color: #677182;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.settings-nickname-fields > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--nickname-button-width);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-nickname-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--nickname-control-height);
+  border: 1px solid #d7e5f2;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #101a36;
+  background: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: normal;
+}
+
+.settings-nickname-fields button {
+  flex: 0 0 auto;
+  width: var(--nickname-button-width);
+  height: var(--nickname-control-height);
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #fff;
+  background: #126dff;
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.settings-nickname-fields button:disabled {
+  opacity: 0.45;
+}
+
+@media (max-width: 640px) {
+  .settings-nickname-form {
+    min-height: 112px;
+    gap: 16px;
+    padding: 16px var(--settings-card-inline-padding);
+  }
+
+  .settings-nickname-form .settings-img-circle,
+  .settings-nickname-form .setting-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .settings-nickname-fields {
+    --nickname-control-height: 44px;
+    --nickname-button-width: 64px;
+  }
+
+  .settings-nickname-fields label {
+    font-size: 0.88rem;
+  }
+
+  .settings-nickname-fields input,
+  .settings-nickname-fields button {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .settings-nickname-form {
+    align-items: flex-start;
+  }
+
+  .settings-nickname-fields > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-nickname-fields button {
+    justify-self: end;
+  }
+}
+
 /* 설정 내부 화면 전환(main↔내정보↔비번/팀)을 부드럽게 */
 .settings-screen-anim {
   position: relative;
@@ -832,16 +962,19 @@
   animation: settings-screen-in 0.26s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
 }
+
 @keyframes settings-screen-in {
   from {
     opacity: 0;
     transform: translateX(7%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .settings-screen-anim {
     animation: none;
