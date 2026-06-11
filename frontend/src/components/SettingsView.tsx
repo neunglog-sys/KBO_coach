@@ -1,7 +1,7 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import { AppBackButton } from "./AppBackButton";
-import { applyDarkMode, loadAppSettings, saveAppSettings } from "../appSettings";
+import { loadAppSettings, saveAppSettings } from "../appSettings";
 import { apiUrl } from "../api";
 import "./SettingsView.css";
 import type { TopMenuTarget } from "./TopMenu";
@@ -15,9 +15,8 @@ interface SettingsViewProps {
   onNavigate?: (target: TopMenuTarget) => void;
   nickname?: string;
   notificationEnabled?: boolean;
-  darkModeEnabled?: boolean;
   onNotificationEnabledChange?: (enabled: boolean) => void;
-  onDarkModeEnabledChange?: (enabled: boolean) => void;
+  onNicknameChange?: (nickname: string) => void;
   authToken?: string;
   favTeamCode?: string;
   onFavTeamChange?: (code: string) => void;
@@ -60,7 +59,6 @@ const SETTING_ICONS = {
   logout: "/img/baseball_icons2/logout.svg",
   withdraw: "/img/baseball_icons2/withdraw.svg",
   notification: "/img/baseball_icons2/notification.svg",
-  darkmode: "/img/baseball_icons2/darkmode.svg",
   settings: "/img/baseball_icons2/settings.svg",
 } as const;
 
@@ -176,14 +174,33 @@ function MenuCard({
   );
 }
 
+function ActionRow({
+  iconSrc,
+  title,
+  onClick,
+}: {
+  iconSrc: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button className="settings-action-row" type="button" onClick={onClick}>
+      <ImgCircle src={iconSrc} />
+      <span className="settings-row-text">
+        <strong>{title}</strong>
+      </span>
+      <ChevronRight className="settings-chevron" aria-hidden="true" strokeWidth={3} />
+    </button>
+  );
+}
+
 export default function SettingsView({
   onClose,
   onNavigate,
   nickname,
   notificationEnabled: controlledNotificationEnabled,
-  darkModeEnabled: controlledDarkModeEnabled,
   onNotificationEnabledChange,
-  onDarkModeEnabledChange,
+  onNicknameChange,
   authToken,
   favTeamCode,
   onFavTeamChange,
@@ -200,13 +217,17 @@ export default function SettingsView({
     newPassword: "",
     confirmPassword: "",
   });
+  const [nicknameInput, setNicknameInput] = useState(nickname?.trim() || "");
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"logout" | "delete" | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const notificationEnabled =
     controlledNotificationEnabled ?? fallbackSettings.notificationEnabled;
-  const darkModeEnabled = controlledDarkModeEnabled ?? fallbackSettings.darkModeEnabled;
+
+  useEffect(() => {
+    setNicknameInput(nickname?.trim() || "");
+  }, [nickname]);
 
   function handleNotificationChange(enabled: boolean) {
     if (onNotificationEnabledChange) {
@@ -216,19 +237,6 @@ export default function SettingsView({
     setFallbackSettings((current) => {
       const next = { ...current, notificationEnabled: enabled };
       saveAppSettings(next);
-      return next;
-    });
-  }
-
-  function handleDarkModeChange(enabled: boolean) {
-    if (onDarkModeEnabledChange) {
-      onDarkModeEnabledChange(enabled);
-      return;
-    }
-    setFallbackSettings((current) => {
-      const next = { ...current, darkModeEnabled: enabled };
-      saveAppSettings(next);
-      applyDarkMode(enabled);
       return next;
     });
   }
@@ -310,6 +318,45 @@ export default function SettingsView({
     }
     setConfirmAction(null);
     onLogout();
+  }
+
+  async function handleNicknameSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextNickname = nicknameInput.trim();
+    setNotice("");
+
+    if (!nextNickname) {
+      setNotice("닉네임을 입력해주세요.");
+      return;
+    }
+    if (nextNickname.length > 50) {
+      setNotice("닉네임은 50자 이하로 입력해주세요.");
+      return;
+    }
+    if (!authToken) {
+      onNicknameChange?.(nextNickname);
+      setNotice("닉네임이 변경되었습니다.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(apiUrl("/auth/me"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ nickname: nextNickname }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail || "닉네임 변경에 실패했습니다.");
+      const savedNickname = String(data?.nickname || nextNickname);
+      setNicknameInput(savedNickname);
+      onNicknameChange?.(savedNickname);
+      setNotice("닉네임이 변경되었습니다.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "닉네임 변경에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleDeleteAccountConfirm() {
@@ -403,11 +450,13 @@ export default function SettingsView({
                 onChange={handleNotificationChange}
               />
               <div className="settings-divider" />
-              <ToggleRow
-                iconSrc={SETTING_ICONS.darkmode}
-                title="다크모드"
-                checked={darkModeEnabled}
-                onChange={handleDarkModeChange}
+              <ActionRow
+                iconSrc={SETTING_ICONS.logout}
+                title="로그아웃"
+                onClick={() => {
+                  setNotice("");
+                  setConfirmAction("logout");
+                }}
               />
             </div>
           </div>
@@ -417,24 +466,29 @@ export default function SettingsView({
       {screen === "myInfo" ? (
         <>
           <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
-          <div className="settings-account-card">
+          <form className="settings-account-card settings-nickname-form" onSubmit={handleNicknameSubmit}>
             <ImgCircle src={SETTING_ICONS.profile} />
-            <div className="settings-row-text">
-              <strong>{nickname?.trim() || "사용자"}</strong>
-              <span>내 계정</span>
+            <div className="settings-nickname-fields">
+              <label htmlFor="settings-nickname">닉네임</label>
+              <div>
+                <input
+                  id="settings-nickname"
+                  value={nicknameInput}
+                  maxLength={50}
+                  onChange={(event) => setNicknameInput(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || nicknameInput.trim() === (nickname?.trim() || "")}
+                >
+                  변경
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
           <div className="settings-card-list">
             <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
             <MenuCard iconSrc={SETTING_ICONS.teamChange} title="응원구단 변경" onClick={() => setScreen("team")} />
-            <MenuCard
-              iconSrc={SETTING_ICONS.logout}
-              title="로그아웃"
-              onClick={() => {
-                setNotice("");
-                setConfirmAction("logout");
-              }}
-            />
             <MenuCard
               iconSrc={SETTING_ICONS.withdraw}
               title="회원탈퇴"
