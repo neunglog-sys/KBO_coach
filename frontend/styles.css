@@ -404,7 +404,7 @@ select:focus {
   border: 0;
   border-radius: 30px;
   color: #ffffff;
-  background: linear-gradient(135deg, #5fb8ff, #2f8aff);
+  background: linear-gradient(135deg, #2f8aff, #5fb8ff);
   box-shadow: 0 10px 22px rgba(47, 138, 255, 0.38);
   font-size: 1.05rem;
   font-weight: 800;
@@ -641,7 +641,7 @@ select:focus {
   border: 0;
   border-radius: 30px;
   color: #ffffff;
-  background: linear-gradient(135deg, #5fb8ff, #2f8aff);
+  background: linear-gradient(135deg, #2f8aff, #5fb8ff);
   box-shadow: 0 12px 24px rgba(47, 138, 255, 0.34);
   font-size: 1.05rem;
   font-weight: 800;
