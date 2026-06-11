@@ -580,7 +580,7 @@ select:focus {
 .auth-agree-label {
   flex: 1;
   color: #3a3a3a;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
@@ -2439,6 +2439,11 @@ select:focus {
   background:
     radial-gradient(circle at 86% 6%, rgba(255, 255, 255, 0.42) 0 68px, transparent 69px),
     radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.65) 0 62px, transparent 63px),
+    /* 글래스 질감용 파스텔 블롭: 카드 뒤로 비치며 반투명이 드러남 */
+    radial-gradient(ellipse 420px 320px at 12% 18%, rgba(64, 137, 255, 0.38), transparent 70%),
+    radial-gradient(ellipse 380px 300px at 92% 34%, rgba(255, 158, 94, 0.32), transparent 70%),
+    radial-gradient(ellipse 460px 360px at 22% 78%, rgba(118, 226, 187, 0.34), transparent 70%),
+    radial-gradient(ellipse 400px 320px at 84% 90%, rgba(167, 130, 255, 0.30), transparent 70%),
     linear-gradient(180deg, #51c4fb 0%, #c8efff 34%, #eefaff 100%);
 }
 
@@ -3171,6 +3176,11 @@ html.theme-dark .app-shell {
   color: #eef4ff;
   background:
     radial-gradient(circle at 88% 3%, rgba(32, 96, 150, 0.25), transparent 22%),
+    /* 글래스 질감용 어두운 색 블롭 */
+    radial-gradient(ellipse 420px 320px at 12% 18%, rgba(59, 108, 230, 0.22), transparent 70%),
+    radial-gradient(ellipse 380px 300px at 92% 34%, rgba(214, 120, 60, 0.14), transparent 70%),
+    radial-gradient(ellipse 460px 360px at 22% 78%, rgba(46, 170, 130, 0.16), transparent 70%),
+    radial-gradient(ellipse 400px 320px at 84% 90%, rgba(128, 92, 220, 0.16), transparent 70%),
     linear-gradient(180deg, #0a1b2e 0%, #07111f 100%);
 }
 
