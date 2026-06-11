@@ -13,6 +13,8 @@
     "build:android": "vite build --mode android",
     "android:sync": "npm run build:android && cap sync android",
     "android:open": "npm run android:sync && cap open android",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "npm run ios:sync && cap open ios",
     "preview": "vite preview --host 127.0.0.1 --port 5000"
   },
   "dependencies": {
@@ -20,6 +22,7 @@
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
     "@capacitor/push-notifications": "^8.1.1",
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^4.3.4",
