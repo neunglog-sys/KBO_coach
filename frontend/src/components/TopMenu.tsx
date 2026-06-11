@@ -14,17 +14,44 @@ interface TopMenuProps {
   className?: string;
 }
 
+const ICON_BASE_PATH = "/img/baseball_icons2";
+
 const MENU_ITEMS: ReadonlyArray<{
   readonly target: TopMenuTarget;
   readonly icon: string;
   readonly imgSrc?: string;
   readonly label: string;
 }> = [
-  { target: "chat", icon: "💬", label: "채팅방" },
-  { target: "record", icon: "📒", label: "나만의 기록" },
-  { target: "tamagotchi", icon: "🥕", label: "야구짝꿍" },
-  { target: "stadium", icon: "🏟️", label: "구장정보" },
-  { target: "settings", icon: "⚙️", imgSrc: "/img/baseball_icons2/settings.svg", label: "설정" },
+  {
+    target: "chat",
+    icon: "💬",
+    imgSrc: `${ICON_BASE_PATH}/icon_chat.png?v=8`,
+    label: "채팅방",
+  },
+  {
+    target: "record",
+    icon: "📒",
+    imgSrc: `${ICON_BASE_PATH}/icon_note.png?v=8`,
+    label: "나만의 기록",
+  },
+  {
+    target: "tamagotchi",
+    icon: "🥕",
+    imgSrc: `${ICON_BASE_PATH}/icon_buddy.png?v=8`,
+    label: "야구짝꿍",
+  },
+  {
+    target: "stadium",
+    icon: "🏟️",
+    imgSrc: `${ICON_BASE_PATH}/icon_stadium.png?v=8`,
+    label: "구장정보",
+  },
+  {
+    target: "settings",
+    icon: "⚙️",
+    imgSrc: `${ICON_BASE_PATH}/icon_settings.png?v=8`,
+    label: "설정",
+  },
 ];
 
 export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
@@ -32,6 +59,7 @@ export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
     <nav className={`app-top-menu ${className}`.trim()} aria-label="상단 메뉴">
       {MENU_ITEMS.map((item) => {
         const isActive = item.target === active;
+
         return (
           <button
             key={item.target}
@@ -43,9 +71,7 @@ export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
             onClick={() => onNavigate(item.target)}
           >
             <span className="app-top-menu-icon" aria-hidden="true">
-              {item.imgSrc
-                ? <img src={item.imgSrc} alt="" />
-                : item.icon}
+              {item.imgSrc ? <img src={item.imgSrc} alt="" /> : item.icon}
             </span>
             <span className="app-top-menu-label">{item.label}</span>
           </button>

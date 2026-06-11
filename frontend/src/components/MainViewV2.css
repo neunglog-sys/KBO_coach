@@ -160,52 +160,60 @@
   word-break: keep-all;
 }
 
-/* ── 메인 상단바(stage-nav)만 SVG 아이콘으로 교체 ──
-   공용 TopMenu(이모지)는 그대로 두고, 메인 화면에서만 CSS로 덮어쓴다(팀원 충돌 방지).
-   버튼 순서: 1 채팅방 / 2 나만의 기록 / 3 야구짝꿍 / 4 구장정보 / 5 설정 */
-/* 메인만 아이콘 크기 키움 (다른 화면은 TopMenu.css 기본 36px 유지) */
+/* 메인 상단 TopMenu 전용 스타일 */
 .app-top-menu.stage-nav {
-  --top-menu-icon-size: 48px;
-  /* 흰 박스를 반투명하게 — 뒤 배경이 비쳐 보이도록(메인 화면 전용). 값(0.45)을 낮출수록 더 투명. */
+  --top-menu-icon-size: 52px;
   background: rgba(255, 255, 255, 0.45);
   border-color: rgba(255, 255, 255, 0.5);
-  /* 상하 패딩을 좌우보다 넓게 → 박스가 위아래로 조금 더 넓어짐. (위/아래, 좌/우) */
-  padding: 12px 8px;
-  /* 앱(아이콘) 간격을 화면 폭에 상관없이 일정하게 고정(theme.css의 clamp 가변값 덮어씀). */
+  padding: 8px 8px 7px;
   gap: 8px;
 }
 
+.app-top-menu.stage-nav button {
+  display: grid;
+  grid-template-rows: var(--top-menu-icon-size) auto;
+  align-items: center;
+  justify-items: center;
+  align-content: center;
+  height: 80px;
+  min-height: 78px;
+  gap: 2px;
+  padding: 2px 2px;
+}
+
 .app-top-menu.stage-nav .app-top-menu-icon {
-  font-size: 0;
-  /* 이모지 글자 숨김 */
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  display: grid;
+  place-items: center;
+  width: var(--top-menu-icon-size);
+  height: var(--top-menu-icon-size);
+  background: transparent;
+  background-image: none !important;
+  background-repeat: initial;
+  background-position: initial;
+  background-size: initial;
+  font-size: var(--top-menu-icon-size);
+  line-height: 1;
+  overflow: visible;
 }
 
-/* 설정만 <img>가 추가로 렌더돼 나머지 4개보다 커 보임 → 숨기고 background-image로 통일. */
 .app-top-menu.stage-nav .app-top-menu-icon img {
-  display: none;
+  display: block;
+  width: var(--top-menu-icon-size);
+  height: var(--top-menu-icon-size);
+  max-width: var(--top-menu-icon-size);
+  max-height: var(--top-menu-icon-size);
+  object-fit: contain;
+  transform: none !important;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-.app-top-menu.stage-nav button:nth-child(1) .app-top-menu-icon {
-  background-image: url("/img/baseball_icons2/chat.svg");
-}
-
-.app-top-menu.stage-nav button:nth-child(2) .app-top-menu-icon {
-  background-image: url("/img/baseball_icons2/record.svg");
-}
-
-.app-top-menu.stage-nav button:nth-child(3) .app-top-menu-icon {
-  background-image: url("/img/baseball_icons2/pet.svg");
-}
-
-.app-top-menu.stage-nav button:nth-child(4) .app-top-menu-icon {
-  background-image: url("/img/baseball_icons2/stadium.svg");
-}
-
-.app-top-menu.stage-nav button:nth-child(5) .app-top-menu-icon {
-  background-image: url("/img/baseball_icons2/settings.svg");
+.app-top-menu.stage-nav .app-top-menu-label {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.15;
 }
 
 .stage-character {
@@ -470,6 +478,17 @@
   .stage-view {
     --stage-side: 10px;
     --stage-chat-limit: 190px;
+  }
+
+  .app-top-menu.stage-nav {
+    --top-menu-icon-size: 48px;
+    gap: 4px;
+    padding: 8px 6px 7px;
+  }
+
+  .app-top-menu.stage-nav button {
+    height: 76px;
+    min-height: 74px;
   }
 
   .stage-nav-label {
