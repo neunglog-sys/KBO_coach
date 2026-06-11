@@ -245,7 +245,7 @@ export function MainViewV2({
       return;
     }
     (async () => {
-      let code = localStorage.getItem("myTeamCode");
+      let code = favTeamCode || localStorage.getItem("myTeamCode");
       if (!code && authToken) {
         try {
           const r = await fetch(apiUrl("/auth/me"), {
@@ -273,7 +273,7 @@ export function MainViewV2({
     return () => {
       alive = false;
     };
-  }, [authToken]);
+  }, [authToken, favTeamCode]);
 
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   // 사용자가 지금 맨 아래에 붙어 있는지 여부. 스크롤할 때마다 갱신한다.
