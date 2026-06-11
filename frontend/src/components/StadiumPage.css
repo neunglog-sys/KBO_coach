@@ -684,6 +684,22 @@
   gap: 10px;
 }
 
+.stadium-page-food-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stadium-page-food-heading small {
+  flex: 0 0 auto;
+  color: #7b8798;
+  font-size: 0.66rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .stadium-page-food-card {
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr);
@@ -726,6 +742,10 @@
   font-size: 0.82rem;
   font-weight: 650;
   line-height: 1.45;
+}
+
+.stadium-page-food-card p span {
+  display: block;
 }
 
 .stadium-page-region-card {
@@ -862,6 +882,14 @@
   .stadium-page-food-card {
     grid-template-columns: 96px minmax(0, 1fr);
     gap: 11px;
+  }
+
+  .stadium-page-food-heading {
+    gap: 4px 8px;
+  }
+
+  .stadium-page-food-heading small {
+    font-size: 0.58rem;
   }
 
   .stadium-page-food-image {
