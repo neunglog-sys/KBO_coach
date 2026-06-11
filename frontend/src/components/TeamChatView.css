@@ -1,4 +1,12 @@
 @font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Parastoo";
   src: url("https://raw.githubusercontent.com/rastikerdar/parastoo-font/master/dist/Parastoo.ttf") format("truetype");
   font-weight: 400 700;
@@ -139,7 +147,7 @@
 .chat-header .chat-back:active,
 .chat-header .chat-iconbtn:active,
 .chat-header .chat-header-actions .app-menu-button:active {
-  transform: scale(0.96);
+  transform: none;
 }
 
 .chat-title {
@@ -147,13 +155,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  line-height: 1.15;
+  line-height: normal;
   padding: 2px var(--chat-title-indent) 0;
 }
 
 .chat-title strong {
   font-family: "Parastoo", serif;
-  font-size: 1.7rem;
+  font-size: 28px;
+  line-height: 32px;
   font-weight: 700;
   letter-spacing: 0.05em;
   white-space: nowrap;
@@ -162,8 +171,10 @@
 }
 
 .chat-title span {
-  font-size: 1.05rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", sans-serif;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
   letter-spacing: 0.05em;
   opacity: 1;
   white-space: nowrap;
