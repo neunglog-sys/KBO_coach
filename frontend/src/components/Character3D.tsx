@@ -15,7 +15,7 @@ interface Character3DProps {
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/260610_Rig_opt.glb";
+const MODEL_URL = "/model/3d/260611_test_opt.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
