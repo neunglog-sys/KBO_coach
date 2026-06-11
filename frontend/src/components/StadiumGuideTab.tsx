@@ -15,8 +15,8 @@ export function StadiumGuideTab({ stadium, stadiums }: { stadium: Stadium; stadi
               event.currentTarget.src = "/img/background.png";
             }}
           />
-          <span className="stadium-page-ai-image-badge">AI로 만든 이미지입니다.</span>
         </div>
+        <p className="stadium-page-ai-image-notice">상기이미지는 AI로 생성된 이미지입니다.</p>
         <div className="stadium-page-guide-copy">
           <h3>{stadium.stadiumName}</h3>
           <div className="stadium-page-guide-details">
