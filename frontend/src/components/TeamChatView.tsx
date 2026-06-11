@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 import type { TopMenuTarget } from "./TopMenu";
 import { MenuButton } from "./MenuButton";
@@ -91,19 +91,15 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   const [notice, setNotice] = useState("");
   const [input, setInput] = useState("");
   const [closing, setClosing] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [switchOpen, setSwitchOpen] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   const rootRef = useRef<HTMLElement | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
-  const searchRef = useRef<HTMLDivElement | null>(null);
   const switchRef = useRef<HTMLDivElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
   const inputBarRef = useRef<HTMLFormElement | null>(null);
   const lastIdRef = useRef(0);
-  const msgRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const teamObj = teamByCode(team);
   const chatSideSpace = 12;
@@ -114,13 +110,12 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
 
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
-    const searchHeight = searchRef.current?.getBoundingClientRect().height ?? 0;
     const switchHeight = switchRef.current?.getBoundingClientRect().height ?? 0;
     const inputHeight = inputBarRef.current?.getBoundingClientRect().height ?? 0;
 
     root.style.setProperty("--chat-viewport-height", `${Math.ceil(viewportHeight)}px`);
     root.style.setProperty("--chat-header-height", `${Math.ceil(headerHeight)}px`);
-    root.style.setProperty("--chat-search-height", `${Math.ceil(searchHeight)}px`);
+    root.style.setProperty("--chat-search-height", "0px");
     root.style.setProperty("--chat-switch-height", `${Math.ceil(switchHeight)}px`);
     root.style.setProperty("--chat-inputbar-space", `${Math.ceil(inputHeight)}px`);
   }
@@ -143,7 +138,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     const resizeObserver =
       typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateChatLayout) : null;
 
-    [headerRef.current, searchRef.current, switchRef.current, inputBarRef.current]
+    [headerRef.current, switchRef.current, inputBarRef.current]
       .filter(Boolean)
       .forEach((el) => resizeObserver?.observe(el as Element));
 
@@ -160,7 +155,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       window.visualViewport?.removeEventListener("resize", updateChatLayout);
       window.visualViewport?.removeEventListener("scroll", updateChatLayout);
     };
-  }, [searchOpen, switchOpen, notice, team]);
+  }, [switchOpen, notice, team]);
 
   useEffect(() => {
     if (!authToken) return;
@@ -219,22 +214,8 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   }, [team, authToken]);
 
   useEffect(() => {
-    if (query) return;
     scrollToBottom("smooth");
-  }, [messages, query]);
-
-  const matchIds = useMemo(() => {
-    if (!query.trim()) return new Set<number>();
-    const q = query.trim().toLowerCase();
-    return new Set(messages.filter((m) => m.content.toLowerCase().includes(q)).map((m) => m.message_id));
-  }, [query, messages]);
-
-  useEffect(() => {
-    if (!query.trim() || matchIds.size === 0) return;
-    const ids = [...matchIds];
-    const target = msgRefs.current.get(ids[ids.length - 1]);
-    target?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [matchIds, query]);
+  }, [messages]);
 
   async function send() {
     const text = input.trim();
@@ -313,18 +294,6 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           </button>
 
           <div className="chat-header-actions">
-            <button
-              className="chat-iconbtn"
-              type="button"
-              onClick={() => {
-                setSearchOpen((v) => !v);
-                setSwitchOpen(false);
-              }}
-              aria-label="검색"
-            >
-              🔍
-            </button>
-
             <MenuButton onClick={() => setSideMenuOpen(true)} />
           </div>
         </div>
@@ -350,31 +319,6 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         onClose={() => setSideMenuOpen(false)}
       />
 
-      {searchOpen ? (
-        <div className="chat-search" ref={searchRef}>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="대화 내용 검색 (입력하면 해당 위치로 이동)"
-            aria-label="대화 검색"
-            autoFocus
-          />
-          {query ? <span className="chat-search-count">{matchIds.size}건</span> : null}
-          <button
-            type="button"
-            className="chat-search-close"
-            aria-label="검색 닫기"
-            onClick={() => {
-              setQuery("");
-              setSearchOpen(false);
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
-
       {switchOpen ? (
         <div className="chat-switch" ref={switchRef} role="menu">
           {TEAMS.map((t) => (
@@ -398,7 +342,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         </div>
       ) : null}
 
-      <section className={`chat-panel ${searchOpen ? "search-open" : ""}`}>
+      <section className="chat-panel">
         <div className="chat-log" ref={logRef} style={{ paddingLeft: chatSideSpace, paddingRight: chatSideSpace }}>
           {!authToken ? (
             <p className="chat-empty">로그인하면 응원톡에 참여할 수 있어요.</p>
@@ -419,13 +363,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
               }
 
               items.push(
-                <div
-                  key={m.message_id}
-                  ref={(el) => {
-                    if (el) msgRefs.current.set(m.message_id, el);
-                  }}
-                  className={`chat-msg ${m.is_mine ? "mine" : ""} ${matchIds.has(m.message_id) ? "match" : ""}`}
-                >
+                <div key={m.message_id} className={`chat-msg ${m.is_mine ? "mine" : ""}`}>
                   {!m.is_mine ? <span className="chat-nick">{m.nickname}</span> : null}
                   <div className="chat-row">
                     <span className="chat-bubble" style={bubbleStyle(m)}>
