@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { apiUrl } from "./api";
 import { loadAppSettings, saveAppSettings } from "./appSettings";
 import { disablePush, registerPush } from "./push";
@@ -95,6 +97,35 @@ function saveAuthSession(
   }
 }
 
+function readKakaoAuthSession(url = window.location.href): AuthSession | null {
+  let rawSession: string | null = null;
+
+  try {
+    const parsedUrl = new URL(url);
+    rawSession = parsedUrl.searchParams.get("kakao_session");
+
+    const hash = parsedUrl.hash.startsWith("#")
+      ? parsedUrl.hash.slice(1)
+      : parsedUrl.hash;
+    if (!rawSession && hash) {
+      rawSession = new URLSearchParams(hash).get("kakao_session");
+    }
+  } catch {
+    const hash = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    rawSession = hash ? new URLSearchParams(hash).get("kakao_session") : null;
+  }
+
+  if (!rawSession) return null;
+
+  const session = parseAuthSession(rawSession);
+  if (url === window.location.href) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+  return session?.isLoggedIn && session.authToken ? session : null;
+}
+
 function clearTamagotchiLocalState() {
   const prefixes = [
     "baseballCoachGender",
@@ -123,6 +154,43 @@ export function App() {
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
+
+  function applyKakaoSession(kakaoSession: AuthSession) {
+    setAuthToken(kakaoSession.authToken);
+    setFavTeamCode(kakaoSession.favTeamCode);
+    setNickname(kakaoSession.nickname);
+    setBuddyNickname(kakaoSession.buddyNickname);
+    setIsLoggedIn(true);
+    saveAuthSession(
+      kakaoSession.authToken,
+      kakaoSession.favTeamCode,
+      kakaoSession.nickname,
+      kakaoSession.buddyNickname,
+      true,
+    );
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  useEffect(() => {
+    const kakaoSession = readKakaoAuthSession();
+    if (!kakaoSession) return;
+    applyKakaoSession(kakaoSession);
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listener = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+      const kakaoSession = readKakaoAuthSession(url);
+      if (kakaoSession) {
+        applyKakaoSession(kakaoSession);
+      }
+    });
+
+    return () => {
+      void listener.then((handle) => handle.remove());
+    };
+  }, []);
 
   // 앱 시작 시 로컬 SQLite 초기화 (채팅이력·직관기록 저장소)
   useEffect(() => {
@@ -224,7 +292,14 @@ export function App() {
         body: JSON.stringify({ id_token: idToken }),
       });
       if (!response.ok) {
-        setLoginError("구글 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        const errorData = await response.json().catch(() => null);
+        const detail =
+          typeof errorData?.detail === "string" ? errorData.detail : "";
+        setLoginError(
+          detail
+            ? `구글 로그인 실패: ${detail}`
+            : `구글 로그인 실패 (서버 응답 ${response.status})`,
+        );
         return;
       }
 
@@ -240,9 +315,21 @@ export function App() {
       setIsLoggedIn(true);
       saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
       window.scrollTo({ top: 0, behavior: "auto" });
-    } catch {
-      setLoginError("구글 로그인 중 오류가 발생했습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLoginError(
+        message
+          ? `구글 로그인 중 오류: ${message}`
+          : "구글 로그인 중 오류가 발생했습니다.",
+      );
     }
+  }
+
+  function handleKakaoLogin() {
+    setLoginError("");
+    setLoginNotice("");
+    const source = Capacitor.isNativePlatform() ? "?from=app" : "";
+    window.location.href = apiUrl(`/auth/kakao/start${source}`);
   }
 
   async function handleRegister(
@@ -348,6 +435,7 @@ export function App() {
           notice={loginNotice}
           onLogin={handleLogin}
           onGoogleLogin={handleGoogleLogin}
+          onKakaoLogin={handleKakaoLogin}
           onShowRegister={() => {
             setLoginError("");
             setLoginNotice("");

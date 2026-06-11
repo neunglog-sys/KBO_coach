@@ -40,6 +40,15 @@ def run_notify(test: int = Query(default=0), x_internal_token: str = Header(defa
     return _run("notify_games.py", timeout=110, args=["--test"] if test else None)
 
 
+@router.post("/lineup")
+def run_lineup(date: str | None = Query(default=None), x_internal_token: str = Header(default="")):
+    """당일 선발 라인업 크롤 → Mongo kbo.lineups upsert.
+    Scheduler가 하루 3회(13:00/16:00/17:30 KST) 호출 — 주말 14·17시, 평일 18:30 경기를
+    각각 시작 ~1시간 전에 수집. upsert라 중복 호출 안전. date(YYYYMMDD) 지정 시 그 날짜."""
+    _auth(x_internal_token)
+    return _run("crawl_lineup.py", timeout=120, args=[date] if date else None)
+
+
 @router.post("/crawl")
 def run_crawl(date: str | None = Query(default=None), x_internal_token: str = Header(default="")):
     """데일리 크롤 파이프라인: 크롤 → 적재 → 프로필 → 대진표.

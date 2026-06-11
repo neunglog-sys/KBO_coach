@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 .stadium-page-entry {
   width: 100%;
 }
@@ -68,7 +76,9 @@
   margin: 0;
   text-align: center;
   font-size: 1.15rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-top-menu {
@@ -140,7 +150,9 @@
   color: #fff;
   background: #ff4545;
   font-size: 0.58rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.2;
 }
 
@@ -183,11 +195,20 @@
   min-width: 0;
   height: var(--search-control-height);
   margin: 0;
-  border: 1px solid #d7e5f2;
+  border: 1px solid rgba(132, 164, 196, 0.5);
   border-radius: 10px;
   padding: 0 7px;
-  background: rgba(255, 255, 255, 0.72);
-  transition: border-color 0.25s ease, background 0.25s ease;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 58%, #edf4fa 100%);
+  box-shadow:
+    0 3px 0 rgba(98, 134, 169, 0.2),
+    0 6px 10px rgba(33, 72, 110, 0.09),
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(102, 137, 170, 0.1);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -195,8 +216,13 @@
 .stadium-page-search label:focus-within {
   border-color: #176dff !important;
   outline: none !important;
-  box-shadow: none !important;
-  background: #fbfdff;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 54%, #e4efff 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 rgba(18, 91, 220, 0.22),
+    0 8px 12px rgba(18, 91, 220, 0.12),
+    0 0 0 3px rgba(18, 109, 255, 0.12),
+    inset 0 1px 0 #fff !important;
 }
 
 .stadium-page-search label svg {
@@ -245,31 +271,50 @@
   padding: 0;
   border-radius: 10px;
   font-size: 0.8rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   letter-spacing: 0;
   white-space: nowrap;
   word-break: keep-all;
   outline: none;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease, opacity 0.18s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.18s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
 .stadium-page-search button:active {
-  transform: scale(0.96);
+  transform: translateY(3px);
 }
 
 .stadium-page-search-button {
-  border: 1px solid transparent;
+  border: 1px solid rgba(7, 114, 66, 0.84);
   color: #fff;
-  background: #108d55;
+  background: linear-gradient(180deg, #31b873 0%, #108d55 58%, #087342 100%);
+  box-shadow:
+    0 4px 0 rgba(5, 101, 57, 0.28),
+    0 7px 12px rgba(7, 114, 66, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(0, 69, 38, 0.18);
+  text-shadow: 0 1px 1px rgba(0, 65, 37, 0.26);
 }
 
 .stadium-page-team-button {
-  border: 1px solid #d7e5f2;
+  border: 1px solid rgba(132, 164, 196, 0.5);
   color: #0a1732;
-  background: rgba(255, 255, 255, 0.72);
-  font-weight: 800;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 56%, #e8f1f9 100%);
+  box-shadow:
+    0 4px 0 rgba(98, 134, 169, 0.2),
+    0 7px 12px rgba(33, 72, 110, 0.1),
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(102, 137, 170, 0.1);
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 /* focus 시 검색 버튼은 트랙과 함께 사라지도록 처리 */
@@ -283,7 +328,7 @@
 .stadium-page-team-button:focus,
 .stadium-page-team-button:focus-visible {
   outline: none;
-  box-shadow: none;
+  filter: brightness(1.04);
 }
 
 /* 검색창 아래 팀 목록을 부드럽게 펼치기/접기 — 실제 콘텐츠 높이를 측정해 height/opacity/translateY 애니메이션 */
@@ -316,24 +361,57 @@
   border-radius: 18px;
   padding: 12px;
   background: var(--color-card, #fff);
-  box-shadow: 0 8px 22px rgba(39, 103, 158, 0.12);
+  box-shadow:
+    0 10px 0 rgba(86, 130, 171, 0.12),
+    0 16px 28px rgba(39, 103, 158, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
 .stadium-page-team-list button {
   min-height: 42px;
-  border: 1px solid #d7e5f2;
+  border: 1px solid rgba(132, 164, 196, 0.44);
   border-radius: 12px;
   color: #0a1732;
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 56%, #eaf2f9 100%);
+  box-shadow:
+    0 3px 0 rgba(98, 134, 169, 0.18),
+    0 6px 10px rgba(33, 72, 110, 0.08),
+    inset 0 1px 0 #fff;
   font-size: 0.84rem;
-  font-weight: 800;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.stadium-page-team-list button:hover {
+  border-color: rgba(23, 109, 255, 0.38);
+  background: linear-gradient(180deg, #ffffff 0%, #f1f7ff 54%, #e2efff 100%);
+  transform: translateY(-1px);
+}
+
+.stadium-page-team-list button:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 rgba(98, 134, 169, 0.16),
+    inset 0 2px 3px rgba(46, 82, 116, 0.1);
 }
 
 .stadium-page-team-list button.is-active {
-  border-color: #176dff;
+  border-color: #0e5fdc;
   color: #fff;
-  background: #176dff;
+  background: linear-gradient(180deg, #4b94ff 0%, #176dff 58%, #0b56cb 100%);
+  box-shadow:
+    0 4px 0 rgba(8, 72, 177, 0.28),
+    0 8px 13px rgba(18, 91, 220, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(0, 54, 153, 0.18);
+  text-shadow: 0 1px 1px rgba(0, 48, 140, 0.25);
 }
 
 .stadium-page-notice {
@@ -387,7 +465,9 @@
   color: #6b7280;
   background: transparent;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   letter-spacing: 0;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -422,7 +502,9 @@
 
 .stadium-page-tabs button.is-active span {
   color: #111827;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-tabs button:active {
@@ -448,7 +530,9 @@
   padding: 40px 20px;
   color: #65758a;
   background: rgba(255, 255, 255, 0.56);
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: center;
   box-shadow:
     0 6px 12px rgba(28, 37, 54, 0.06),
@@ -461,7 +545,9 @@
 .stadium-page-empty-copy {
   margin: 12px 0 0;
   color: #65758a;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-guide-card,
@@ -562,7 +648,9 @@
 .stadium-page-home-team {
   margin: 0 0 12px;
   font-size: 1rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-address {
@@ -571,7 +659,9 @@
   align-items: center;
   margin: 0;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.45;
 }
 
@@ -594,7 +684,9 @@
   padding-top: 16px;
   color: #3d4d63;
   font-size: 0.9rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.65;
   word-break: keep-all;
 }
@@ -644,7 +736,9 @@
   place-items: center;
   color: #65758a;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: center;
 }
 
@@ -686,7 +780,9 @@
   color: #24344b;
   background: #fff;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.4;
 }
 
@@ -706,10 +802,14 @@
 
 .stadium-page-food-heading small {
   flex: 0 0 auto;
+  margin-right: 10px;
   color: #7b8798;
   font-size: 0.66rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   white-space: nowrap;
+  transform: translateY(6px);
 }
 
 .stadium-page-food-card {
@@ -752,7 +852,9 @@
   margin: 3px 0 0;
   color: #4c5d73;
   font-size: 0.82rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.45;
 }
 
@@ -793,7 +895,9 @@
   padding-left: 12px;
   color: #35465c;
   font-size: 0.88rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.5;
 }
 
@@ -830,9 +934,6 @@
   background: var(--stadium-glass-bg-strong);
 }
 
-.stadium-page-search label,
-.stadium-page-team-button,
-.stadium-page-team-list button,
 .stadium-page-tips li {
   border-color: rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.68);
@@ -974,7 +1075,9 @@
   }
 
   .stadium-page-food-heading small {
+    margin-right: 8px;
     font-size: 0.58rem;
+    transform: translateY(5px);
   }
 
   .stadium-page-food-image {

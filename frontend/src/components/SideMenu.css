@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 메인화면을 제외한 화면 공용 — 헤더 三 버튼으로 여는 플로팅 사이드바 메뉴 */
 .side-menu-backdrop {
   position: fixed;
@@ -6,13 +14,21 @@
   background: rgba(4, 12, 32, 0.45);
   backdrop-filter: blur(2px);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.26s cubic-bezier(0.22, 0.8, 0.28, 1);
+  transition:
+    opacity 0.36s ease,
+    visibility 0s linear 0.4s;
+  will-change: opacity;
 }
 
 .side-menu-backdrop.is-open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0s;
 }
 
 .side-menu-panel {
@@ -33,14 +49,26 @@
   border-radius: 28px 0 0 28px;
   background: var(--color-card, #fff);
   box-shadow: -16px 0 48px rgba(20, 93, 150, 0.22);
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.22, 0.8, 0.28, 1);
+  opacity: 0.96;
+  visibility: hidden;
+  transform: translate3d(104%, 0, 0);
+  transition:
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.34s ease,
+    visibility 0s linear 0.46s;
   pointer-events: none;
+  will-change: transform, opacity;
 }
 
 .side-menu-panel.is-open {
-  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, 0, 0);
   pointer-events: auto;
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease,
+    visibility 0s linear 0s;
 }
 
 .side-menu-close {
@@ -80,8 +108,71 @@
   color: var(--color-text, #0f172a);
   background: var(--color-sub-card, #f5faff);
   font-size: 1.05rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: left;
+  opacity: 0;
+  transform: translateX(18px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.side-menu-item:nth-child(1) {
+  transition-delay: 0.15s;
+}
+
+.side-menu-item:nth-child(2) {
+  transition-delay: 0.12s;
+}
+
+.side-menu-item:nth-child(3) {
+  transition-delay: 0.09s;
+}
+
+.side-menu-item:nth-child(4) {
+  transition-delay: 0.06s;
+}
+
+.side-menu-item:nth-child(5) {
+  transition-delay: 0.03s;
+}
+
+.side-menu-item:nth-child(6) {
+  transition-delay: 0s;
+}
+
+.side-menu-panel.is-open .side-menu-item {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(1) {
+  transition-delay: 0.06s;
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(2) {
+  transition-delay: 0.09s;
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(3) {
+  transition-delay: 0.12s;
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(4) {
+  transition-delay: 0.15s;
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(5) {
+  transition-delay: 0.18s;
+}
+
+.side-menu-panel.is-open .side-menu-item:nth-child(6) {
+  transition-delay: 0.21s;
 }
 
 .side-menu-item svg {
@@ -105,7 +196,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .side-menu-backdrop,
-  .side-menu-panel {
+  .side-menu-panel,
+  .side-menu-item {
     transition: none;
+  }
+
+  .side-menu-item {
+    opacity: 1;
+    transform: none;
   }
 }

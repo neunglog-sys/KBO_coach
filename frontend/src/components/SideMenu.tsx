@@ -18,7 +18,7 @@ const SIDE_MENU_ITEMS: ReadonlyArray<{
   { target: "home", icon: Home, label: "메인화면" },
   { target: "chat", icon: MessageCircle, label: "채팅방" },
   { target: "record", icon: NotebookPen, label: "나만의 기록" },
-  { target: "tamagotchi", icon: PawPrint, label: "다마고치" },
+  { target: "tamagotchi", icon: PawPrint, label: "야구짝꿍" },
   { target: "stadium", icon: MapPin, label: "구장정보" },
   { target: "settings", icon: Settings, label: "설정" },
 ];

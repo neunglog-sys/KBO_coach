@@ -478,6 +478,7 @@ export default function SettingsView({
                   onChange={(event) => setNicknameInput(event.target.value)}
                 />
                 <button
+                  className="settings-blue-action-button"
                   type="submit"
                   disabled={isSubmitting || nicknameInput.trim() === (nickname?.trim() || "")}
                 >
@@ -544,7 +545,7 @@ export default function SettingsView({
                 required
               />
             </label>
-            <button className="settings-primary-button" type="submit" disabled={isSubmitting}>
+            <button className="settings-primary-button settings-blue-action-button" type="submit" disabled={isSubmitting}>
               변경하기
             </button>
             {notice ? <p className="settings-notice">{notice}</p> : null}
@@ -572,7 +573,7 @@ export default function SettingsView({
                 </label>
               ))}
             </fieldset>
-            <button className="settings-primary-button" type="submit">
+            <button className="settings-primary-button settings-blue-action-button" type="submit">
               변경하기
             </button>
             {notice ? <p className="settings-notice">{notice}</p> : null}
@@ -640,7 +641,7 @@ export default function SettingsView({
                   </button>
                   <button
                     type="button"
-                    className="settings-primary-button is-danger"
+                    className="settings-primary-button settings-blue-action-button settings-delete-confirm-button is-danger"
                     disabled={isSubmitting || deleteConfirmText.trim() !== "탈퇴"}
                     onClick={() => void handleDeleteAccountConfirm()}
                   >
