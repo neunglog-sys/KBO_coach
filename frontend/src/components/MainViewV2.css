@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 .stage-view {
   position: fixed;
   inset: 0;
@@ -151,8 +159,10 @@
 .stage-nav-label {
   width: 100%;
   color: #0f172a;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-size: 0.7rem;
-  font-weight: 900;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.15;
   letter-spacing: 0;
   text-align: center;
@@ -315,8 +325,10 @@
   padding: 11px 14px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 18px;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.45;
   letter-spacing: 0;
   word-break: keep-all;
@@ -364,8 +376,10 @@
   outline: none;
   color: #1f2937;
   background: transparent;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stage-inputbar input::placeholder {
@@ -377,7 +391,9 @@
 .stage-send {
   min-height: 46px;
   border: 0;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stage-stop {
