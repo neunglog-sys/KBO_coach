@@ -386,45 +386,6 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
   box-shadow: none;
 }
 
-.streak-card .streak-goalbtn {
-  border-color: rgba(255, 255, 255, 0.72);
-  color: #fff;
-  background: linear-gradient(
-    180deg,
-    var(--streak-c1, #55a0ff) 0%,
-    var(--streak-c0, var(--color-primary)) 54%,
-    var(--streak-c0, var(--color-primary)) 100%
-  );
-  box-shadow:
-    0 6px 12px rgba(28, 37, 54, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.52),
-    inset 0 -7px 12px rgba(255, 255, 255, 0.1);
-}
-
-.streak-card .goal-editor :is(input, .goal-save, .goal-cancel) {
-  width: 78px;
-  min-height: 42px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 5px 10px rgba(28, 37, 54, 0.08);
-}
-
-.streak-card .goal-editor :is(.goal-save, .goal-cancel) {
-  border-radius: 18px;
-}
-
-.streak-card .goal-editor .goal-save {
-  color: #fff;
-  background: var(--streak-c0, var(--color-primary));
-}
-
-.streak-card .goal-editor .goal-cancel {
-  color: #1c2536;
-}
-
 /* Destructive actions */
 :is(.settings-primary-button.is-danger:not(.settings-delete-confirm-button), .rec-delete) {
   border: 1px solid rgba(239, 68, 68, 0.22);
@@ -778,6 +739,24 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
 .tamagotchi-action.is-quiz {
   border-color: rgba(34, 197, 94, 0.42);
 }
+
+/* ===== 다마고치 대시보드 글래스모피즘 (캐릭터 박스 tamagotchi-field-card 제외) =====
+   .tamagotchi-dashboard 접두로 특이도를 높여 styles.css/위 규칙들을 확실히 덮음 */
+.tamagotchi-dashboard :is(.tamagotchi-status-card, .tamagotchi-streak-card, .tamagotchi-quiz-section, .tamagotchi-action) {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.42);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: 0 8px 24px rgba(31, 71, 136, 0.12);
+}
+
+/* 다크모드: 어두운 유리 */
+html.theme-dark .tamagotchi-dashboard :is(.tamagotchi-status-card, .tamagotchi-streak-card, .tamagotchi-quiz-section, .tamagotchi-action) {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
 
 .tamagotchi-speech-bubble {
   border-color: var(--color-text);

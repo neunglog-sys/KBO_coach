@@ -171,7 +171,8 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             lineHeight: 1,
           }}
         >
-          ✕
+          {/* ✕ 글리프가 폰트 박스 안에서 좌상단으로 ~0.7px 치우쳐 있어 미세 보정 (스크린샷 픽셀 측정값) */}
+          <span style={{ display: "block", transform: "translate(0.7px, 0.4px)" }}>✕</span>
         </button>
 
         {/* 제목 (반투명 칩 배경, 모자~글자 전체가 시각적 정가운데) */}
@@ -192,7 +193,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             textShadow: "0 1px 3px rgba(0,0,0,0.9)",
             background: "rgba(0,0,0,0.72)",
             backdropFilter: "blur(4px)",
-            padding: "10px 13px 8px 11px", // 스크린샷 픽셀 측정으로 보정 완료 — 내용물 정가운데 (±0.3px)
+            padding: "10px 17.5px 8px 9.5px", // 기하학적 정가운데(13/11)에서 1.5px 왼쪽 이동 — '룸' 글자가 우측을 꽉 채우는 착시 보정 (사장님 피드백)
             borderRadius: 999,
             border: "1px solid rgba(255,255,255,0.35)",
             zIndex: 5,
