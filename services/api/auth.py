@@ -35,6 +35,7 @@ KAKAO_LOCAL_REDIRECT_URI = os.environ.get(
 )
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "https://kboai-5dea0.web.app")
 LOCAL_FRONTEND_ORIGIN = os.environ.get("LOCAL_FRONTEND_ORIGIN", "http://127.0.0.1:5000")
+KAKAO_APP_REDIRECT_URI = os.environ.get("KAKAO_APP_REDIRECT_URI", "gongbok://oauth")
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -93,7 +94,7 @@ def frontend_origin_for(request: Request) -> str:
     return LOCAL_FRONTEND_ORIGIN if is_local_request(request) else FRONTEND_ORIGIN
 
 
-def kakao_finish_page(payload: dict, request: Request) -> HTMLResponse:
+def kakao_finish_page(payload: dict, request: Request, state: str | None = None) -> HTMLResponse | RedirectResponse:
     session = {
         "isLoggedIn": True,
         "authToken": payload["token"],
@@ -102,6 +103,12 @@ def kakao_finish_page(payload: dict, request: Request) -> HTMLResponse:
         "buddyNickname": payload["user"].get("buddy_nickname") or "",
     }
     fragment = urlencode({"kakao_session": json.dumps(session, ensure_ascii=False)})
+    if state == "app":
+        return RedirectResponse(
+            KAKAO_APP_REDIRECT_URI.rstrip("?") + "?" + fragment,
+            status_code=302,
+        )
+
     next_url = json.dumps(frontend_origin_for(request).rstrip("/") + "/#" + fragment, ensure_ascii=False)
     return HTMLResponse(f"""<!doctype html>
 <html lang="ko">
@@ -251,7 +258,7 @@ def google_login(body: GoogleLoginIn):
 
 
 @router.get("/kakao/start")
-def kakao_start(request: Request):
+def kakao_start(request: Request, from_source: str | None = Query(default=None, alias="from")):
     """Redirect the user to Kakao's OAuth authorization page."""
     if not KAKAO_REST_KEY:
         raise HTTPException(status_code=500, detail="서버에 KAKAO_REST_KEY 미설정")
@@ -261,6 +268,9 @@ def kakao_start(request: Request):
         "client_id": KAKAO_REST_KEY,
         "redirect_uri": kakao_redirect_uri_for(request),
     }
+    if from_source == "app":
+        params["state"] = "app"
+        params["prompt"] = "login"
     return RedirectResponse(
         "https://kauth.kakao.com/oauth/authorize?" + urlencode(params),
         status_code=302,
@@ -268,7 +278,12 @@ def kakao_start(request: Request):
 
 
 @router.get("/kakao/callback")
-def kakao_callback(request: Request, code: str | None = Query(default=None), error: str | None = Query(default=None)):
+def kakao_callback(
+    request: Request,
+    code: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+):
     """Exchange Kakao OAuth code, create/login the user, then return to the app."""
     if error:
         return HTMLResponse(
@@ -357,7 +372,7 @@ def kakao_callback(request: Request, code: str | None = Query(default=None), err
                     (email, nickname, kakao_id),
                 )
                 user = cur.fetchone()
-        return kakao_finish_page(social_login_response(user), request)
+        return kakao_finish_page(social_login_response(user), request, state)
     finally:
         conn.close()
 
