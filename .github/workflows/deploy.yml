@@ -44,6 +44,7 @@ jobs:
           MONGO_DB: "kbo"
           DATABASE_URL: "${{ secrets.DATABASE_URL }}"
           JWT_SECRET: "${{ secrets.JWT_SECRET }}"
+          GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_ID }}"
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
           GOOGLE_GENAI_USE_VERTEXAI: "true"
           GOOGLE_CLOUD_PROJECT: "kboai-5dea0"
@@ -92,6 +93,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: |
           npm ci
           npm run build
