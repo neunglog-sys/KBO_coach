@@ -15,10 +15,25 @@ const DEMO_AUTH = {
 
 const AUTH_SESSION_KEY = "baseballCoachAuth";
 
-function loadAuthSession() {
-  const saved = sessionStorage.getItem(AUTH_SESSION_KEY);
+type AuthSession = {
+  isLoggedIn: boolean;
+  authToken: string;
+  favTeamCode: string;
+  nickname: string;
+  buddyNickname: string;
+};
+
+const EMPTY_AUTH_SESSION: AuthSession = {
+  isLoggedIn: false,
+  authToken: "",
+  favTeamCode: "",
+  nickname: "",
+  buddyNickname: "",
+};
+
+function parseAuthSession(saved: string | null): AuthSession | null {
   if (!saved) {
-    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
+    return null;
   }
 
   try {
@@ -37,9 +52,31 @@ function loadAuthSession() {
       buddyNickname: parsed.buddyNickname || "",
     };
   } catch {
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
-    return { isLoggedIn: false, authToken: "", favTeamCode: "", nickname: "", buddyNickname: "" };
+    return null;
   }
+}
+
+function loadAuthSession() {
+  const savedLocal = localStorage.getItem(AUTH_SESSION_KEY);
+  const localSession = parseAuthSession(savedLocal);
+  if (localSession) {
+    sessionStorage.setItem(AUTH_SESSION_KEY, savedLocal || "");
+    return localSession;
+  }
+  if (savedLocal) {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+  }
+
+  const savedSession = sessionStorage.getItem(AUTH_SESSION_KEY);
+  const session = parseAuthSession(savedSession);
+  if (session) {
+    return session;
+  }
+  if (savedSession) {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  }
+
+  return EMPTY_AUTH_SESSION;
 }
 
 function saveAuthSession(
@@ -47,11 +84,15 @@ function saveAuthSession(
   favTeamCode: string,
   nickname: string,
   buddyNickname = "",
+  remember = localStorage.getItem(AUTH_SESSION_KEY) != null,
 ) {
-  sessionStorage.setItem(
-    AUTH_SESSION_KEY,
-    JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname, buddyNickname }),
-  );
+  const value = JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname, buddyNickname });
+  sessionStorage.setItem(AUTH_SESSION_KEY, value);
+  if (remember) {
+    localStorage.setItem(AUTH_SESSION_KEY, value);
+  } else {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+  }
 }
 
 function clearTamagotchiLocalState() {
@@ -103,7 +144,7 @@ export function App() {
     }
   }, [isLoggedIn, authToken, appSettings.notificationEnabled]);
 
-  async function handleLogin(id: string, password: string) {
+  async function handleLogin(id: string, password: string, remember = false) {
     setLoginError("");
     setLoginNotice("");
 
@@ -125,7 +166,7 @@ export function App() {
         setNickname(userNickname);
         setBuddyNickname(userBuddyNickname);
         setIsLoggedIn(true);
-        saveAuthSession(token, teamCode, userNickname, userBuddyNickname);
+        saveAuthSession(token, teamCode, userNickname, userBuddyNickname, remember);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
@@ -139,7 +180,7 @@ export function App() {
       setNickname("야구팬");
       setBuddyNickname("");
       setIsLoggedIn(true);
-      saveAuthSession("", "", "야구팬");
+      saveAuthSession("", "", "야구팬", "", remember);
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
