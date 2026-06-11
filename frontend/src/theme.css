@@ -220,7 +220,7 @@ html.theme-dark :is(
 /* Primary buttons */
 :is(
   .login-panel button:not(.text-button),
-  .settings-primary-button:not(.is-danger),
+  .settings-primary-button:not(.is-danger):not(.settings-blue-action-button),
   .stadium-page-search-button,
   .tamagotchi-setup-submit,
   .quiz-next-btn,
@@ -239,7 +239,7 @@ html.theme-dark :is(
 
 :is(
   .login-panel button:not(.text-button),
-  .settings-primary-button:not(.is-danger),
+  .settings-primary-button:not(.is-danger):not(.settings-blue-action-button),
   .stadium-page-search-button,
   .tamagotchi-setup-submit,
   .quiz-next-btn,
@@ -426,7 +426,7 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
 }
 
 /* Destructive actions */
-:is(.settings-primary-button.is-danger, .rec-delete) {
+:is(.settings-primary-button.is-danger:not(.settings-delete-confirm-button), .rec-delete) {
   border: 1px solid rgba(239, 68, 68, 0.22);
   border-radius: var(--radius-control);
   color: #ffffff;
