@@ -3,7 +3,7 @@ import { FormEvent, useState } from "react";
 interface LoginViewProps {
   error: string;
   notice: string;
-  onLogin: (id: string, password: string) => Promise<void>;
+  onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
   onShowRegister: () => void;
 }
 
@@ -20,6 +20,7 @@ function EyeIcon({ off }: { off: boolean }) {
 export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [socialNotice, setSocialNotice] = useState("");
@@ -29,7 +30,7 @@ export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewP
     setIsSubmitting(true);
 
     try {
-      await onLogin(id.trim(), password);
+      await onLogin(id.trim(), password, rememberLogin);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,6 +88,15 @@ export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewP
         <p className="notice-text" aria-live="polite">
           {notice}
         </p>
+
+        <label className="auth-remember">
+          <input
+            type="checkbox"
+            checked={rememberLogin}
+            onChange={(event) => setRememberLogin(event.target.checked)}
+          />
+          <span>자동 로그인</span>
+        </label>
 
         <button type="submit" className="auth-login-submit" disabled={isSubmitting}>
           {isSubmitting ? "확인 중" : "LOGIN"}

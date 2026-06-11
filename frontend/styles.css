@@ -397,6 +397,26 @@ select:focus {
   border-bottom-color: #2f8aff;
 }
 
+.auth-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 8px;
+  color: #42526b;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-remember input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #2f8aff;
+  cursor: pointer;
+}
+
 .auth-login-submit {
   width: 100%;
   min-height: 52px;
