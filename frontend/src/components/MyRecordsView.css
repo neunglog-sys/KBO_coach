@@ -200,7 +200,7 @@
 }
 
 .goal-editor input {
-  width: 84px;
+  width: 78px;
   min-height: 42px;
   padding: 0 10px;
   border: 1px solid rgba(255, 255, 255, 0.58);
@@ -228,11 +228,11 @@
 
 .goal-save,
 .goal-cancel {
-  width: 84px;
+  width: 78px;
   min-height: 42px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 12px;
+  border-radius: 18px;
   font-weight: 800;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
@@ -240,8 +240,8 @@
 }
 
 .goal-save {
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--streak-c0, #7c3aed);
+  background: var(--streak-c0, #FC4E00);
+  color: #fff;
 }
 
 .goal-cancel {
