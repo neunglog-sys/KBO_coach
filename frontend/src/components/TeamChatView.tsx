@@ -325,8 +325,13 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   }
 
   const rawHeaderColor = teamObj?.color ?? "#444";
-  const headerColor = saturateHex(rawHeaderColor, 1.45);
-  const bubbleBaseColor = team === "OB" ? saturateHex("#7AB6E8", 1.55) : headerColor;
+
+  const lotteHeaderColor = saturateHex("#7AB6E8", 1.35);
+  const lotteBubbleColor = saturateHex("#C8102E", 1.25);
+
+  const headerColor = team === "LT" ? lotteHeaderColor : saturateHex(rawHeaderColor, 1.45);
+  const bubbleBaseColor = team === "LT" ? lotteBubbleColor : headerColor;
+  const inputAccentColor = team === "LT" ? lotteHeaderColor : bubbleBaseColor;
   const headerGradientStart = mixWithWhite(headerColor, 0.18);
 
   function bubbleStyle(m: BoardMessage): React.CSSProperties {
@@ -464,7 +469,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         ref={inputBarRef}
         className="chat-inputbar"
         style={{
-          borderTop: `1px solid ${mixWithWhite(bubbleBaseColor, 0.5)}`,
+          borderTop: `1px solid ${inputAccentColor}`,
           background: "#fff",
         }}
         onSubmit={(e) => {
@@ -480,7 +485,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           disabled={!authToken || !team}
           aria-label="메시지 입력"
           style={{
-            background: mixWithWhite(bubbleBaseColor, 0.78),
+            background: mixWithWhite(inputAccentColor, 0.72),
           }}
         />
         <button
@@ -488,7 +493,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
           className="chat-send"
           disabled={!authToken || !team || !input.trim()}
           style={{
-            background: bubbleBaseColor,
+            background: inputAccentColor,
             color: "#fff",
           }}
         >
