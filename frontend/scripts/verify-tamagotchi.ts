@@ -119,5 +119,13 @@ assert.equal(
   ),
   "qwer, 네가 있어서 더 열심히 할 수 있어!",
 );
+assert.equal(
+  replaceSpeechAddressee("안녕 zzz! 오늘도 왔구나!", "니크네임", "zzz"),
+  "안녕 니크네임! 오늘도 왔구나!",
+);
+assert.equal(
+  replaceSpeechAddressee("기다리고 있었어, zzz!", "니크네임", "zzz"),
+  "기다리고 있었어, 니크네임!",
+);
 
 console.log("PASS 다마고치 신규값, 일일 응원, 패널티, 상태 유지, 상하한");

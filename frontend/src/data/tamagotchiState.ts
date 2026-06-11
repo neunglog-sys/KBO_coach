@@ -95,8 +95,8 @@ export function replaceSpeechAddressee(
   const previous = previousNickname?.trim();
   const trimmed = speechText.trim();
 
-  if (previous && previous !== nextNickname && trimmed.startsWith(`${previous},`)) {
-    return `${nextNickname}${trimmed.slice(previous.length)}`;
+  if (previous && previous !== nextNickname && speechText.includes(previous)) {
+    return speechText.split(previous).join(nextNickname);
   }
 
   if (nextNickname !== "야구팬" && trimmed.startsWith("야구팬,")) {

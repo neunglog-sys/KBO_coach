@@ -541,18 +541,36 @@
 
 .settings-form-card input {
   min-height: 68px;
-  border: 1px solid rgba(18, 109, 255, 0.14);
+  border: 1px solid rgba(132, 164, 196, 0.48);
   border-radius: 18px;
   padding: 0 22px;
   color: #101a36;
-  background: #fff;
-  box-shadow: 0 8px 18px rgba(18, 109, 255, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 56%, #edf4fa 100%);
+  box-shadow:
+    0 5px 0 rgba(98, 134, 169, 0.2),
+    0 10px 18px rgba(33, 72, 110, 0.1),
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 rgba(102, 137, 170, 0.08);
   font-size: 1.08rem;
+  caret-color: #126dff;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .settings-form-card input:focus {
   border-color: #126dff;
-  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.16);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 52%, #e6f0ff 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 0 rgba(18, 91, 220, 0.22),
+    0 12px 20px rgba(18, 91, 220, 0.14),
+    0 0 0 4px rgba(18, 109, 255, 0.12),
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 rgba(18, 91, 220, 0.08);
 }
 
 .settings-primary-button {
@@ -782,6 +800,7 @@
 
 .settings-team-card fieldset {
   display: grid;
+  gap: 10px;
   margin: 0;
   border: 0;
   padding: 0;
@@ -792,18 +811,60 @@
   grid-template-columns: 48px minmax(0, 1fr);
   gap: 22px;
   align-items: center;
-  min-height: 72px;
+  box-sizing: border-box;
+  min-height: 68px;
   margin: 0;
-  border-bottom: 1px solid rgba(18, 109, 255, 0.12);
+  border: 1px solid rgba(137, 170, 204, 0.38);
+  border-radius: 18px;
+  padding: 0 18px;
   color: #101a36;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 58%, #edf5fc 100%);
+  box-shadow:
+    0 5px 0 rgba(106, 143, 178, 0.18),
+    0 9px 16px rgba(33, 79, 121, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -2px 0 rgba(115, 153, 188, 0.08);
   font-size: 1.34rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-weight: 600;
   font-synthesis: none;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
 }
 
-.settings-radio-row:last-child {
-  border-bottom: 0;
+.settings-radio-row:hover {
+  border-color: rgba(18, 109, 255, 0.32);
+  background: linear-gradient(180deg, #ffffff 0%, #f3f9ff 52%, #e6f2ff 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 0 rgba(73, 130, 187, 0.19),
+    0 11px 18px rgba(33, 79, 121, 0.12),
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 rgba(68, 123, 177, 0.08);
+}
+
+.settings-radio-row:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 1px 0 rgba(73, 130, 187, 0.16),
+    0 4px 8px rgba(33, 79, 121, 0.08),
+    inset 0 2px 4px rgba(60, 99, 136, 0.1);
+}
+
+.settings-radio-row:has(input:checked) {
+  border-color: rgba(18, 109, 255, 0.72);
+  color: #0b55c9;
+  background: linear-gradient(180deg, #f7fbff 0%, #e7f2ff 54%, #d9eaff 100%);
+  box-shadow:
+    0 6px 0 rgba(18, 91, 220, 0.24),
+    0 12px 20px rgba(18, 91, 220, 0.14),
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 rgba(18, 91, 220, 0.08);
 }
 
 .settings-radio-row input {
@@ -817,12 +878,23 @@
   display: block;
   width: 32px;
   height: 32px;
-  border: 3px solid #9aa3b2;
+  border: 3px solid #9aa8b8;
   border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #edf3f8 100%);
+  box-shadow:
+    0 3px 5px rgba(50, 76, 103, 0.18),
+    inset 0 1px 1px #fff,
+    inset 0 -2px 3px rgba(91, 117, 143, 0.12);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
 .settings-radio-row input:checked+span {
   border-color: #126dff;
+  background: linear-gradient(180deg, #ffffff 0%, #e7f1ff 100%);
+  box-shadow:
+    0 3px 6px rgba(18, 91, 220, 0.24),
+    0 0 0 3px rgba(18, 109, 255, 0.1),
+    inset 0 1px 1px #fff;
 }
 
 .settings-radio-row input:checked+span::after {
@@ -830,7 +902,10 @@
   position: absolute;
   inset: 5px;
   border-radius: inherit;
-  background: #126dff;
+  background: linear-gradient(180deg, #4d9aff 0%, #126dff 62%, #0758d2 100%);
+  box-shadow:
+    0 2px 3px rgba(0, 64, 170, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }
 
 .settings-radio-row input:focus-visible+span {
@@ -1089,6 +1164,8 @@
     grid-template-columns: 38px minmax(0, 1fr);
     gap: 14px;
     min-height: 62px;
+    border-radius: 16px;
+    padding: 0 14px;
     font-size: 1.08rem;
   }
 
@@ -1159,25 +1236,40 @@
   max-width: 100%;
   min-width: 0;
   height: var(--nickname-control-height);
-  border: 1px solid #d7e5f2;
-  border-radius: 10px;
+  border: 1px solid rgba(132, 164, 196, 0.5);
+  border-radius: 11px;
   padding: 0 14px;
   color: #101a36;
-  background: rgba(255, 255, 255, 0.82);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 58%, #edf4fa 100%);
+  box-shadow:
+    0 3px 0 rgba(98, 134, 169, 0.2),
+    0 6px 10px rgba(33, 72, 110, 0.09),
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(102, 137, 170, 0.1);
   font-size: 0.92rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-weight: 600;
   font-synthesis: none;
   line-height: 40px;
   caret-color: #126dff;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .settings-nickname-fields input:focus,
 .settings-nickname-fields input:focus-visible {
   border-color: #176dff;
-  outline: none;
-  outline-offset: 0;
-  box-shadow: inset 0 0 0 1px #176dff;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 54%, #e4efff 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 rgba(18, 91, 220, 0.22),
+    0 8px 12px rgba(18, 91, 220, 0.12),
+    0 0 0 3px rgba(18, 109, 255, 0.12),
+    inset 0 1px 0 #fff;
 }
 
 .settings-nickname-fields button {
