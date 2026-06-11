@@ -10,7 +10,7 @@ export function StadiumFoodTab({ stadium }: { stadium: Stadium }) {
           <Utensils aria-hidden="true" />
           {stadium.stadiumName} 먹거리
         </h3>
-        <small>아래 이미지는 AI 이미지입니다.</small>
+        <small>아래 이미지는 생성된 AI 이미지입니다.</small>
       </div>
       <div className="stadium-page-food-list">
         {stadium.foods.length ? stadium.foods.map((food) => (

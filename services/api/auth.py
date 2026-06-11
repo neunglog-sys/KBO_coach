@@ -3,6 +3,7 @@
 import os
 import html
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -35,6 +36,7 @@ KAKAO_LOCAL_REDIRECT_URI = os.environ.get(
 )
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "https://kboai-5dea0.web.app")
 LOCAL_FRONTEND_ORIGIN = os.environ.get("LOCAL_FRONTEND_ORIGIN", "http://127.0.0.1:5000")
+logger = logging.getLogger(__name__)
 KAKAO_APP_REDIRECT_URI = os.environ.get("KAKAO_APP_REDIRECT_URI", "gongbok://oauth")
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -224,7 +226,12 @@ def google_login(body: GoogleLoginIn):
     try:
         info = google_id_token.verify_oauth2_token(
             body.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
-    except ValueError:
+    except ValueError as exc:
+        logger.warning(
+            "Google ID token verification failed for client_id=%s: %s",
+            GOOGLE_CLIENT_ID,
+            exc,
+        )
         raise HTTPException(status_code=401, detail="유효하지 않은 구글 토큰")
 
     email = info.get("email")
