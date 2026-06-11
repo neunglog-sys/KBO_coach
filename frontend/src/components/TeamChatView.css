@@ -272,6 +272,7 @@
   font-size: 0.82rem;
   line-height: 1.45;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
+  white-space: pre-line;
 }
 
 /* 메시지 로그 */
