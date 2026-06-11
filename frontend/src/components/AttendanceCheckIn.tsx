@@ -23,7 +23,10 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import { type TopMenuTarget } from "./TopMenu";
+import { AppBackButton } from "./AppBackButton";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
@@ -81,6 +84,13 @@ const FALLBACK_CHARACTER_SRC = "/img/character.png";
 //   false = 패널 숨김, 실제 레벨·응원팀으로 동작 → 발표·배포용
 //   git에 올릴 땐 false 권장. 테스트할 때만 true 로 바꾸세요.
 const SHOW_TEST_PANEL = true;
+
+// 설정 화면 안내문/라벨 들여쓰기 (px) — 성별 카드 시작선에 맞춤, 숫자로 조절
+const SETUP_TEXT_INDENT_PX = 12;
+
+// 다마고치 전체 폰트 (Pretendard) — index.css 에 Pretendard @import 필요 (적용 안내 참고)
+const TAMAGOTCHI_FONT =
+  '"Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif';
 
 // =====================================================================
 // 말풍선 위치: [카드 상단 ~ 캐릭터 머리] 공백을 위아래 똑같이 나누는 자리
@@ -403,6 +413,9 @@ export default function AttendanceCheckIn({
 
   // 꾸미기(라커룸) 오버레이 열림 여부
   const [showLocker, setShowLocker] = useState(false);
+
+  // ☰ 사이드 메뉴 열림 여부 (상단 탭바 → 뒤로가기/제목/☰ 헤더 교체로 추가)
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -922,11 +935,14 @@ export default function AttendanceCheckIn({
   // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
   if (!gender || !buddyNickname.trim()) {
     return (
-      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정">
+      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정" style={{ fontFamily: TAMAGOTCHI_FONT }}>
         <div className="tamagotchi-setup-card">
           <p className="eyebrow">Start</p>
           <h2>야구짝꿍을 설정해주세요</h2>
-          <p className="attendance-message">
+          <p
+            className="attendance-message"
+            style={{ fontSize: 13, textAlign: "center" }}
+          >
             함께 성장할 야구짝꿍의 성별과 닉네임을 정해주세요.
           </p>
           <div className="tamagotchi-gender-options" role="group" aria-label="성별 선택">
@@ -958,7 +974,7 @@ export default function AttendanceCheckIn({
             </button>
           </div>
           <label className="tamagotchi-nickname-field">
-            <span>야구짝꿍 닉네임</span>
+            <span style={{ paddingLeft: SETUP_TEXT_INDENT_PX }}>야구짝꿍 닉네임</span>
             <input
               type="text"
               value={buddyNicknameInput}
@@ -985,11 +1001,23 @@ export default function AttendanceCheckIn({
   }
 
   return (
-    <section className="tamagotchi-dashboard" aria-label="야구짝꿍">
-      <TopMenu
+    <section className="tamagotchi-dashboard" aria-label="야구짝꿍" style={{ fontFamily: TAMAGOTCHI_FONT }}>
+      {/* 상단 헤더: 구장정보 페이지와 동일 구성 (뒤로가기 / 제목 / ☰) — 탭바(TopMenu) 대체 */}
+      {/* 스타일: styles.css의 .tamagotchi-app-header (dashboard padding 상쇄 음수 마진 + grid 배치 포함) */}
+      <header className="tamagotchi-app-header">
+        <AppBackButton onClick={() => onRequestClose?.()} />
+        <h2>야구짝꿍</h2>
+        <MenuButton onClick={() => setSideMenuOpen(true)} />
+      </header>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
         active="tamagotchi"
-        className="tamagotchi-nav"
-        onNavigate={(target) => onNavigate?.(target)}
+        onNavigate={(target) => {
+          if (target === "tamagotchi") return; // 현재 화면이면 이동 안 함 (StadiumPage와 동일 패턴)
+          onNavigate?.(target);
+        }}
+        onClose={() => setSideMenuOpen(false)}
       />
 
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
@@ -1056,6 +1084,7 @@ export default function AttendanceCheckIn({
           alt="야구짝꿍 캐릭터"
           onLoad={refreshCharacterLayout}
           onError={() => setImgFailed(true)}
+          style={{ filter: "none" }} // 캐릭터 그림자 제거
         />
       </section>
 

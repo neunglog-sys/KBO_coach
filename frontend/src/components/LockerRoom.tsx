@@ -123,6 +123,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
       aria-label="꾸미기 라커룸"
       onClick={onClose}
       style={{
+        fontFamily: '"Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif',
         position: "fixed",
         inset: 0,
         background: "rgba(0,0,0,0.88)",
@@ -153,7 +154,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
           aria-label="닫기"
           style={{
             position: "absolute",
-            top: 12,
+            top: 14, // 제목 칩(높이 38px, 중심 31px)과 세로 중심 일치 — 12였을 때 2px 위로 떴음
             right: 12,
             border: "none",
             background: "rgba(255,255,255,0.85)",
@@ -163,29 +164,42 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             cursor: "pointer",
             fontSize: 16,
             zIndex: 5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            lineHeight: 1,
           }}
         >
           ✕
         </button>
 
-        {/* 제목 (반투명 칩 배경으로 어떤 배경에서도 잘 보이게) */}
+        {/* 제목 (반투명 칩 배경, 모자~글자 전체가 시각적 정가운데) */}
+        {/* 이모지 글리프의 보이지 않는 좌측 여백을 paddingLeft 축소로 상쇄 — 쏠려 보이면 paddingLeft 숫자 조절 */}
         <div
           style={{
             position: "absolute",
             top: 12,
             left: 14,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 7,
+            lineHeight: 1,
             color: "#fff",
             fontWeight: 800,
-            fontSize: 17,
-            textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-            background: "rgba(0,0,0,0.55)",
-            padding: "6px 14px",
+            fontSize: 18,
+            textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+            background: "rgba(0,0,0,0.72)",
+            backdropFilter: "blur(4px)",
+            padding: "10px 13px 8px 11px", // 스크린샷 픽셀 측정으로 보정 완료 — 내용물 정가운데 (±0.3px)
             borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.25)",
+            border: "1px solid rgba(255,255,255,0.35)",
             zIndex: 5,
           }}
         >
-          🧢 꾸미기 - 라커룸
+          <span style={{ fontSize: 16, lineHeight: 1 }}>🧢</span>
+          <span>꾸미기 - 라커룸</span>
         </div>
 
         {/* 배경 + 캐릭터 영역: 배경은 cover로 영역 전체를 채움 (넓은 배경이라 옆이 잘려도 OK) */}
@@ -271,7 +285,6 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
               transformOrigin: "bottom center",
               height: `${CHAR_HEIGHT_PCT}%`,
               objectFit: "contain",
-              filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
             }}
           />
           </div>
