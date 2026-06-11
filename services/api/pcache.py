@@ -26,6 +26,7 @@ from psycopg2 import Binary
 _CAPS = {"chat": 2000, "stream": 400, "tts": 400}
 _EVICT_EVERY = 20            # put N회마다 한 번 초과분 정리
 _MAX_AUDIO = 5 * 1024 * 1024  # 5MB 초과 오디오는 저장 생략(이상치 보호)
+_TTL_DAYS = 30               # 보존기간 — 이 기간 동안 안 쓰인 캐시는 삭제(개인정보 잔존 최소화)
 
 _ex = ThreadPoolExecutor(max_workers=2)
 _ready = False
@@ -119,12 +120,14 @@ def _put_sync(kind: str, k: str, payload, audio) -> None:
                     (k, kind, json.dumps(payload, ensure_ascii=False) if payload is not None else None,
                      Binary(audio) if audio is not None else None))
                 _put_count += 1
-                if _put_count % _EVICT_EVERY == 0:   # 가끔 초과분 정리(LRU)
+                if _put_count % _EVICT_EVERY == 0:   # 가끔 정리: 초과분(LRU) + 보존기간(TTL) 경과분
                     cur.execute("""
                         DELETE FROM response_cache WHERE kind = %s AND cache_key NOT IN (
                             SELECT cache_key FROM response_cache WHERE kind = %s
                             ORDER BY last_used DESC LIMIT %s)""",
                         (kind, kind, _CAPS.get(kind, 500)))
+                    cur.execute("DELETE FROM response_cache WHERE last_used < now() - interval '%s days'",
+                                (_TTL_DAYS,))
         finally:
             conn.close()
     except Exception:
