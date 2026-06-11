@@ -90,6 +90,23 @@ export async function getChatHistory(sessionId?: string): Promise<any[]> {
     : select(c, "SELECT * FROM chat_history ORDER BY id DESC LIMIT 100");
 }
 
+/** 최근 사용자 질문 N개(중복 제거, 최신순) — 개인화 퀴즈 출제용.
+ *  서버로 일시 전달만 되고 서버에 저장되지 않는다. */
+export async function getRecentQuestions(limit = 5): Promise<string[]> {
+  const c = await conn();
+  const rows = select(c, "SELECT content FROM chat_history WHERE role='user' ORDER BY id DESC LIMIT 30");
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of rows) {
+    const q = String(r.content ?? "").trim();
+    if (!q || seen.has(q)) continue;
+    seen.add(q);
+    out.push(q);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 // ---------- 나만의 기록 (직관일기) ----------
 export interface MyRecord {
   record_date: string; game_id?: string; team_code?: string;
