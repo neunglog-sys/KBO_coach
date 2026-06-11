@@ -3,6 +3,7 @@ import {
   applyAttendance,
   applyCheer,
   initializeTamagotchiState,
+  replaceSpeechAddressee,
   syncAttendance,
 } from "../src/data/tamagotchiState";
 
@@ -109,5 +110,14 @@ const legacyFixedValue = initializeTamagotchiState(
   "기본",
 );
 assert.equal(legacyFixedValue.cheerPower, 0);
+
+assert.equal(
+  replaceSpeechAddressee(
+    "용준, 네가 있어서 더 열심히 할 수 있어!",
+    "qwer",
+    "용준",
+  ),
+  "qwer, 네가 있어서 더 열심히 할 수 있어!",
+);
 
 console.log("PASS 다마고치 신규값, 일일 응원, 패널티, 상태 유지, 상하한");

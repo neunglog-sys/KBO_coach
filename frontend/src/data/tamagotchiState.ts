@@ -86,6 +86,26 @@ export function formatSpeech(template: string, nickname?: string | null): string
   return template.split("닉네임").join(nickname?.trim() || "야구팬");
 }
 
+export function replaceSpeechAddressee(
+  speechText: string,
+  nickname?: string | null,
+  previousNickname?: string | null,
+): string {
+  const nextNickname = nickname?.trim() || "야구팬";
+  const previous = previousNickname?.trim();
+  const trimmed = speechText.trim();
+
+  if (previous && previous !== nextNickname && trimmed.startsWith(`${previous},`)) {
+    return `${nextNickname}${trimmed.slice(previous.length)}`;
+  }
+
+  if (nextNickname !== "야구팬" && trimmed.startsWith("야구팬,")) {
+    return `${nextNickname}${trimmed.slice("야구팬".length)}`;
+  }
+
+  return speechText;
+}
+
 export function randomSpeech(
   speeches: readonly string[],
   nickname?: string | null,
