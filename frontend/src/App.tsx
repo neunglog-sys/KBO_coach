@@ -95,6 +95,21 @@ function saveAuthSession(
   }
 }
 
+function readKakaoAuthSession(): AuthSession | null {
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!hash) return null;
+
+  const params = new URLSearchParams(hash);
+  const rawSession = params.get("kakao_session");
+  if (!rawSession) return null;
+
+  const session = parseAuthSession(rawSession);
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return session?.isLoggedIn && session.authToken ? session : null;
+}
+
 function clearTamagotchiLocalState() {
   const prefixes = [
     "baseballCoachGender",
@@ -123,6 +138,24 @@ export function App() {
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
+
+  useEffect(() => {
+    const kakaoSession = readKakaoAuthSession();
+    if (!kakaoSession) return;
+
+    setAuthToken(kakaoSession.authToken);
+    setFavTeamCode(kakaoSession.favTeamCode);
+    setNickname(kakaoSession.nickname);
+    setBuddyNickname(kakaoSession.buddyNickname);
+    setIsLoggedIn(true);
+    saveAuthSession(
+      kakaoSession.authToken,
+      kakaoSession.favTeamCode,
+      kakaoSession.nickname,
+      kakaoSession.buddyNickname,
+      true,
+    );
+  }, []);
 
   // 앱 시작 시 로컬 SQLite 초기화 (채팅이력·직관기록 저장소)
   useEffect(() => {
@@ -257,6 +290,12 @@ export function App() {
     }
   }
 
+  function handleKakaoLogin() {
+    setLoginError("");
+    setLoginNotice("");
+    window.location.href = apiUrl("/auth/kakao/start");
+  }
+
   async function handleRegister(
     id: string,
     password: string,
@@ -360,6 +399,7 @@ export function App() {
           notice={loginNotice}
           onLogin={handleLogin}
           onGoogleLogin={handleGoogleLogin}
+          onKakaoLogin={handleKakaoLogin}
           onShowRegister={() => {
             setLoginError("");
             setLoginNotice("");
