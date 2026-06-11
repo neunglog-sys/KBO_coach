@@ -154,7 +154,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
           aria-label="닫기"
           style={{
             position: "absolute",
-            top: 12,
+            top: 14, // 제목 칩(높이 38px, 중심 31px)과 세로 중심 일치 — 12였을 때 2px 위로 떴음
             right: 12,
             border: "none",
             background: "rgba(255,255,255,0.85)",
@@ -192,7 +192,7 @@ export default function LockerRoom({ level, teamCode, gender, onClose }: LockerR
             textShadow: "0 1px 3px rgba(0,0,0,0.9)",
             background: "rgba(0,0,0,0.72)",
             backdropFilter: "blur(4px)",
-            padding: "9px 16px 9px 8px",
+            padding: "10px 13px 8px 11px", // 스크린샷 픽셀 측정으로 보정 완료 — 내용물 정가운데 (±0.3px)
             borderRadius: 999,
             border: "1px solid rgba(255,255,255,0.35)",
             zIndex: 5,
