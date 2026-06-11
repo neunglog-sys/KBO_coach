@@ -5,6 +5,7 @@ interface LoginViewProps {
   notice: string;
   onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
   onGoogleLogin?: () => Promise<void>;
+  onKakaoLogin?: () => void;
   onShowRegister: () => void;
 }
 
@@ -18,7 +19,7 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-export function LoginView({ error, notice, onLogin, onGoogleLogin, onShowRegister }: LoginViewProps) {
+export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -45,6 +46,15 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onShowRegiste
     setSocialNotice("");
     if (onGoogleLogin) {
       void onGoogleLogin();
+    } else {
+      handleSocialClick();
+    }
+  }
+
+  function handleKakaoClick() {
+    setSocialNotice("");
+    if (onKakaoLogin) {
+      onKakaoLogin();
     } else {
       handleSocialClick();
     }
@@ -148,8 +158,8 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onShowRegiste
           <button
             type="button"
             className="auth-social-button is-kakao"
-            aria-label="카카오로 로그인 (준비 중)"
-            onClick={handleSocialClick}
+            aria-label="카카오로 로그인"
+            onClick={handleKakaoClick}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path

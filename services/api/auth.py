@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 """회원가입 / 로그인 / 내 정보 — PostgreSQL users 테이블 + bcrypt + JWT."""
 import os
+import html
+import json
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 import bcrypt
-from fastapi import APIRouter, HTTPException, Depends
+import requests
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
@@ -18,6 +23,18 @@ TOKEN_HOURS = 24 * 7
 # 구글 로그인 검증용 — Google Cloud Console의 "웹 애플리케이션" OAuth 클라이언트 ID.
 # (안드로이드 앱은 이 웹 클라이언트 ID를 serverClientId로 써서 idToken을 발급받음)
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+KAKAO_REST_KEY = os.environ.get("KAKAO_REST_KEY", "")
+KAKAO_CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "")
+KAKAO_REDIRECT_URI = os.environ.get(
+    "KAKAO_REDIRECT_URI",
+    "https://kboai-5dea0.web.app/auth/kakao/callback",
+)
+KAKAO_LOCAL_REDIRECT_URI = os.environ.get(
+    "KAKAO_LOCAL_REDIRECT_URI",
+    "http://localhost:8000/auth/kakao/callback",
+)
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "https://kboai-5dea0.web.app")
+LOCAL_FRONTEND_ORIGIN = os.environ.get("LOCAL_FRONTEND_ORIGIN", "http://127.0.0.1:5000")
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -52,6 +69,54 @@ def ensure_social_columns(conn) -> None:
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(20)")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(64)")
 
+
+def public_user(user: dict) -> dict:
+    return {"user_id": user["user_id"], "email": user["email"],
+            "nickname": user["nickname"], "fav_team_code": user["fav_team_code"],
+            "gender": user["gender"], "buddy_nickname": user["buddy_nickname"]}
+
+
+def social_login_response(user: dict) -> dict:
+    return {"user": public_user(user), "token": make_token(user["user_id"], user["email"])}
+
+
+def is_local_request(request: Request) -> bool:
+    host = (request.url.hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "0.0.0.0")
+
+
+def kakao_redirect_uri_for(request: Request) -> str:
+    return KAKAO_LOCAL_REDIRECT_URI if is_local_request(request) else KAKAO_REDIRECT_URI
+
+
+def frontend_origin_for(request: Request) -> str:
+    return LOCAL_FRONTEND_ORIGIN if is_local_request(request) else FRONTEND_ORIGIN
+
+
+def kakao_finish_page(payload: dict, request: Request) -> HTMLResponse:
+    session = {
+        "isLoggedIn": True,
+        "authToken": payload["token"],
+        "favTeamCode": payload["user"].get("fav_team_code") or "",
+        "nickname": payload["user"].get("nickname") or "",
+        "buddyNickname": payload["user"].get("buddy_nickname") or "",
+    }
+    fragment = urlencode({"kakao_session": json.dumps(session, ensure_ascii=False)})
+    next_url = json.dumps(frontend_origin_for(request).rstrip("/") + "/#" + fragment, ensure_ascii=False)
+    return HTMLResponse(f"""<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kakao Login</title>
+  </head>
+  <body>
+    <script>
+      location.replace({next_url});
+    </script>
+    <p>Kakao login complete. Redirecting...</p>
+  </body>
+</html>""")
 
 def current_user_id(token: str = Depends(oauth2)) -> int:
     """JWT 검증 후 user_id 반환 (보호 엔드포인트용)."""
@@ -128,7 +193,7 @@ def login(body: LoginIn):
             cur.execute("SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname, password_hash "
                         "FROM users WHERE email = %s", (body.email,))
             user = cur.fetchone()
-        if not user or not verify_pw(body.password, user["password_hash"]):
+        if not user or not user["password_hash"] or not verify_pw(body.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
         return {"user": {"user_id": user["user_id"], "email": user["email"],
                          "nickname": user["nickname"], "fav_team_code": user["fav_team_code"],
@@ -181,6 +246,118 @@ def google_login(body: GoogleLoginIn):
                          "nickname": user["nickname"], "fav_team_code": user["fav_team_code"],
                          "gender": user["gender"], "buddy_nickname": user["buddy_nickname"]},
                 "token": make_token(user["user_id"], user["email"])}
+    finally:
+        conn.close()
+
+
+@router.get("/kakao/start")
+def kakao_start(request: Request):
+    """Redirect the user to Kakao's OAuth authorization page."""
+    if not KAKAO_REST_KEY:
+        raise HTTPException(status_code=500, detail="서버에 KAKAO_REST_KEY 미설정")
+
+    params = {
+        "response_type": "code",
+        "client_id": KAKAO_REST_KEY,
+        "redirect_uri": kakao_redirect_uri_for(request),
+    }
+    return RedirectResponse(
+        "https://kauth.kakao.com/oauth/authorize?" + urlencode(params),
+        status_code=302,
+    )
+
+
+@router.get("/kakao/callback")
+def kakao_callback(request: Request, code: str | None = Query(default=None), error: str | None = Query(default=None)):
+    """Exchange Kakao OAuth code, create/login the user, then return to the app."""
+    if error:
+        return HTMLResponse(
+            f"<p>카카오 로그인이 취소되었거나 실패했습니다: {html.escape(error)}</p>",
+            status_code=400,
+        )
+    if not code:
+        raise HTTPException(status_code=400, detail="카카오 인증 코드가 없습니다")
+    if not KAKAO_REST_KEY:
+        raise HTTPException(status_code=500, detail="서버에 KAKAO_REST_KEY 미설정")
+
+    token_data = {
+        "grant_type": "authorization_code",
+        "client_id": KAKAO_REST_KEY,
+        "redirect_uri": kakao_redirect_uri_for(request),
+        "code": code,
+    }
+    if KAKAO_CLIENT_SECRET:
+        token_data["client_secret"] = KAKAO_CLIENT_SECRET
+
+    try:
+        token_res = requests.post(
+            "https://kauth.kakao.com/oauth/token",
+            data=token_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+            timeout=10,
+        )
+        token_res.raise_for_status()
+        access_token = token_res.json().get("access_token")
+        if not access_token:
+            raise ValueError("missing access_token")
+
+        me_res = requests.get(
+            "https://kapi.kakao.com/v2/user/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        me_res.raise_for_status()
+        profile = me_res.json()
+    except Exception:
+        raise HTTPException(status_code=401, detail="카카오 사용자 인증에 실패했습니다")
+
+    kakao_id = str(profile.get("id") or "")
+    if not kakao_id:
+        raise HTTPException(status_code=401, detail="카카오 사용자 ID를 확인할 수 없습니다")
+
+    kakao_account = profile.get("kakao_account") or {}
+    kakao_profile = kakao_account.get("profile") or {}
+    email = kakao_account.get("email") or f"kakao_{kakao_id}@kakao.local"
+    nickname = (kakao_profile.get("nickname") or f"카카오사용자{kakao_id[-4:]}")[:50]
+
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            ensure_social_columns(conn)
+            cur.execute(
+                """SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname
+                     FROM users
+                    WHERE provider = 'kakao' AND provider_id = %s""",
+                (kakao_id,),
+            )
+            user = cur.fetchone()
+            if not user:
+                cur.execute(
+                    """SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname
+                         FROM users
+                        WHERE email = %s""",
+                    (email,),
+                )
+                user = cur.fetchone()
+            if user:
+                cur.execute(
+                    """UPDATE users
+                          SET provider = 'kakao', provider_id = %s
+                        WHERE user_id = %s
+                    RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname""",
+                    (kakao_id, user["user_id"]),
+                )
+                user = cur.fetchone()
+            else:
+                cur.execute(
+                    """INSERT INTO users (email, password_hash, nickname, fav_team_code, provider, provider_id)
+                       VALUES (%s, NULL, %s, NULL, 'kakao', %s)
+                       RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname""",
+                    (email, nickname, kakao_id),
+                )
+                user = cur.fetchone()
+        return kakao_finish_page(social_login_response(user), request)
     finally:
         conn.close()
 
