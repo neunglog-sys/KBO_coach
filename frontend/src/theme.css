@@ -370,10 +370,10 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
 }
 
 /* Secondary buttons */
+/* .streak-goalbtn 제외 — 이 버튼은 내 팀 색(흰 글자)으로 칠해야 하므로 MyRecordsView.css 스타일을 따른다. */
 :is(
   .settings-secondary-button,
   .stadium-page-team-button,
-  .streak-goalbtn,
   .goal-cancel,
   .rec-close,
   .chat-back,
