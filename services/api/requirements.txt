@@ -10,3 +10,6 @@ firebase-admin
 azure-cognitiveservices-speech
 google-genai
 google-auth
+# 임시 우회(2026-06-11): pypi.org/simple/httpcore/ 인덱스만 글로벌 503 — 빌드가 직접 URL로 받게 고정.
+# PyPI 복구 후 이 줄은 지워도 됨(httpx의 하위 의존성이라 평소엔 자동 설치).
+httpcore @ https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl
