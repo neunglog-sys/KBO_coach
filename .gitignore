@@ -13,19 +13,6 @@ desktop.ini
 !.env.example
 *.pem
 *.key
-# 서비스 계정 키 (FCM·배포용 — 절대 커밋 금지)
-*firebase-adminsdk*.json
-serviceAccountKey.json
-*-key.json
-*deployer*.json
-# GCP 서비스 계정 키 (Vertex AI 등 — 절대 커밋 금지)
-kboai-*.json
-gcp-*.json
-# Cloud Run 배포용 환경변수 파일 (시크릿 포함)
-env.yaml
-env*.yaml
-# Firebase Hosting 배포 캐시
-.firebase/
 
 # Logs
 *.log
@@ -71,31 +58,13 @@ app/release/
 data/raw/
 data/processed/
 data/tmp/
-# 크롤 일별 덤프 (원본은 MongoDB) — 폴더 구조(.gitkeep)는 유지
-data/crawling/*/
 models/
 embeddings/
 *.sqlite
 *.db
 
-# 호스트 전용 실행 스크립트 (각자 python 경로·경로 하드코딩)
-run_*.bat
-
 # Temporary files
 tmp/
 temp/
-test/
 *.tmp
 
-# 3D 모델: 100MB 이하는 모두 git에 포함(웹 테스트용). 아래 4개만 GitHub 100MB 제한 초과로
-# push가 거부되므로 제외한다. (원본·작업용 대용량 파일이며 웹 앱은 로드하지 않음 / 별도 공유)
-/frontend/model-work/260609_Rig.glb
-/frontend/model-work/260609_Rig (1).glb
-/frontend/model-work/texture_test_260607.glb
-/model/3d/mouth_test.glb
-
-design_preview/
-.claude/settings.local.json
-
-#tts_samples
-/tts_samples
