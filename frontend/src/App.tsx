@@ -224,7 +224,14 @@ export function App() {
         body: JSON.stringify({ id_token: idToken }),
       });
       if (!response.ok) {
-        setLoginError("구글 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        const errorData = await response.json().catch(() => null);
+        const detail =
+          typeof errorData?.detail === "string" ? errorData.detail : "";
+        setLoginError(
+          detail
+            ? `구글 로그인 실패: ${detail}`
+            : `구글 로그인 실패 (서버 응답 ${response.status})`,
+        );
         return;
       }
 
@@ -240,8 +247,13 @@ export function App() {
       setIsLoggedIn(true);
       saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
       window.scrollTo({ top: 0, behavior: "auto" });
-    } catch {
-      setLoginError("구글 로그인 중 오류가 발생했습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLoginError(
+        message
+          ? `구글 로그인 중 오류: ${message}`
+          : "구글 로그인 중 오류가 발생했습니다.",
+      );
     }
   }
 
