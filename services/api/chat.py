@@ -282,7 +282,10 @@ def _fuzzy_terms(cur, question: str, already: set) -> list:
             words.add(stripped)
     if not words:
         return []
-    cur.execute("SELECT term, definition FROM glossary")
+    # 은어·관람문화·위키 일괄 적재 용어는 오타 추정에서 제외 — 2글자 은어('패요','치맥' 등)가
+    # 일상 단어와 편집거리 1로 우연 충돌해 무관 질문에 오탐을 만든다(정확·임베딩 매칭은 그대로).
+    cur.execute("SELECT term, definition FROM glossary "
+                "WHERE category NOT IN ('위키용어', '심화은어', '관람문화')")
     hits = []
     for r in cur.fetchall():
         t = r["term"]
