@@ -45,6 +45,7 @@ jobs:
           DATABASE_URL: "${{ secrets.DATABASE_URL }}"
           JWT_SECRET: "${{ secrets.JWT_SECRET }}"
           GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_ID }}"
+          KAKAO_REST_KEY: "${{ secrets.KAKAO_REST_KEY }}"
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
           GOOGLE_GENAI_USE_VERTEXAI: "true"
           GOOGLE_CLOUD_PROJECT: "kboai-5dea0"
