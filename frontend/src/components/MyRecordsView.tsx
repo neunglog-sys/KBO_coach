@@ -308,7 +308,13 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
           {editingGoal ? (
             <GoalEditor initial={goalDays} onSave={saveGoal} onCancel={() => setEditingGoal(false)} />
           ) : (
-            <button className="streak-goalbtn" type="button" onClick={() => setEditingGoal(true)}>
+            <button
+              className="streak-goalbtn"
+              type="button"
+              // 내 팀이 있으면 팀 칩과 동일한 솔리드 팀 색을 입힌다(팀마다 자동 적용). 없으면 기본 그라데이션.
+              style={myTeamObj ? { background: myTeamObj.color } : undefined}
+              onClick={() => setEditingGoal(true)}
+            >
               목표 수정
             </button>
           )}
