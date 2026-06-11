@@ -203,11 +203,72 @@ def _team_facts(cur, question: str, team_code: str | None):
     return picked[:3]
 
 
+def _levenshtein1(a: str, b: str) -> bool:
+    """편집거리 1 이내인지(짧은 한글 단어용 — 오타 추정)."""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:                       # 치환 1회
+        return sum(1 for x, y in zip(a, b) if x != y) == 1
+    if la > lb:                        # a가 김 → 삽입/삭제 1회
+        a, b, la, lb = b, a, lb, la
+    i = j = diff = 0
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+        else:
+            diff += 1
+            if diff > 1:
+                return False
+            j += 1
+    return True
+
+
+# 질문에서 단어 끝 조사를 떼기 위한 패턴("도로가"→"도로", "볼넽이"→"볼넽")
+_PARTICLE_RE = re.compile(r"(이|가|은|는|을|를|이야|야|이란|란|이라는)$")
+
+
+def _fuzzy_terms(cur, question: str, already: set) -> list:
+    """오타 추정 용어집 매칭 — 질문 단어와 편집거리 1 이내인 용어의 정의를 반환.
+    ("도로가 뭐야"에서 '도루'를 찾는 식 — 정확 매칭이 없을 때 LLM이 엉뚱한 용어로
+    교정하는 것을 근거로 막는다.)"""
+    words = set()
+    for w in re.findall(r"[가-힣]{2,5}", question):
+        words.add(w)
+        stripped = _PARTICLE_RE.sub("", w)
+        if len(stripped) >= 2:
+            words.add(stripped)
+    if not words:
+        return []
+    cur.execute("SELECT term, definition FROM glossary")
+    hits = []
+    for r in cur.fetchall():
+        t = r["term"]
+        if t in already or len(t) < 2 or " " in t:
+            continue
+        if any(_levenshtein1(w, t) for w in words if abs(len(w) - len(t)) <= 1):
+            hits.append(r)
+            if len(hits) >= 3:
+                break
+    return hits
+
+
 def _retrieve(cur, question: str, team_code: str | None):
     """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색) + 구단 기본팩트(teams)."""
     cur.execute("SELECT term, definition FROM glossary "
                 "WHERE %s ILIKE '%%' || term || '%%' ORDER BY length(term) DESC LIMIT 5", (question,))
     terms = cur.fetchall()
+    if not terms:   # 정확 매칭 없음 → 오타 추정 매칭("도로"≈"도루")
+        try:
+            fuzzy = _fuzzy_terms(cur, question, {t["term"] for t in terms})
+            for f in fuzzy:
+                f["fuzzy"] = True
+            terms = terms + fuzzy
+        except Exception:
+            pass
     cur.execute("SELECT topic, content FROM rules "
                 "WHERE %s ILIKE '%%' || topic || '%%' LIMIT 3", (question,))
     rules = cur.fetchall()
@@ -226,6 +287,18 @@ def _retrieve(cur, question: str, team_code: str | None):
                            FROM knowledge_chunks WHERE embedding IS NOT NULL
                            ORDER BY embedding <=> %s::vector LIMIT 3""", (qvec, qvec))
         chunks = [r for r in cur.fetchall() if r["score"] >= CHUNK_MIN_SCORE]
+
+        # 용어집 임베딩 매칭 — 정확/편집거리 매칭이 모두 빈손일 때, 같은 qvec을 재사용해
+        # 가장 가까운 용어를 '오타 추정'으로 부착(심한 오타 커버: "돌우"→도루).
+        # 검증 실측: 오타 적중 0.74+ vs 무관 질문 0.64 → 임계값 0.72로 오탐 차단.
+        if not terms:
+            cur.execute("""SELECT term, definition, 1 - (embedding <=> %s::vector) AS score
+                           FROM glossary WHERE embedding IS NOT NULL
+                           ORDER BY embedding <=> %s::vector LIMIT 2""", (qvec, qvec))
+            for r in cur.fetchall():
+                if r["score"] >= 0.72:
+                    r["fuzzy"] = True
+                    terms.append(r)
     except Exception:
         chunks = []   # 임베딩 호출 실패해도 용어·규칙만으로 동작
 
@@ -243,7 +316,10 @@ def _format_context(terms, rules, chunks, facts=()) -> str:
             f"- 구단팩트 '{f['name']}': 연고 {f['city']}, 홈구장 {f['home_stadium']}, "
             f"창단 {f['founded_year']}년, 한국시리즈 우승 {f['championships']}회. {f['history']}")
     for t in terms:
-        lines.append(f"- 용어 '{t['term']}': {t['definition']}")
+        if t.get("fuzzy"):
+            lines.append(f"- (사용자 질문의 오타로 추정되는 용어) '{t['term']}': {t['definition']}")
+        else:
+            lines.append(f"- 용어 '{t['term']}': {t['definition']}")
     for r in rules:
         lines.append(f"- 규칙 '{r['topic']}': {r['content']}")
     for ch in chunks:
