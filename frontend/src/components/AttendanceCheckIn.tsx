@@ -19,7 +19,6 @@ import {
   initializeTamagotchiState,
   localDateKey,
   randomSpeech,
-  replaceSpeechAddressee,
   syncAttendance,
   tamagotchiStorageKey,
   type TamagotchiViewState,
@@ -391,6 +390,14 @@ export default function AttendanceCheckIn({
     loadBuddyNickname(authToken, initialBuddyNickname)
   );
   const [buddyProfileError, setBuddyProfileError] = useState("");
+
+  // 프로필 판정 완료 여부 — 판정 전에는 설정 화면을 그리지 않음 (새 기기 로그인 시 0.3초 번쩍임 방지)
+  // 비로그인이거나, 이 브라우저(localStorage)에 이미 성별+닉네임이 있으면 서버 응답을 기다릴 필요 없음 → 즉시 판정 완료
+  const [profileChecked, setProfileChecked] = useState<boolean>(() => {
+    if (!authToken) return true;
+    return Boolean(loadGender(authToken)) && loadBuddyNickname(authToken, initialBuddyNickname).length > 0;
+  });
+
   const [isBuddyProfileSaving, setIsBuddyProfileSaving] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -398,7 +405,7 @@ export default function AttendanceCheckIn({
   const [nickname, setNickname] = useState(initialNickname || "");
   const stateStorageKey = useMemo(() => tamagotchiStorageKey(authToken), [authToken]);
   const [dailyState, setDailyState] = useState<TamagotchiViewState>(() =>
-    loadDailyState(stateStorageKey, initialNickname)
+    loadDailyState(stateStorageKey, initialBuddyNickname || initialNickname)
   );
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
@@ -650,7 +657,7 @@ export default function AttendanceCheckIn({
       onBuddyNicknameChange?.(nextBuddyNickname);
       updateDailyState((current) => ({
         ...current,
-        speechText: randomSpeech(DEFAULT_SPEECHES, nickname),
+        speechText: randomSpeech(DEFAULT_SPEECHES, nextBuddyNickname),
       }));
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
@@ -680,14 +687,6 @@ export default function AttendanceCheckIn({
   useEffect(() => {
     if (initialNickname) {
       setNickname(initialNickname);
-      updateDailyState((current) => ({
-        ...current,
-        speechText: replaceSpeechAddressee(
-          current.speechText,
-          initialNickname,
-          buddyNickname,
-        ),
-      }));
       return;
     }
     if (!authToken) return;
@@ -701,11 +700,7 @@ export default function AttendanceCheckIn({
           setNickname(loadedNickname);
           updateDailyState((current) => ({
             ...current,
-            speechText: replaceSpeechAddressee(
-              current.speechText,
-              loadedNickname,
-              buddyNickname,
-            ),
+            speechText: current.speechText.split("야구팬").join(loadedNickname),
           }));
         }
       })
@@ -720,34 +715,37 @@ export default function AttendanceCheckIn({
   useEffect(() => {
     if (!authToken) return;
     let ignore = false;
+    // 안전장치: 서버가 3초 넘게 무응답이면 빈 화면에 갇히지 않도록 판정을 끝냄
+    const failSafe = window.setTimeout(() => {
+      if (!ignore) setProfileChecked(true);
+    }, 3000);
     fetch(apiUrl("/auth/me"), { headers: { Authorization: `Bearer ${authToken}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((user) => {
-        if (ignore || !user) return;
-        if (user.gender === "man" || user.gender === "girl") {
-          setGender(user.gender);
-          setPendingGender(user.gender);
-          saveGender(authToken, user.gender);
+        if (ignore) return;
+        if (user) {
+          if (user.gender === "man" || user.gender === "girl") {
+            setGender(user.gender);
+            setPendingGender(user.gender);
+            saveGender(authToken, user.gender);
+          }
+          if (user.buddy_nickname) {
+            const nextBuddyNickname = String(user.buddy_nickname).trim();
+            setBuddyNickname(nextBuddyNickname);
+            setBuddyNicknameInput(nextBuddyNickname);
+            saveBuddyNickname(authToken, nextBuddyNickname);
+            onBuddyNicknameChange?.(nextBuddyNickname);
+          }
         }
-        if (user.buddy_nickname) {
-          const nextBuddyNickname = String(user.buddy_nickname).trim();
-          setBuddyNickname(nextBuddyNickname);
-          setBuddyNicknameInput(nextBuddyNickname);
-          saveBuddyNickname(authToken, nextBuddyNickname);
-          onBuddyNicknameChange?.(nextBuddyNickname);
-          updateDailyState((current) => ({
-            ...current,
-            speechText: replaceSpeechAddressee(
-              current.speechText,
-              nickname,
-              nextBuddyNickname,
-            ),
-          }));
-        }
+        // 서버 판정 완료: 프로필이 있으면 위에서 상태가 채워져 바로 대시보드, 없으면 설정 화면이 뜸
+        setProfileChecked(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!ignore) setProfileChecked(true); // 오프라인 등 실패 시에도 화면은 진행 (localStorage 값 기준)
+      });
     return () => {
       ignore = true;
+      window.clearTimeout(failSafe);
     };
   }, [authToken]);
 
@@ -790,19 +788,11 @@ export default function AttendanceCheckIn({
         const initialized = initializeTamagotchiState(
           serverState,
           todayKey(),
-          randomSpeech(DEFAULT_SPEECHES, nickname),
+          randomSpeech(DEFAULT_SPEECHES, buddyNickname || nickname),
         );
-        const personalized = {
-          ...initialized,
-          speechText: replaceSpeechAddressee(
-            initialized.speechText,
-            nickname,
-            buddyNickname,
-          ),
-        };
-        setDailyState(personalized);
-        saveDailyState(stateStorageKey, personalized);
-        saveServerDailyState(authToken, personalized);
+        setDailyState(initialized);
+        saveDailyState(stateStorageKey, initialized);
+        saveServerDailyState(authToken, initialized);
       } else {
         // 서버에 기록이 없으면(최초) 현재 로컬 상태를 계정에 올려 보존 시작
         setDailyState((current) => {
@@ -880,13 +870,13 @@ export default function AttendanceCheckIn({
       const data = (await response.json()) as AttendanceStatus;
       setStatus(data);
       saveFallback(authToken, data);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } catch {
       const next = applyLocalCheckIn(authToken, status);
       setStatus(next);
-      const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
+      const speech = randomSpeech(ATTENDANCE_SPEECHES, displayBuddyNickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
       setNotice(speech);
     } finally {
@@ -946,7 +936,7 @@ export default function AttendanceCheckIn({
   }
 
   function handleCheer() {
-    const speech = randomSpeech(CHEER_SPEECHES, nickname);
+    const speech = randomSpeech(CHEER_SPEECHES, displayBuddyNickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
     setNotice(speech);
   }
@@ -960,6 +950,18 @@ export default function AttendanceCheckIn({
   const answeredCount = Object.keys(quizResults).length;
   const allDone = quizQuestions.length > 0 && answeredCount >= quizQuestions.length;
   const totalQuizXp = Object.values(quizResults).reduce((sum, result) => sum + result.xp_earned, 0);
+
+  // ===== 프로필 판정 전: 설정 화면 번쩍임 방지를 위해 빈 패널만 표시 =====
+  if (!profileChecked) {
+    return (
+      <section
+        className="attendance-panel tamagotchi-setup-panel"
+        aria-label="야구짝꿍 불러오는 중"
+        aria-busy="true"
+        style={{ fontFamily: TAMAGOTCHI_FONT }}
+      />
+    );
+  }
 
   // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
   if (!gender || !buddyNickname.trim()) {
