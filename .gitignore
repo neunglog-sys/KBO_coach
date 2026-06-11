@@ -96,3 +96,6 @@ test/
 
 design_preview/
 .claude/settings.local.json
+
+#tts_samples
+/tts_samples

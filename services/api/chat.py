@@ -176,8 +176,35 @@ def _build_system_prompt(persona: dict | None) -> str:
     )
 
 
+# 구단 기본팩트(teams 테이블)를 참고자료에 붙일 트리거 — 우승/창단/역사류 질문.
+# 모델 학습지식의 최신 기록(예: 최근 우승 연도)이 낡아 틀리는 것을 DB 사실로 교정한다.
+_TEAM_FACT_RE = re.compile(r"우승|창단|역사|연고|홈구장|챔피언|왕조|몇\s*회|몇\s*번|언제\s*생|준우승")
+# 질문 속 팀 언급 인식용 별칭(약칭 → teams.name 부분 문자열)
+_TEAM_ALIAS = {"엘지": "LG", "기아": "KIA", "쓱": "SSG", "엔씨": "NC", "케이티": "KT"}
+
+
+def _team_facts(cur, question: str, team_code: str | None):
+    """우승·창단류 질문이면 관련 구단(페르소나 팀 + 질문에 언급된 팀)의 기본팩트 행 반환."""
+    if not _TEAM_FACT_RE.search(question):
+        return []
+    cur.execute("SELECT team_code, name, city, home_stadium, founded_year, championships, history FROM teams")
+    rows = cur.fetchall()
+    q = question
+    for alias, real in _TEAM_ALIAS.items():
+        if alias in q:
+            q += " " + real
+    picked, seen = [], set()
+    for r in rows:
+        mentioned = any(tok and tok in q for tok in str(r["name"]).split())   # "LG"/"트윈스" 등 토큰 매칭
+        if r["team_code"] == team_code or mentioned:
+            if r["team_code"] not in seen:
+                seen.add(r["team_code"])
+                picked.append(r)
+    return picked[:3]
+
+
 def _retrieve(cur, question: str, team_code: str | None):
-    """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색)."""
+    """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색) + 구단 기본팩트(teams)."""
     cur.execute("SELECT term, definition FROM glossary "
                 "WHERE %s ILIKE '%%' || term || '%%' ORDER BY length(term) DESC LIMIT 5", (question,))
     terms = cur.fetchall()
@@ -201,11 +228,20 @@ def _retrieve(cur, question: str, team_code: str | None):
         chunks = [r for r in cur.fetchall() if r["score"] >= CHUNK_MIN_SCORE]
     except Exception:
         chunks = []   # 임베딩 호출 실패해도 용어·규칙만으로 동작
-    return terms, rules, chunks
+
+    try:
+        facts = _team_facts(cur, question, team_code)
+    except Exception:
+        facts = []   # teams 조회 실패 비치명
+    return terms, rules, chunks, facts
 
 
-def _format_context(terms, rules, chunks) -> str:
+def _format_context(terms, rules, chunks, facts=()) -> str:
     lines = []
+    for f in facts:   # 구단 기본팩트는 최우선 근거(낡은 학습지식 교정용)
+        lines.append(
+            f"- 구단팩트 '{f['name']}': 연고 {f['city']}, 홈구장 {f['home_stadium']}, "
+            f"창단 {f['founded_year']}년, 한국시리즈 우승 {f['championships']}회. {f['history']}")
     for t in terms:
         lines.append(f"- 용어 '{t['term']}': {t['definition']}")
     for r in rules:
@@ -224,16 +260,17 @@ def _prepare(body: ChatIn):
             if body.team_code:
                 cur.execute("SELECT * FROM team_personas WHERE team_code = %s", (body.team_code,))
                 persona = cur.fetchone()
-            terms, rules, chunks = _retrieve(cur, body.question, body.team_code)
+            terms, rules, chunks, facts = _retrieve(cur, body.question, body.team_code)
     finally:
         conn.close()
 
-    context_text = _format_context(terms, rules, chunks)
+    context_text = _format_context(terms, rules, chunks, facts)
     if body.personal_context:   # 앱이 로컬에서 가져온 개인기록 → 참고자료에 합류 (저장 안 함)
         context_text += f"\n- 사용자 개인기록: {body.personal_context}"
     used = {"persona": persona.get("team_name") if persona else None,
             "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules],
             "culture": [ch["title"] for ch in chunks],
+            "facts": [f["name"] for f in facts],
             "personal": bool(body.personal_context)}
 
     system = _build_system_prompt(persona)

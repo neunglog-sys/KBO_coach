@@ -8,6 +8,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { apiUrl } from "../api";
+import { getRecentQuestions } from "../db";
 import {
   addDays,
   applyAttendance,
@@ -41,6 +42,7 @@ interface QuizQuestion {
   quiz_id: number;
   question: string;
   difficulty: string;
+  personalized?: boolean;   // 내 최근 질문 주제로 생성된 맞춤 문항
 }
 
 interface QuizResult {
@@ -778,7 +780,19 @@ export default function AttendanceCheckIn({
 
     async function loadQuiz() {
       try {
-        const response = await fetch(apiUrl("/quiz/daily"), { headers: authHeaders() });
+        // 로컬 SQLite의 최근 챗 질문을 함께 보내면 그 주제로 맞춤 문항 1개가 생성됨
+        // (일시 전달 — 서버에 저장되지 않음. 이력 없으면 빈 배열 → 기존 정적 출제)
+        let recentQuestions: string[] = [];
+        try {
+          recentQuestions = await getRecentQuestions(5);
+        } catch {
+          /* 로컬 DB 미초기화 등 — 정적 출제로 진행 */
+        }
+        const response = await fetch(apiUrl("/quiz/daily"), {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ recent_questions: recentQuestions }),
+        });
         if (!response.ok) {
           if (!ignore) setQuizLoadError("퀴즈 데이터를 불러오지 못했어요.");
           return;
@@ -1241,6 +1255,11 @@ export default function AttendanceCheckIn({
                   >
                     {currentQuestion?.difficulty}
                   </span>
+                  {currentQuestion?.personalized ? (
+                    <span className="quiz-difficulty-badge" style={{ background: "#7c5cff" }}>
+                      ★ 맞춤
+                    </span>
+                  ) : null}
                   <span className="quiz-question-num">
                     {currentQuizIdx + 1} / {quizQuestions.length}
                   </span>
