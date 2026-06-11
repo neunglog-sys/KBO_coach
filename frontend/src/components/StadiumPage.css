@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 .stadium-page-entry {
   width: 100%;
 }
@@ -68,7 +76,9 @@
   margin: 0;
   text-align: center;
   font-size: 1.15rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-top-menu {
@@ -140,7 +150,9 @@
   color: #fff;
   background: #ff4545;
   font-size: 0.58rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.2;
 }
 
@@ -245,7 +257,9 @@
   padding: 0;
   border-radius: 10px;
   font-size: 0.8rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   letter-spacing: 0;
   white-space: nowrap;
   word-break: keep-all;
@@ -269,7 +283,9 @@
   border: 1px solid #d7e5f2;
   color: #0a1732;
   background: rgba(255, 255, 255, 0.72);
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 /* focus 시 검색 버튼은 트랙과 함께 사라지도록 처리 */
@@ -326,7 +342,9 @@
   color: #0a1732;
   background: #fff;
   font-size: 0.84rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -387,7 +405,9 @@
   color: #6b7280;
   background: transparent;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   letter-spacing: 0;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -422,7 +442,9 @@
 
 .stadium-page-tabs button.is-active span {
   color: #111827;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-tabs button:active {
@@ -448,7 +470,9 @@
   padding: 40px 20px;
   color: #65758a;
   background: rgba(255, 255, 255, 0.56);
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: center;
   box-shadow:
     0 6px 12px rgba(28, 37, 54, 0.06),
@@ -461,7 +485,9 @@
 .stadium-page-empty-copy {
   margin: 12px 0 0;
   color: #65758a;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-guide-card,
@@ -562,7 +588,9 @@
 .stadium-page-home-team {
   margin: 0 0 12px;
   font-size: 1rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .stadium-page-address {
@@ -571,7 +599,9 @@
   align-items: center;
   margin: 0;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.45;
 }
 
@@ -594,7 +624,9 @@
   padding-top: 16px;
   color: #3d4d63;
   font-size: 0.9rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.65;
   word-break: keep-all;
 }
@@ -644,7 +676,9 @@
   place-items: center;
   color: #65758a;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: center;
 }
 
@@ -686,7 +720,9 @@
   color: #24344b;
   background: #fff;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.4;
 }
 
@@ -708,7 +744,9 @@
   flex: 0 0 auto;
   color: #7b8798;
   font-size: 0.66rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   white-space: nowrap;
 }
 
@@ -752,7 +790,9 @@
   margin: 3px 0 0;
   color: #4c5d73;
   font-size: 0.82rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.45;
 }
 
@@ -793,7 +833,9 @@
   padding-left: 12px;
   color: #35465c;
   font-size: 0.88rem;
-  font-weight: 650;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   line-height: 1.5;
 }
 

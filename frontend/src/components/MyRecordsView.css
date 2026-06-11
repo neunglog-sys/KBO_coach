@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 나만의 야구기록 — 스트릭 + 캘린더 (레퍼런스 모방) */
 .records-view {
   position: fixed;
@@ -64,7 +72,9 @@
   margin: 0;
   text-align: center;
   font-size: 1.15rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .records-top-menu {
@@ -119,7 +129,9 @@
   margin: 0 0 4px;
   padding-left: 13px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   opacity: 0.92;
 }
 
@@ -127,7 +139,9 @@
   margin: 0;
   padding-left: 8px;
   font-size: 1.7rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .streak-flame {
@@ -149,11 +163,15 @@
   justify-content: space-between;
   margin: 16px 8px 8px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .streak-goalrow span:first-child {
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .streak-bar {
@@ -175,6 +193,8 @@
 }
 
 .streak-goalbtn {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -186,11 +206,29 @@
     var(--streak-c0, #7c3aed) 100%
   );
   color: #fff;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   box-shadow:
     0 6px 12px rgba(28, 37, 54, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.52),
     inset 0 -7px 12px rgba(255, 255, 255, 0.1);
+}
+
+/* 내 팀 칩(.myteam-chip)과 동일한 광택 그라데이션 — 팀 색 위에 흰 사선 하이라이트 */
+.streak-goalbtn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), transparent 55%, rgba(255, 255, 255, 0.12));
+}
+
+/* ::before 광택 위로 글자가 보이도록 */
+.streak-goalbtn > * {
+  position: relative;
+  z-index: 1;
 }
 
 .goal-editor {
@@ -207,7 +245,9 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
   color: #1c2536;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: center;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
@@ -223,7 +263,9 @@
 }
 
 .goal-editor>span {
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .goal-save,
@@ -233,7 +275,9 @@
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 18px;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 5px 10px rgba(28, 37, 54, 0.08);
@@ -258,7 +302,9 @@
 
 .myteam-label {
   font-size: 0.9rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #5b6577;
 }
 
@@ -268,7 +314,9 @@
   padding: 8px 14px;
   border-radius: 999px;
   color: #fff;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   font-size: 0.92rem;
   border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow:
@@ -304,7 +352,9 @@
   border: 0;
   border-radius: 999px;
   color: #fff;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   font-size: 0.85rem;
 }
 
@@ -351,7 +401,9 @@
 
 .cal-head strong {
   font-size: 1.1rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .cal-head button {
@@ -383,7 +435,9 @@
 .cal-weekdays span {
   text-align: center;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #8a93a6;
   padding: 4px 0;
 }
@@ -427,7 +481,9 @@
 
 .cal-day {
   font-size: 1.05rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #1c2536;
 }
 
@@ -444,7 +500,9 @@
 
 .cal-cell.today .cal-day {
   color: #3b82f6;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .cal-cell.has-record {
@@ -530,7 +588,9 @@
 .rec-nogame {
   margin: 24px 0;
   text-align: center;
-  font-weight: 700;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #6b7689;
 }
 
@@ -590,7 +650,9 @@
 
 .rec-modal-head strong {
   font-size: 1.15rem;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .rec-close {
@@ -617,7 +679,9 @@
   padding: 12px 8px;
   border-radius: 14px;
   text-align: center;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #fff;
 }
 
@@ -627,14 +691,18 @@
 }
 
 .rec-vs {
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #94a0b4;
 }
 
 .rec-field-label {
   margin: 16px 0 8px;
   font-size: 0.88rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   color: #5b6577;
 }
 
@@ -649,7 +717,9 @@
   border: 1px solid #e3e8f0;
   border-radius: 12px;
   background: #fff;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   font-size: 0.82rem;
   color: #2b3242;
 }
@@ -691,7 +761,9 @@
   border: 2px solid #e3e8f0;
   border-radius: 14px;
   background: #fff;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   font-size: 0.85rem;
   color: #2b3242;
 }
@@ -718,7 +790,9 @@
   border-radius: 15px;
   background: #fee2e2;
   color: #dc2626;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
 }
 
 .rec-save {
@@ -728,7 +802,9 @@
   border-radius: 15px;
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   color: #fff;
-  font-weight: 900;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   font-size: 1rem;
 }
 

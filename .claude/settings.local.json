@@ -82,7 +82,11 @@
       "Bash(sed \"s/^/최대 메시 glPrimitives: /\")",
       "Bash(adb -s R3CXC02RZ5X logcat -c)",
       "Bash(timeout 25 adb -s R3CXC02RZ5X logcat -v brief)",
-      "Bash(cd \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android\" && echo \"=== 구글/플러그인/인증 관련 로그 ===\" && grep -iE \"SocialLogin|capgo|Credential|GoogleId|GetCredential|SignIn|NoCredential|ApiException|auth/google|GoogleApi|com.google.android.gms\" /tmp/gl_logcat.txt 2>/dev/null | grep -ivE \"io_stats|Watchdog|freezing|UMR|ActivityManager\" | head -50)"
+      "Bash(cd \"C:/Users/82102_asozp43/OneDrive/바탕 화면/android\" && echo \"=== 구글/플러그인/인증 관련 로그 ===\" && grep -iE \"SocialLogin|capgo|Credential|GoogleId|GetCredential|SignIn|NoCredential|ApiException|auth/google|GoogleApi|com.google.android.gms\" /tmp/gl_logcat.txt 2>/dev/null | grep -ivE \"io_stats|Watchdog|freezing|UMR|ActivityManager\" | head -50)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p=require\\('capacitor-kakao-login-plugin/package.json'\\);console.log\\(p.version, JSON.stringify\\(p.peerDependencies||{}\\)\\)\")",
+      "Bash(grep -oE \"^KAKAO_[A-Z_]+=\" .env)",
+      "Bash(sed -n '89,115p' services/api/auth.py)"
     ]
   }
 }

@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 메인화면을 제외한 화면 공용 — 헤더 三 버튼으로 여는 플로팅 사이드바 메뉴 */
 .side-menu-backdrop {
   position: fixed;
@@ -80,7 +88,9 @@
   color: var(--color-text, #0f172a);
   background: var(--color-sub-card, #f5faff);
   font-size: 1.05rem;
-  font-weight: 800;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: left;
 }
 
