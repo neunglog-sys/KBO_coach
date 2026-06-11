@@ -23,7 +23,10 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
-import { TopMenu, type TopMenuTarget } from "./TopMenu";
+import { type TopMenuTarget } from "./TopMenu";
+import { AppBackButton } from "./AppBackButton";
+import { MenuButton } from "./MenuButton";
+import { SideMenu } from "./SideMenu";
 import LockerRoom from "./LockerRoom";
 
 interface AttendanceStatus {
@@ -410,6 +413,9 @@ export default function AttendanceCheckIn({
 
   // 꾸미기(라커룸) 오버레이 열림 여부
   const [showLocker, setShowLocker] = useState(false);
+
+  // ☰ 사이드 메뉴 열림 여부 (상단 탭바 → 뒤로가기/제목/☰ 헤더 교체로 추가)
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   // 레벨업 보상 연출 대기열 (앞에서부터 하나씩 팝업)
   const [rewardQueue, setRewardQueue] = useState<RewardItem[]>([]);
@@ -996,10 +1002,22 @@ export default function AttendanceCheckIn({
 
   return (
     <section className="tamagotchi-dashboard" aria-label="야구짝꿍" style={{ fontFamily: TAMAGOTCHI_FONT }}>
-      <TopMenu
+      {/* 상단 헤더: 구장정보 페이지와 동일 구성 (뒤로가기 / 제목 / ☰) — 탭바(TopMenu) 대체 */}
+      {/* 스타일: styles.css의 .tamagotchi-app-header (dashboard padding 상쇄 음수 마진 + grid 배치 포함) */}
+      <header className="tamagotchi-app-header">
+        <AppBackButton onClick={() => onRequestClose?.()} />
+        <h2>야구짝꿍</h2>
+        <MenuButton onClick={() => setSideMenuOpen(true)} />
+      </header>
+
+      <SideMenu
+        isOpen={sideMenuOpen}
         active="tamagotchi"
-        className="tamagotchi-nav"
-        onNavigate={(target) => onNavigate?.(target)}
+        onNavigate={(target) => {
+          if (target === "tamagotchi") return; // 현재 화면이면 이동 안 함 (StadiumPage와 동일 패턴)
+          onNavigate?.(target);
+        }}
+        onClose={() => setSideMenuOpen(false)}
       />
 
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">

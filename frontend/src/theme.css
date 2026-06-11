@@ -325,6 +325,23 @@ html.theme-dark .stadium-page-header :is(.app-back-button, .app-menu-button) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
+/* 다마고치 상단 헤더 — 다크모드 색은 구장정보 헤더와 동일 */
+html.theme-dark .tamagotchi-app-header {
+  color: #f8fafc;
+  background: #071426;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html.theme-dark .tamagotchi-app-header h2 {
+  color: #f8fafc;
+}
+
+html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
 /* Secondary buttons */
 :is(
   .settings-secondary-button,

@@ -2442,6 +2442,43 @@ select:focus {
     linear-gradient(180deg, #51c4fb 0%, #c8efff 34%, #eefaff 100%);
 }
 
+/* 다마고치 상단 헤더 (탭바 → 뒤로가기/제목/☰ 교체, 구장정보 stadium-page-header와 동일 구성)
+   dashboard padding(위 safe+12 / 좌우 16, 모바일 12)을 음수 마진으로 상쇄해 가장자리에 딱 붙임 */
+.tamagotchi-app-header {
+  grid-column: 1 / -1;              /* 데스크톱 2열에서도 전체 폭 차지 */
+  grid-row: title-start / nav-end;  /* 비어있는 title·nav 행을 함께 차지해 이중 gap 방지 */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px 0;  /* 위쪽은 아래 padding-top:0 규칙이 처리 (음수 마진은 스크롤 컨테이너에 막힘) */
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  background: #f4f6fb;
+}
+
+.tamagotchi-app-header h2 {
+  flex: 1;
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+/* 헤더가 있으면 dashboard의 위 padding 제거 → 헤더가 창 최상단에 딱 붙음
+   (overflow-x:hidden 때문에 헤더 음수 마진이 위로는 안 먹혀서, padding 자체를 없애는 방식) */
+.tamagotchi-dashboard:has(.tamagotchi-app-header) {
+  padding-top: 0;
+}
+
+@media (max-width: 720px) {
+  .tamagotchi-app-header {
+    margin-right: -12px;
+    margin-left: -12px;
+  }
+}
+
 .tamagotchi-page-title {
   grid-area: title;
   display: flex;
@@ -2868,6 +2905,12 @@ select:focus {
 }
 
 @media (max-width: 720px) {
+  /* 다마고치가 열렸을 땐 backdrop 여백 제거 → 화면 테두리에 딱 붙음 (구장정보와 동일 패턴) */
+  .attendance-window-backdrop:has(.tamagotchi-dashboard) {
+    align-items: stretch;
+    padding: 0;
+  }
+
   .attendance-window:has(.tamagotchi-dashboard) {
     width: 100%;
     min-width: 0;
