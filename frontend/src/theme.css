@@ -304,6 +304,33 @@ html.theme-dark .app-back-button {
   height: 22px;
 }
 
+.stadium-page-header :is(.app-back-button, .app-menu-button),
+.settings-header :is(.app-back-button, .app-menu-button) {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(236, 247, 255, 0.88) 100%);
+  box-shadow:
+    0 6px 12px rgba(47, 101, 145, 0.16),
+    0 2px 3px rgba(47, 101, 145, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -2px 0 rgba(121, 169, 207, 0.12);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+
+.stadium-page-header :is(.app-back-button, .app-menu-button):hover,
+.settings-header :is(.app-back-button, .app-menu-button):hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
+.stadium-page-header :is(.app-back-button, .app-menu-button):active,
+.settings-header :is(.app-back-button, .app-menu-button):active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 4px rgba(47, 101, 145, 0.14),
+    inset 0 2px 4px rgba(76, 125, 166, 0.14);
+}
+
 html.theme-dark .app-menu-button {
   background: rgba(255, 255, 255, 0.08);
   color: #f8fafc;

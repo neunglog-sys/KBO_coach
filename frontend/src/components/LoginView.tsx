@@ -4,6 +4,7 @@ interface LoginViewProps {
   error: string;
   notice: string;
   onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
+  onGoogleLogin?: () => Promise<void>;
   onShowRegister: () => void;
 }
 
@@ -17,7 +18,7 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewProps) {
+export function LoginView({ error, notice, onLogin, onGoogleLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -38,6 +39,15 @@ export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewP
 
   function handleSocialClick() {
     setSocialNotice("소셜 로그인은 준비 중이에요. 회원가입으로 시작해 주세요.");
+  }
+
+  function handleGoogleClick() {
+    setSocialNotice("");
+    if (onGoogleLogin) {
+      void onGoogleLogin();
+    } else {
+      handleSocialClick();
+    }
   }
 
   return (
@@ -113,8 +123,8 @@ export function LoginView({ error, notice, onLogin, onShowRegister }: LoginViewP
           <button
             type="button"
             className="auth-social-button is-google"
-            aria-label="구글로 로그인 (준비 중)"
-            onClick={handleSocialClick}
+            aria-label="구글로 로그인"
+            onClick={handleGoogleClick}
           >
             <svg viewBox="0 0 48 48" aria-hidden="true">
               <path

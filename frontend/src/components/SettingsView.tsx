@@ -465,7 +465,7 @@ export default function SettingsView({
 
       {screen === "myInfo" ? (
         <>
-          <SettingsHeader title="내 정보" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
+          <SettingsHeader title="내 정보" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-account-card settings-nickname-form" onSubmit={handleNicknameSubmit}>
             <ImgCircle src={SETTING_ICONS.profile} />
             <div className="settings-nickname-fields">
@@ -506,7 +506,7 @@ export default function SettingsView({
 
       {screen === "password" ? (
         <>
-          <SettingsHeader title="비밀번호 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
+          <SettingsHeader title="비밀번호 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
             <label>
               <span>현재 비밀번호</span>
@@ -554,7 +554,7 @@ export default function SettingsView({
 
       {screen === "team" ? (
         <>
-          <SettingsHeader title="응원구단 변경" onBack={goBack} onClose={onClose} onMenuOpen={() => setSideMenuOpen(true)} />
+          <SettingsHeader title="응원구단 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
           <form className="settings-team-card" onSubmit={handleTeamSubmit}>
             <fieldset>
               <legend className="hidden">응원구단 선택</legend>

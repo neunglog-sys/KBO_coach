@@ -235,13 +235,23 @@ select:focus {
   font-weight: 800;
 }
 
+.auth-login-card .error-text {
+  min-height: 8px;
+  margin: 0;
+}
+
+.auth-login-card .notice-text {
+  min-height: 8px;
+  margin: 0 0 8px;
+}
+
 /* === 인증 화면 공통 ========================================= */
 /* 소셜 아이콘 버튼 (로그인/회원가입 공용) */
 .auth-social {
   display: flex;
   justify-content: center;
   gap: 18px;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .auth-social-button {
@@ -376,6 +386,10 @@ select:focus {
   border-bottom: 1.5px solid #d9d9d9;
 }
 
+.auth-login-card .auth-line-field + .auth-line-field {
+  margin-bottom: 12px;
+}
+
 .auth-line-field input {
   width: 100%;
   min-height: 44px;
@@ -401,7 +415,7 @@ select:focus {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin: -4px 0 8px;
+  margin: 0 0 4px;
   color: #42526b;
   font-size: 0.9rem;
   font-weight: 800;
@@ -420,7 +434,7 @@ select:focus {
 .auth-login-submit {
   width: 100%;
   min-height: 52px;
-  margin-top: 10px;
+  margin-top: 6px;
   border: 0;
   border-radius: 30px;
   color: #ffffff;
@@ -441,7 +455,7 @@ select:focus {
 }
 
 .auth-login-hint {
-  margin: 18px 0 2px;
+  margin: 14px 0 0;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 700;

@@ -190,6 +190,61 @@ export function App() {
     setLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
   }
 
+  // 구글 로그인: 네이티브 플러그인으로 idToken 발급 → 백엔드(/auth/google) 검증 → 세션 저장.
+  async function handleGoogleLogin() {
+    setLoginError("");
+    setLoginNotice("");
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+    if (!clientId) {
+      setLoginError("구글 로그인 설정이 필요합니다 (VITE_GOOGLE_CLIENT_ID).");
+      return;
+    }
+
+    try {
+      // 동적 import — 웹 프리뷰 등 네이티브 플러그인이 없는 환경에서 모듈 로드시 깨지지 않게.
+      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      await SocialLogin.initialize({ google: { webClientId: clientId } });
+      // scopes를 넘기면 MainActivity 수정이 필요(@capgo 제약). idToken만 쓰므로 옵션 비움 —
+      // 이메일·이름은 idToken 클레임에 이미 포함된다.
+      const res = await SocialLogin.login({
+        provider: "google",
+        options: {},
+      });
+      const result = res.result as { idToken?: string | null };
+      const idToken = result?.idToken;
+      if (!idToken) {
+        setLoginError("구글 토큰을 받지 못했습니다.");
+        return;
+      }
+
+      const response = await fetch(apiUrl("/auth/google"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+      if (!response.ok) {
+        setLoginError("구글 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      const data = await response.json();
+      const token = data.access_token || data.token || "";
+      const teamCode = data.user?.fav_team_code || "";
+      const userNickname = data.user?.nickname || "";
+      const userBuddyNickname = data.user?.buddy_nickname || "";
+      setAuthToken(token);
+      setFavTeamCode(teamCode);
+      setNickname(userNickname);
+      setBuddyNickname(userBuddyNickname);
+      setIsLoggedIn(true);
+      saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch {
+      setLoginError("구글 로그인 중 오류가 발생했습니다.");
+    }
+  }
+
   async function handleRegister(
     id: string,
     password: string,
@@ -292,6 +347,7 @@ export function App() {
           error={loginError}
           notice={loginNotice}
           onLogin={handleLogin}
+          onGoogleLogin={handleGoogleLogin}
           onShowRegister={() => {
             setLoginError("");
             setLoginNotice("");
