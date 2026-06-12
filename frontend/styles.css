@@ -235,23 +235,13 @@ select:focus {
   font-weight: 800;
 }
 
-.auth-login-card .error-text {
-  min-height: 8px;
-  margin: 0;
-}
-
-.auth-login-card .notice-text {
-  min-height: 8px;
-  margin: 0 0 8px;
-}
-
 /* === 인증 화면 공통 ========================================= */
 /* 소셜 아이콘 버튼 (로그인/회원가입 공용) */
 .auth-social {
   display: flex;
   justify-content: center;
   gap: 18px;
-  margin-top: 18px;
+  margin-top: 22px;
 }
 
 .auth-social-button {
@@ -386,10 +376,6 @@ select:focus {
   border-bottom: 1.5px solid #d9d9d9;
 }
 
-.auth-login-card .auth-line-field + .auth-line-field {
-  margin-bottom: 12px;
-}
-
 .auth-line-field input {
   width: 100%;
   min-height: 44px;
@@ -411,30 +397,10 @@ select:focus {
   border-bottom-color: #2f8aff;
 }
 
-.auth-remember {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  color: #42526b;
-  font-size: 0.9rem;
-  font-weight: 800;
-  cursor: pointer;
-  user-select: none;
-}
-
-.auth-remember input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: #2f8aff;
-  cursor: pointer;
-}
-
 .auth-login-submit {
   width: 100%;
   min-height: 52px;
-  margin-top: 6px;
+  margin-top: 10px;
   border: 0;
   border-radius: 30px;
   color: #ffffff;
@@ -455,7 +421,7 @@ select:focus {
 }
 
 .auth-login-hint {
-  margin: 14px 0 0;
+  margin: 18px 0 2px;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 700;
@@ -2084,9 +2050,20 @@ select:focus {
 
 .quiz-done-message {
   text-align: center;
-  padding: 18px 0 8px;
+  padding: 15px 0 10px; /* 측정 기반 보정: 1.45rem 기준 위아래 잉크 간격 동일 (33/31 → 31/31 목표) */
   font-weight: 800;
   color: #178652;
+}
+
+/* '오늘 퀴즈 완료!' 문구 — 크게+가장 굵게 */
+.quiz-done-message p:first-child {
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+/* 마지막 줄 아래 기본 마진 제거 — XP 줄 유무와 관계없이 바닥 여백 일정 */
+.quiz-done-message p:last-child {
+  margin-bottom: 0;
 }
 
 .quiz-total-xp {
@@ -2374,6 +2351,10 @@ select:focus {
     margin: 0;
     padding: 16px;
   }
+  .quiz-done-message {
+    padding-bottom: 16px; /* 섹션 padding 16 기준 + 잉크 여백 2px 보정 → 위아래 시각적 동일 */
+  }
+
 
   .quiz-question {
     font-size: 0.98rem;
