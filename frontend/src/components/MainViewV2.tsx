@@ -1176,7 +1176,7 @@ export function MainViewV2({
   }
 
   async function finishNativeSTT(submit: boolean) {
-    const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+    const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
     nativeSttActiveRef.current = false;
     await NativeSTT.stop().catch(() => { });
     await NativeSTT.removeAllListeners().catch(() => { });
@@ -1188,7 +1188,7 @@ export function MainViewV2({
 
   async function startNativeSTT() {
     try {
-      const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+      const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
       const { available } = await NativeSTT.available();
       if (!available) return;
       const perm = await NativeSTT.requestPermissions();
