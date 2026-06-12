@@ -2444,8 +2444,7 @@ select:focus {
     "status status"
     "field actions"
     "field quiz"
-    "field streak"
-    "notice notice";
+    "field streak"; /* notice 행 제거 — 하단 대사창 삭제로 빈 행이 gap만 만들었음 */
   gap: 14px;
   min-height: min(920px, calc(100vh - 40px));
   overflow-x: hidden;
@@ -2460,6 +2459,16 @@ select:focus {
     radial-gradient(ellipse 460px 360px at 22% 78%, rgba(118, 226, 187, 0.34), transparent 70%),
     radial-gradient(ellipse 400px 320px at 84% 90%, rgba(167, 130, 255, 0.30), transparent 70%),
     linear-gradient(180deg, #51c4fb 0%, #c8efff 34%, #eefaff 100%);
+}
+
+/* 퀴즈 영역이 닫혀 있으면 quiz 행 자체를 빼서 빈 행 gap 제거 (연속출석 위 간격 = 다른 박스와 동일) */
+.tamagotchi-dashboard:not(:has(.tamagotchi-quiz-section)) {
+  grid-template-areas:
+    "title title"
+    "nav nav"
+    "status status"
+    "field actions"
+    "field streak";
 }
 
 /* 다마고치 상단 헤더 (탭바 → 뒤로가기/제목/☰ 교체, 구장정보 stadium-page-header와 동일 구성)
@@ -2948,12 +2957,23 @@ select:focus {
       "status"
       "field"
       "actions"
-      "notice"
       "quiz"
-      "streak";
+      "streak"; /* notice 행 제거 */
     min-height: 100dvh;
     padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 16px;
   }
+
+  /* 퀴즈 닫힘 시 quiz 행 제거 — 연속출석 위 간격을 다른 박스와 동일하게 */
+  .tamagotchi-dashboard:not(:has(.tamagotchi-quiz-section)) {
+    grid-template-areas:
+      "title"
+      "nav"
+      "status"
+      "field"
+      "actions"
+      "streak";
+  }
+
 
   .tamagotchi-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
