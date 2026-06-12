@@ -174,6 +174,7 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   const switchRef = useRef<HTMLDivElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
   const inputBarRef = useRef<HTMLFormElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
 
   const teamObj = teamByCode(team);
@@ -183,12 +184,16 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     const root = rootRef.current;
     if (!root) return;
 
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const visualViewport = window.visualViewport;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+
     const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
     const switchHeight = switchRef.current?.getBoundingClientRect().height ?? 0;
     const inputHeight = inputBarRef.current?.getBoundingClientRect().height ?? 0;
 
     root.style.setProperty("--chat-viewport-height", `${Math.ceil(viewportHeight)}px`);
+    root.style.setProperty("--chat-viewport-top", `${Math.ceil(viewportTop)}px`);
     root.style.setProperty("--chat-header-height", `${Math.ceil(headerHeight)}px`);
     root.style.setProperty("--chat-search-height", "0px");
     root.style.setProperty("--chat-switch-height", `${Math.ceil(switchHeight)}px`);
@@ -200,9 +205,10 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       updateChatLayout();
 
       window.requestAnimationFrame(() => {
-        const log = logRef.current;
-        if (!log) return;
-        log.scrollTo({ top: log.scrollHeight, behavior });
+        bottomRef.current?.scrollIntoView({
+          behavior,
+          block: "end",
+        });
       });
     });
   }
@@ -210,25 +216,30 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
   useEffect(() => {
     updateChatLayout();
 
+    function handleViewportChange() {
+      updateChatLayout();
+      scrollToBottom("auto");
+    }
+
     const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateChatLayout) : null;
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleViewportChange) : null;
 
     [headerRef.current, switchRef.current, inputBarRef.current]
       .filter(Boolean)
       .forEach((el) => resizeObserver?.observe(el as Element));
 
-    const frameId = window.requestAnimationFrame(updateChatLayout);
+    const frameId = window.requestAnimationFrame(handleViewportChange);
 
-    window.addEventListener("resize", updateChatLayout);
-    window.visualViewport?.addEventListener("resize", updateChatLayout);
-    window.visualViewport?.addEventListener("scroll", updateChatLayout);
+    window.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleViewportChange);
 
     return () => {
       window.cancelAnimationFrame(frameId);
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", updateChatLayout);
-      window.visualViewport?.removeEventListener("resize", updateChatLayout);
-      window.visualViewport?.removeEventListener("scroll", updateChatLayout);
+      window.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
     };
   }, [switchOpen, notice, team]);
 
@@ -462,6 +473,8 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
               return items;
             })
           )}
+
+          <div ref={bottomRef} className="chat-bottom-sentinel" aria-hidden="true" />
         </div>
       </section>
 
