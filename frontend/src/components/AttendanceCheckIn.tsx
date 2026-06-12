@@ -1251,7 +1251,7 @@ export default function AttendanceCheckIn({
   }
 
   return (
-    <section className="tamagotchi-dashboard" aria-label="야구짝꿍" style={{ fontFamily: TAMAGOTCHI_FONT }}>
+    <section className="tamagotchi-screen" aria-label="야구짝꿍" style={{ fontFamily: TAMAGOTCHI_FONT }}>
       {/* 상단 헤더: 구장정보 페이지와 동일 구성 (뒤로가기 / 제목 / ☰) — 탭바(TopMenu) 대체 */}
       {/* 스타일: styles.css의 .tamagotchi-app-header (dashboard padding 상쇄 음수 마진 + grid 배치 포함) */}
       <header className="tamagotchi-app-header">
@@ -1270,6 +1270,7 @@ export default function AttendanceCheckIn({
         onClose={() => setSideMenuOpen(false)}
       />
 
+      <section className="tamagotchi-dashboard">
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
         <div className="tamagotchi-status-top">
           <h2>
@@ -1601,6 +1602,8 @@ export default function AttendanceCheckIn({
       </div>
 
       {/* ===== 꾸미기: 라커룸 도감 오버레이 ===== */}
+      </section>
+
       {showLocker ? (
         <LockerRoom
           level={charLevel}

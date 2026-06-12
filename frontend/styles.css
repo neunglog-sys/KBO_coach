@@ -2989,7 +2989,6 @@ select:focus {
       "streak";
   }
 
-
   .tamagotchi-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
@@ -3103,6 +3102,74 @@ html.theme-dark {
   --panel: #152238;
   --line: #33435b;
   --navy: #f3f7ff;
+}
+
+.tamagotchi-screen {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  color: #101a36;
+  background: #dff5ff;
+}
+
+.tamagotchi-screen > .tamagotchi-app-header {
+  grid-area: auto;
+  grid-column: auto;
+  grid-row: auto;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  background: #f4f6fb;
+}
+
+.tamagotchi-screen > .tamagotchi-app-header h2 {
+  flex: 1;
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.tamagotchi-screen > .tamagotchi-dashboard {
+  grid-template-areas:
+    "status status"
+    "field actions"
+    "field quiz"
+    "field streak";
+  min-height: auto;
+  padding-top: 16px;
+}
+
+.tamagotchi-screen > .tamagotchi-dashboard:not(:has(.tamagotchi-quiz-section)) {
+  grid-template-areas:
+    "status status"
+    "field actions"
+    "field streak";
+}
+
+@media (max-width: 720px) {
+  .tamagotchi-screen > .tamagotchi-dashboard {
+    grid-template-areas:
+      "status"
+      "field"
+      "actions"
+      "quiz"
+      "streak";
+    min-height: auto;
+    padding-top: 16px;
+  }
+
+  .tamagotchi-screen > .tamagotchi-dashboard:not(:has(.tamagotchi-quiz-section)) {
+    grid-template-areas:
+      "status"
+      "field"
+      "actions"
+      "streak";
+  }
 }
 
 html.theme-dark,

@@ -412,7 +412,8 @@ function transportationItems(row: StadiumApiRow): TransportationInfo[] {
 }
 
 function objectParticle(value: string): "을" | "를" {
-  const lastCharacter = value.trim().at(-1);
+  const trimmed = value.trim();
+  const lastCharacter = trimmed[trimmed.length - 1];
   if (!lastCharacter) return "를";
 
   const codePoint = lastCharacter.charCodeAt(0);
