@@ -1266,8 +1266,13 @@ export function MainViewV2({
     }
   };
 
+  // 메인이 다른 화면에 가려져 있으면 배경 애니메이션을 멈춰 GPU 부하를 줄인다
+  // (iOS 스와이프 복귀 시 전환 렉 완화 — 재개 시 멈춘 지점부터 이어짐)
+  const stageHidden =
+    isAttendanceOpen || isStadiumPageOpen || isSettingsOpen || showRecords || showChat;
+
   return (
-    <section className="stage-view" aria-label="메인 화면">
+    <section className={`stage-view ${stageHidden ? "stage-paused" : ""}`.trim()} aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
         {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
