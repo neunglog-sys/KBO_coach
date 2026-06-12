@@ -373,8 +373,13 @@ function compact(values: Array<string | null | undefined>): string[] {
 function uniqueCompact(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
   return compact(values).filter((value) => {
-    const key = value.replace(/\s+/g, " ");
-    if (seen.has(key)) return false;
+    const key = value.replace(/\s+/g, " ").trim();
+    if (
+      seen.has(key) ||
+      Array.from(seen).some((existing) => existing.includes(key) || key.includes(existing))
+    ) {
+      return false;
+    }
     seen.add(key);
     return true;
   });
@@ -393,12 +398,18 @@ function objectParticle(value: string): "을" | "를" {
   return hasFinalConsonant ? "을" : "를";
 }
 
-function splitList(value: string | null): string[] {
+function splitPlaces(value: string | null): string[] {
   if (!value) return [];
   return value
-    .split(/\r?\n|[,·]/)
+    .split(/[,/]/)
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter((item, index, items) => Boolean(item) && items.indexOf(item) === index);
+}
+
+function extractTourismPlaces(value: string | null): string[] {
+  if (!value) return [];
+  const tourismSection = value.match(/(?:^|\.\s*)관광:\s*([^.]+)/)?.[1];
+  return splitPlaces(tourismSection ?? value.split(".")[0]);
 }
 
 function normalizeFoodName(value: string) {
@@ -499,11 +510,8 @@ export function mapStadium(row: StadiumApiRow): Stadium {
         row.bus_info,
         row.parking,
       ]),
-      attractions: splitList(row.tourism),
-      nearbyAreas: compact([
-        row.restaurants,
-        row.accommodations ? `숙박 추천 지역: ${row.accommodations}` : null,
-      ]),
+      attractions: extractTourismPlaces(row.tourism),
+      nearbyAreas: splitPlaces(row.accommodations),
     },
   };
 }

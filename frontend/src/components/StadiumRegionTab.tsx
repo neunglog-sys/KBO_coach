@@ -5,17 +5,17 @@ export function StadiumRegionTab({ stadium }: { stadium: Stadium }) {
   return (
     <section className="stadium-page-region-list stadium-page-tab-panel" role="tabpanel">
       <RegionInfoCard
-        iconSrc="/img/baseball_icons2/transport.svg"
+        iconSrc="/img/baseball_icons2/transport.png"
         title="교통"
         items={stadium.regionInfo.transportation}
       />
       <RegionInfoCard
-        iconSrc="/img/baseball_icons2/tour.svg"
+        iconSrc="/img/baseball_icons2/tour.png"
         title="주변 관광"
         items={stadium.regionInfo.attractions}
       />
       <RegionInfoCard
-        iconSrc="/img/baseball_icons2/area.svg"
+        iconSrc="/img/baseball_icons2/area.png"
         title="주변 지역"
         items={stadium.regionInfo.nearbyAreas}
       />

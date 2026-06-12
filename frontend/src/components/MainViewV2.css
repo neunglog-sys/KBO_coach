@@ -563,6 +563,23 @@
 
 /* 키보드 열림(kb-open): 공복이를 남은 화면 띠로 올려 계속 보이게 */
 .kb-open .stage-character {
-  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.45)) scale(0.72);
+  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.18)) scale(0.82);
   transition: transform 0.25s ease;
+}
+
+
+/* iOS: 상단 메뉴 3px 위로 (디자인 보정 요청) */
+.plat-ios .stage-nav {
+  top: calc(var(--stage-nav-top) - 3px);
+}
+
+/* 키보드 열림: 홈바 여백(safe-area-bottom)은 키보드 밑에 깔리므로 제외 — 입력줄이 키보드에 바짝 붙게 */
+.kb-open .stage-chat {
+  padding-bottom: var(--keyboard-inset, 0px) !important;   /* 입력줄이 키보드에 딱 붙게 */
+}
+
+/* 메인이 가려진 동안 배경 스크롤 일시정지 — 스와이프 복귀 렉 완화 (진행 위치는 보존됨) */
+.stage-paused .stage-bg-sky,
+.stage-paused .stage-bg-ground {
+  animation-play-state: paused;
 }

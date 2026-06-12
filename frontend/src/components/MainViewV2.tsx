@@ -288,6 +288,9 @@ export function MainViewV2({
   // 직전 렌더의 메시지 개수 — 새 말풍선 추가(턴 시작)와 스트리밍 글자 갱신을 구분한다.
   const prevMsgCountRef = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // 네이티브 음성인식 상태 (앱 전용 — 마지막 인식 텍스트와 활성 여부)
+  const nativeSttLastRef = useRef("");
+  const nativeSttActiveRef = useRef(false);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   // Web Audio 스트리밍 재생 정지 핸들 — stopSpeaking이 즉시 멈추도록.
   const audioStopRef = useRef<(() => void) | null>(null);
@@ -312,8 +315,9 @@ export function MainViewV2({
   const chatResizeRef = useRef<{ startY: number; startHeight: number; lastHeight: number; moved: boolean } | null>(null);
 
   const supportsSTT =
-    typeof window !== "undefined" &&
-    Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+    Capacitor.isNativePlatform() ||   // 앱은 네이티브 음성인식 플러그인 사용 (iOS 웹뷰는 Web Speech API 미지원)
+    (typeof window !== "undefined" &&
+      Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
 
   // 사용자의 스크롤을 추적해 "맨 아래에 붙어 있는지"를 갱신한다.
   // 위로 올리면 pinned=false가 되어 자동 스크롤이 멈추고, 다시 맨 아래로 내려오면 pinned=true.
@@ -389,6 +393,22 @@ export function MainViewV2({
     }
   }, []);
 
+  // 뒤로가기(iOS 엣지 스와이프·안드 하드웨어 버튼) = 열린 화면 닫고 홈으로
+  useEffect(() => {
+    const onPop = () => {
+      stopSpeaking();
+      setClosingOverlay(null);
+      setIsAttendanceOpen(false);
+      setIsStadiumPageOpen(false);
+      setIsSettingsOpen(false);
+      setShowRecords(false);
+      setShowChat(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function closeOverlay(
     overlay: "tamagotchi" | "stadium" | "settings",
     afterClose?: () => void,
@@ -429,6 +449,8 @@ export function MainViewV2({
     setIsSettingsOpen(key === "settings");
     setShowRecords(key === "record");
     setShowChat(key === "chat");
+    // 뒤로가기(iOS 스와이프·안드 버튼)용 히스토리 엔트리 — popstate에서 홈 복귀
+    window.history.pushState({ view: key }, "");
   }
 
   // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
@@ -1117,7 +1139,58 @@ export function MainViewV2({
     setIsSpeaking(false);
   }
 
+  async function finishNativeSTT(submit: boolean) {
+    const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+    nativeSttActiveRef.current = false;
+    await NativeSTT.stop().catch(() => { });
+    await NativeSTT.removeAllListeners().catch(() => { });
+    setIsListening(false);
+    const transcript = nativeSttLastRef.current.trim();
+    nativeSttLastRef.current = "";
+    if (submit && transcript) void submitQuestionRef.current(transcript);
+  }
+
+  async function startNativeSTT() {
+    try {
+      const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+      const { available } = await NativeSTT.available();
+      if (!available) return;
+      const perm = await NativeSTT.requestPermissions();
+      if (perm.speechRecognition !== "granted") return;
+
+      nativeSttLastRef.current = "";
+      await NativeSTT.removeAllListeners().catch(() => { });
+      await NativeSTT.addListener("partialResults", (data: { matches?: string[] }) => {
+        const t = data.matches?.[0];
+        if (t) nativeSttLastRef.current = t;
+      });
+      // 안드로이드는 침묵 시 인식기가 스스로 종료 → 그 시점에 결과 제출
+      await NativeSTT.addListener("listeningState", (data: { status?: string }) => {
+        if (data.status === "stopped" && nativeSttActiveRef.current) {
+          void finishNativeSTT(true);
+        }
+      });
+      nativeSttActiveRef.current = true;
+      setIsListening(true);
+      await NativeSTT.start({ language: "ko-KR", maxResults: 1, partialResults: true, popup: false });
+    } catch {
+      nativeSttActiveRef.current = false;
+      setIsListening(false);
+    }
+  }
+
   function toggleMic() {
+    // 앱(iOS·안드): 네이티브 음성인식 — 다시 누르면 지금까지 들은 내용 제출
+    if (Capacitor.isNativePlatform()) {
+      if (isListening) {
+        void finishNativeSTT(true);
+        return;
+      }
+      stopSpeaking();
+      void startNativeSTT();
+      return;
+    }
+
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
@@ -1193,8 +1266,13 @@ export function MainViewV2({
     }
   };
 
+  // 메인이 다른 화면에 가려져 있으면 배경 애니메이션을 멈춰 GPU 부하를 줄인다
+  // (iOS 스와이프 복귀 시 전환 렉 완화 — 재개 시 멈춘 지점부터 이어짐)
+  const stageHidden =
+    isAttendanceOpen || isStadiumPageOpen || isSettingsOpen || showRecords || showChat;
+
   return (
-    <section className="stage-view" aria-label="메인 화면">
+    <section className={`stage-view ${stageHidden ? "stage-paused" : ""}`.trim()} aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
         {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
