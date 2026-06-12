@@ -17,7 +17,10 @@
 /* 팀 응원톡 — 네이버 응원톡 스타일 */
 .chat-view {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: var(--chat-viewport-top, 0px);
+  bottom: auto;
   z-index: 55;
   display: flex;
   flex-direction: column;
@@ -32,7 +35,8 @@
   --chat-header-x: 24px;
   --chat-align-x: 12px;
   --chat-title-indent: 12px;
-  --chat-bottom-gap: 10px;
+  --chat-bottom-gap: 14px;
+  --chat-viewport-top: 0px;
   --chat-header-height: 0px;
   --chat-search-height: 0px;
   --chat-switch-height: 0px;
@@ -41,8 +45,8 @@
 
 @supports not (height: 100dvh) {
   .chat-view {
-    height: 100vh;
-    min-height: 100vh;
+    height: var(--chat-viewport-height, 100vh);
+    min-height: var(--chat-viewport-height, 100vh);
   }
 }
 
@@ -215,14 +219,12 @@
 
 /* 큰 둥근 채팅 카드 */
 .chat-panel {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: calc(var(--chat-header-height) + var(--chat-search-height) + var(--chat-switch-height) - 18px);
-  bottom: var(--chat-inputbar-space);
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  margin-top: -18px;
   padding: 0;
   border-radius: 28px 28px 0 0;
   background: rgba(255, 255, 255, 0.96);
@@ -311,11 +313,17 @@
   scroll-behavior: smooth;
   scroll-padding-bottom: var(--chat-bottom-gap);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .chat-log::after {
   content: "";
-  flex: 0 0 calc(var(--chat-inputbar-space) + 1px);
+  flex: 0 0 1px;
+}
+
+.chat-bottom-sentinel {
+  flex: 0 0 var(--chat-bottom-gap);
+  width: 100%;
 }
 
 .chat-empty {
@@ -416,10 +424,10 @@
 
 /* 입력바 — 모든 화면에서 하단 고정 */
 .chat-inputbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
   flex: 0 0 auto;
   display: flex;
   align-items: center;

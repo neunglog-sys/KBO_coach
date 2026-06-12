@@ -34,6 +34,16 @@ KAKAO_LOCAL_REDIRECT_URI = os.environ.get(
     "KAKAO_LOCAL_REDIRECT_URI",
     "http://localhost:8000/auth/kakao/callback",
 )
+NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
+NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
+NAVER_REDIRECT_URI = os.environ.get(
+    "NAVER_REDIRECT_URI",
+    "https://kboai-5dea0.web.app/auth/naver/callback",
+)
+NAVER_LOCAL_REDIRECT_URI = os.environ.get(
+    "NAVER_LOCAL_REDIRECT_URI",
+    "http://localhost:8000/auth/naver/callback",
+)
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "https://kboai-5dea0.web.app")
 LOCAL_FRONTEND_ORIGIN = os.environ.get("LOCAL_FRONTEND_ORIGIN", "http://127.0.0.1:5000")
 logger = logging.getLogger(__name__)
@@ -90,6 +100,10 @@ def is_local_request(request: Request) -> bool:
 
 def kakao_redirect_uri_for(request: Request) -> str:
     return KAKAO_LOCAL_REDIRECT_URI if is_local_request(request) else KAKAO_REDIRECT_URI
+
+
+def naver_redirect_uri_for(request: Request) -> str:
+    return NAVER_LOCAL_REDIRECT_URI if is_local_request(request) else NAVER_REDIRECT_URI
 
 
 def frontend_origin_for(request: Request) -> str:
@@ -377,6 +391,122 @@ def kakao_callback(
                        VALUES (%s, NULL, %s, NULL, 'kakao', %s)
                        RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname""",
                     (email, nickname, kakao_id),
+                )
+                user = cur.fetchone()
+        return kakao_finish_page(social_login_response(user), request, state)
+    finally:
+        conn.close()
+
+
+@router.get("/naver/start")
+def naver_start(request: Request, from_source: str | None = Query(default=None, alias="from")):
+    """Redirect the user to Naver's OAuth authorization page. (카카오와 동일한 웹 플로우)"""
+    if not NAVER_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="서버에 NAVER_CLIENT_ID 미설정")
+
+    params = {
+        "response_type": "code",
+        "client_id": NAVER_CLIENT_ID,
+        "redirect_uri": naver_redirect_uri_for(request),
+        # 네이버는 state가 필수 — 앱/웹 복귀 분기 플래그를 겸용
+        "state": "app" if from_source == "app" else "web",
+    }
+    if from_source == "app":
+        params["auth_type"] = "reprompt"
+    return RedirectResponse(
+        "https://nid.naver.com/oauth2.0/authorize?" + urlencode(params),
+        status_code=302,
+    )
+
+
+@router.get("/naver/callback")
+def naver_callback(
+    request: Request,
+    code: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+):
+    """Exchange Naver OAuth code, create/login the user, then return to the app/web."""
+    if error:
+        return HTMLResponse(
+            f"<p>네이버 로그인이 취소되었거나 실패했습니다: {html.escape(error)}</p>",
+            status_code=400,
+        )
+    if not code:
+        raise HTTPException(status_code=400, detail="네이버 인증 코드가 없습니다")
+    if not NAVER_CLIENT_ID or not NAVER_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="서버에 NAVER_CLIENT_ID/SECRET 미설정")
+
+    try:
+        token_res = requests.post(
+            "https://nid.naver.com/oauth2.0/token",
+            data={
+                "grant_type": "authorization_code",
+                "client_id": NAVER_CLIENT_ID,
+                "client_secret": NAVER_CLIENT_SECRET,
+                "code": code,
+                "state": state or "",
+            },
+            timeout=10,
+        )
+        token_res.raise_for_status()
+        access_token = token_res.json().get("access_token")
+        if not access_token:
+            raise ValueError("missing access_token")
+
+        me_res = requests.get(
+            "https://openapi.naver.com/v1/nid/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        me_res.raise_for_status()
+        profile = (me_res.json() or {}).get("response") or {}
+    except Exception:
+        logger.warning("Naver login failed", exc_info=True)
+        raise HTTPException(status_code=401, detail="네이버 사용자 인증에 실패했습니다")
+
+    naver_id = str(profile.get("id") or "")
+    if not naver_id:
+        raise HTTPException(status_code=401, detail="네이버 사용자 ID를 확인할 수 없습니다")
+
+    email = profile.get("email") or f"naver_{naver_id[:12]}@naver.local"
+    nickname = (profile.get("nickname") or profile.get("name") or f"네이버사용자{naver_id[-4:]}")[:50]
+
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            ensure_social_columns(conn)
+            cur.execute(
+                """SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname
+                     FROM users
+                    WHERE provider = 'naver' AND provider_id = %s""",
+                (naver_id,),
+            )
+            user = cur.fetchone()
+            if not user:
+                cur.execute(
+                    """SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname
+                         FROM users
+                        WHERE email = %s""",
+                    (email,),
+                )
+                user = cur.fetchone()
+            if user:
+                cur.execute(
+                    """UPDATE users
+                          SET provider = 'naver', provider_id = %s
+                        WHERE user_id = %s
+                    RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname""",
+                    (naver_id, user["user_id"]),
+                )
+                user = cur.fetchone()
+            else:
+                cur.execute(
+                    """INSERT INTO users (email, password_hash, nickname, fav_team_code, provider, provider_id)
+                       VALUES (%s, NULL, %s, NULL, 'naver', %s)
+                       RETURNING user_id, email, nickname, fav_team_code, gender, buddy_nickname""",
+                    (email, nickname, naver_id),
                 )
                 user = cur.fetchone()
         return kakao_finish_page(social_login_response(user), request, state)

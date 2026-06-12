@@ -336,6 +336,13 @@ export function App() {
     window.location.href = apiUrl(`/auth/kakao/start${source}`);
   }
 
+  function handleNaverLogin() {
+    setLoginError("");
+    setLoginNotice("");
+    const source = Capacitor.isNativePlatform() ? "?from=app" : "";
+    window.location.href = apiUrl(`/auth/naver/start${source}`);
+  }
+
   async function handleRegister(
     id: string,
     password: string,
@@ -449,6 +456,7 @@ export function App() {
           onLogin={handleLogin}
           onGoogleLogin={handleGoogleLogin}
           onKakaoLogin={handleKakaoLogin}
+          onNaverLogin={handleNaverLogin}
           onShowRegister={() => {
             setLoginError("");
             setLoginNotice("");

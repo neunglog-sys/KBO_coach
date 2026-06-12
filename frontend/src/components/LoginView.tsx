@@ -6,6 +6,7 @@ interface LoginViewProps {
   onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
   onGoogleLogin?: () => Promise<void>;
   onKakaoLogin?: () => void;
+  onNaverLogin?: () => void;
   onShowRegister: () => void;
 }
 
@@ -19,7 +20,7 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onShowRegister }: LoginViewProps) {
+export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onNaverLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -60,6 +61,15 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
     }
   }
 
+  function handleNaverClick() {
+    setSocialNotice("");
+    if (onNaverLogin) {
+      onNaverLogin();
+    } else {
+      handleSocialClick();
+    }
+  }
+
   return (
     <section className="login-view auth-login-screen" aria-label="로그인">
       <form id="loginForm" className="auth-login-card" onSubmit={handleSubmit}>
@@ -74,7 +84,11 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           <input
             id="userId"
             type="text"
-            autoComplete="username"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="ID"
             value={id}
             onChange={(event) => setId(event.target.value)}
@@ -82,7 +96,7 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           />
         </div>
 
-        <div className="auth-line-field">
+        <div className="auth-line-field" style={{ marginBottom: "10px" }}>
           <input
             id="userPw"
             type={showPassword ? "text" : "password"}
@@ -102,23 +116,53 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           </button>
         </div>
 
-        <p id="loginError" className="error-text" role="alert">
-          {error}
-        </p>
-        <p className="notice-text" aria-live="polite">
-          {notice}
-        </p>
+        {error ? (
+          <p id="loginError" className="error-text" role="alert">
+            {error}
+          </p>
+        ) : null}
 
-        <label className="auth-remember">
+        {notice ? (
+          <p className="notice-text" aria-live="polite">
+            {notice}
+          </p>
+        ) : null}
+
+        <label
+          className="auth-remember"
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: "8px",
+            marginTop: "8px",
+            marginBottom: "14px",
+            cursor: "pointer",
+          }}
+        >
           <input
             type="checkbox"
             checked={rememberLogin}
             onChange={(event) => setRememberLogin(event.target.checked)}
+            style={{
+              width: "16px",
+              height: "16px",
+              minWidth: "16px",
+              minHeight: "16px",
+              margin: 0,
+              padding: 0,
+              flexShrink: 0,
+              cursor: "pointer",
+              accentColor: "#258cff",
+              appearance: "auto",
+              WebkitAppearance: "checkbox",
+            }}
           />
           <span>자동 로그인</span>
         </label>
 
-        <button type="submit" className="auth-login-submit" disabled={isSubmitting}>
+        <button type="submit" className="auth-login-submit" disabled={isSubmitting} style={{ marginTop: "0px" }}>
           {isSubmitting ? "확인 중" : "LOGIN"}
         </button>
 
@@ -171,8 +215,8 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           <button
             type="button"
             className="auth-social-button is-naver"
-            aria-label="네이버로 로그인 (준비 중)"
-            onClick={handleSocialClick}
+            aria-label="네이버로 로그인"
+            onClick={handleNaverClick}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
