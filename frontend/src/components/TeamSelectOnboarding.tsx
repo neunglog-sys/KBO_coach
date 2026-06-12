@@ -141,7 +141,7 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
         <LatudiCharacter expression={selectedTeam?.expression ?? null} width={260} height={260} />
       </div>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: "#8593b3" }}>
-        라투디를 꾹 눌러보세요! 누른 곳을 쳐다봐요 👀
+        캐릭터를 꾹 눌러보세요! 누른 곳을 쳐다봐요 👀
       </p>
 
       {error ? (
