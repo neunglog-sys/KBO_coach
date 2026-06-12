@@ -105,7 +105,16 @@
       "Bash(npx --no-install @gltf-transform/cli draco .opt-tmp/sd.glb public/model/3d/zz_selective.glb)",
       "Bash(awk '{print \"최종 zz_selective: \"$5\" bytes\"}')",
       "Bash(awk '{print $5,$9}')",
-      "Bash(unzip -l android/app/build/outputs/apk/debug/app-debug.apk)"
+      "Bash(unzip -l android/app/build/outputs/apk/debug/app-debug.apk)",
+      "Read(//c/Users/82102_asozp43/**)",
+      "Bash(mkdir -p /tmp/appframes)",
+      "Bash(rm -f /tmp/appframes/*.png)",
+      "Bash(ffmpeg -i \"Downloads/Screen_Recording_20260612_132950_One UI Home.mp4\" -vf \"fps=5\" \"/tmp/appframes/f_%02d.png\" -y)",
+      "Bash(mkdir -p appframes)",
+      "Bash(rm -f appframes/*.png)",
+      "Bash(ffmpeg -i \"Downloads/Screen_Recording_20260612_132950_One UI Home.mp4\" -vf \"fps=6\" \"appframes/f_%02d.png\" -y)",
+      "Bash(echo \"경로: C:\\\\\\\\Users\\\\\\\\82102_asozp43\\\\\\\\appframes\")",
+      "Bash(node -e \"console.log\\(require\\('@capacitor/splash-screen/package.json'\\).version\\)\")"
     ]
   }
 }
