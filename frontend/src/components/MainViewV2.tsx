@@ -19,11 +19,13 @@ import "./MainViewV2.css";
 const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가|반갑)/;
 // 걷기/뛰기 감지용 — 답변/질문에 이 단어가 있으면 캐릭터가 잠깐 움직인다(평소엔 멈춤).
 const RUN_RE = /(도루|걷다|걷는|걷고|걷자|걸어|걸으|뛴다|뛰어|뛰는|뛰자|뛰며|달린다|달려|달리|달릴|질주|내달)/;
+// 던지기 감지용 — 답변/질문에 이 단어가 있으면 캐릭터가 던지기 모션을 1회 재생한다.
+const THROW_RE = /(던지다|던져|던지는|던지고|던질|던졌|투구|피칭|송구|throw|pitch)/i;
 
 // 음성(TTS)에서 키워드가 "발음되는 순간"에 모션을 발동하기 위한 큐.
 // at = 원본 텍스트에서 그 키워드가 다 읽힌 글자 위치(=시작+길이). 재생 중 발음된 글자 수가
 // 이 값을 넘으면 해당 모션을 1회 발동한다. (텍스트 등장 시점이 아니라 음성 타이밍 기준)
-type MotionKind = "greet" | "run";
+type MotionKind = "greet" | "run" | "throw";
 function buildMotionCues(text: string): Array<{ at: number; kind: MotionKind }> {
   const cues: Array<{ at: number; kind: MotionKind }> = [];
   const lower = text.toLowerCase();
@@ -31,6 +33,8 @@ function buildMotionCues(text: string): Array<{ at: number; kind: MotionKind }> 
   if (g && g.index != null) cues.push({ at: g.index + g[0].length, kind: "greet" });
   const r = text.match(RUN_RE);
   if (r && r.index != null) cues.push({ at: r.index + r[0].length, kind: "run" });
+  const t = text.match(THROW_RE);
+  if (t && t.index != null) cues.push({ at: t.index + t[0].length, kind: "throw" });
   return cues;
 }
 
@@ -221,6 +225,8 @@ export function MainViewV2({
   const [greetSignal, setGreetSignal] = useState(0);
   // 값이 증가할 때마다 캐릭터가 잠깐 뛰는(빠른 걷기) 모션을 재생.
   const [runSignal, setRunSignal] = useState(0);
+  // 값이 증가할 때마다 캐릭터가 던지기 모션을 1회 재생.
+  const [throwSignal, setThrowSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
@@ -293,6 +299,7 @@ export function MainViewV2({
   // 텍스트 출력 시점이 아니라 TTS(음성)가 실제로 시작될 때 발동시키기 위해 ref로 보관한다.
   const pendingGreetRef = useRef(false);
   const pendingRunRef = useRef(false);
+  const pendingThrowRef = useRef(false);
   // isSpeaking false→true 전환(=TTS 시작)을 감지하기 위한 직전 값.
   const prevSpeakingRef = useRef(false);
   // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
@@ -447,6 +454,7 @@ export function MainViewV2({
         if (!fired.has(c.kind) && spokenChars >= c.at) {
           fired.add(c.kind);
           if (c.kind === "run") setRunSignal((n) => n + 1);
+          else if (c.kind === "throw") setThrowSignal((n) => n + 1);
           else setGreetSignal((n) => n + 1);
         }
       }
@@ -509,6 +517,7 @@ export function MainViewV2({
         // 이 경로가 단어 타이밍으로 직접 발동하므로, 해당 종류는 시작 effect의 폴백 발동을 끈다.
         for (const c of cues) {
           if (c.kind === "run") pendingRunRef.current = false;
+          else if (c.kind === "throw") pendingThrowRef.current = false;
           else pendingGreetRef.current = false;
         }
         setIsSpeaking(true);
@@ -561,6 +570,7 @@ export function MainViewV2({
           if (!fired.has(c.kind) && spokenChars >= c.at) {
             fired.add(c.kind);
             if (c.kind === "run") setRunSignal((n) => n + 1);
+            else if (c.kind === "throw") setThrowSignal((n) => n + 1);
             else setGreetSignal((n) => n + 1);
           }
         }
@@ -663,6 +673,7 @@ export function MainViewV2({
           // 이 경로가 단어 타이밍으로 직접 발동 → 해당 종류는 시작 effect 폴백 발동을 끈다.
           for (const c of cues) {
             if (c.kind === "run") pendingRunRef.current = false;
+            else if (c.kind === "throw") pendingThrowRef.current = false;
             else pendingGreetRef.current = false;
           }
           setIsSpeaking(true);
@@ -1055,6 +1066,7 @@ export function MainViewV2({
     // (텍스트가 화면에 나오는 시점이 아니라 캐릭터가 "말하기 시작하는" 순간에 맞춰 움직이도록)
     pendingGreetRef.current = GREET_RE.test(answer) || GREET_RE.test(question);
     pendingRunRef.current = RUN_RE.test(answer) || RUN_RE.test(question);
+    pendingThrowRef.current = THROW_RE.test(answer) || THROW_RE.test(question);
     await speakAnswer(answer, setBot);
     setBot(answer);
   }
@@ -1081,6 +1093,10 @@ export function MainViewV2({
       if (pendingRunRef.current) {
         pendingRunRef.current = false;
         setRunSignal((n) => n + 1);
+      }
+      if (pendingThrowRef.current) {
+        pendingThrowRef.current = false;
+        setThrowSignal((n) => n + 1);
       }
     }
     prevSpeakingRef.current = isSpeaking;
@@ -1197,7 +1213,7 @@ export function MainViewV2({
       <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false" ref={characterRef}>
-        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />

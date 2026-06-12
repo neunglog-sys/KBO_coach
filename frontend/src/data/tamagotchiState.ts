@@ -4,6 +4,7 @@ export interface TamagotchiState {
   stateVersion: number;
   lastAttendanceDate: string | null;
   lastCheerDate: string | null;
+  lastCheerAt: number | null;
   lastPenaltyAppliedDate: string | null;
   lastEvaluatedDate: string;
   moodBase: Exclude<MoodStatus, "좋음">;
@@ -14,10 +15,13 @@ export interface TamagotchiState {
 export interface TamagotchiViewState extends TamagotchiState {
   todayAttendanceDone: boolean;
   todayCheerDone: boolean;
+  cheerCooldownActive: boolean;
+  cheerAvailableAt: number | null;
   moodStatus: MoodStatus;
 }
 
 export const DEFAULT_CHEER_POWER = 0;
+export const CHEER_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 const CURRENT_STATE_VERSION = 2;
 
 export const DEFAULT_SPEECHES = [
@@ -65,6 +69,10 @@ export function addDays(dateKey: string, amount: number): string {
 
 function validDateKey(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function validTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 function clampCheerPower(value: unknown): number {
@@ -125,13 +133,21 @@ function missedCheerDays(fromDate: string, untilExclusive: string, lastCheerDate
   return count;
 }
 
-function withViewState(state: TamagotchiState, today: string): TamagotchiViewState {
+function withViewState(
+  state: TamagotchiState,
+  today: string,
+  now = Date.now(),
+): TamagotchiViewState {
   const todayAttendanceDone = state.lastAttendanceDate === today;
   const todayCheerDone = state.lastCheerDate === today;
+  const cheerAvailableAt = state.lastCheerAt ? state.lastCheerAt + CHEER_COOLDOWN_MS : null;
+  const cheerCooldownActive = cheerAvailableAt ? cheerAvailableAt > now : false;
   return {
     ...state,
     todayAttendanceDone,
     todayCheerDone,
+    cheerCooldownActive,
+    cheerAvailableAt,
     moodStatus: todayAttendanceDone && todayCheerDone ? "좋음" : state.moodBase,
   };
 }
@@ -146,6 +162,7 @@ export function initializeTamagotchiState(
       stateVersion: CURRENT_STATE_VERSION,
       lastAttendanceDate: validDateKey(saved?.lastAttendanceDate) ? saved.lastAttendanceDate : null,
       lastCheerDate: validDateKey(saved?.lastCheerDate) ? saved.lastCheerDate : null,
+      lastCheerAt: validTimestamp(saved?.lastCheerAt) ? saved.lastCheerAt : null,
       lastPenaltyAppliedDate: validDateKey(saved?.lastPenaltyAppliedDate)
         ? saved.lastPenaltyAppliedDate
         : null,
@@ -160,6 +177,7 @@ export function initializeTamagotchiState(
     stateVersion: CURRENT_STATE_VERSION,
     lastAttendanceDate: validDateKey(saved.lastAttendanceDate) ? saved.lastAttendanceDate : null,
     lastCheerDate: validDateKey(saved.lastCheerDate) ? saved.lastCheerDate : null,
+    lastCheerAt: validTimestamp(saved.lastCheerAt) ? saved.lastCheerAt : null,
     lastPenaltyAppliedDate: validDateKey(saved.lastPenaltyAppliedDate)
       ? saved.lastPenaltyAppliedDate
       : null,
@@ -213,8 +231,9 @@ export function applyCheer(
   state: TamagotchiViewState,
   today: string,
   speechText: string,
+  now = Date.now(),
 ): TamagotchiViewState {
-  if (state.lastCheerDate === today) {
+  if (state.lastCheerAt && now - state.lastCheerAt < CHEER_COOLDOWN_MS) {
     return {
       ...state,
       speechText,
@@ -223,10 +242,11 @@ export function applyCheer(
   return withViewState({
     ...state,
     lastCheerDate: today,
+    lastCheerAt: now,
     lastEvaluatedDate: today,
     cheerPower: clampCheerPower(state.cheerPower + 10),
     speechText,
-  }, today);
+  }, today, now);
 }
 
 export function syncAttendance(

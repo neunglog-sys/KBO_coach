@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""OX quiz API: three daily questions, excluding yesterday's assigned questions.
+"""OX quiz API: five daily questions, excluding yesterday's assigned questions.
 
 개인화 출제(POST /daily): 앱이 로컬 SQLite에서 꺼낸 '사용자의 최근 챗봇 질문'을 보내면,
-그 주제로 RAG(용어집·규칙·지식청크) 근거 OX 문항 1개를 LLM이 생성해 오늘 3문제에 섞는다.
+그 주제로 RAG(용어집·규칙·지식청크) 근거 OX 문항 1개를 LLM이 생성해 오늘 5문제에 섞는다.
 질문 이력은 일시 사용만 하고 서버에 저장하지 않음(personal_context와 동일 원칙).
 생성 문항은 quiz 테이블(source='llm')에 들어가 공용 풀도 함께 성장한다.
 """
@@ -21,12 +21,12 @@ from db_pg import get_conn
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
-DAILY_LIMIT = 3
+DAILY_LIMIT = 5
 XP_MAP = {
-    "\uc655\ucd08\ubcf4": 2,
-    "\ucd08\ubcf4": 3,
-    "\uc911\uae09": 4,
-    "\uace0\uae09": 5,
+    "\uc655\ucd08\ubcf4": 5,
+    "\ucd08\ubcf4": 7,
+    "\uc911\uae09": 10,
+    "\uace0\uae09": 15,
 }
 
 
@@ -226,7 +226,7 @@ class DailyIn(BaseModel):
 
 @router.post("/daily")
 def post_daily_quiz(body: DailyIn, authorization: str | None = Header(default=None)):
-    """개인화 출제 — recent_questions가 있으면 오늘 3문제 중 1문제를 그 주제(RAG 근거)로 생성."""
+    """개인화 출제 — recent_questions가 있으면 오늘 5문제 중 1문제를 그 주제(RAG 근거)로 생성."""
     return _daily(_user_key(authorization), body.recent_questions)
 
 

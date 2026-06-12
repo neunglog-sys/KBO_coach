@@ -15,6 +15,7 @@ import {
   applyCheer,
   ATTENDANCE_SPEECHES,
   CHEER_SPEECHES,
+  CHEER_COOLDOWN_MS,
   DEFAULT_SPEECHES,
   initializeTamagotchiState,
   localDateKey,
@@ -47,6 +48,9 @@ interface QuizQuestion {
   question: string;
   difficulty: string;
   personalized?: boolean;   // 내 최근 질문 주제로 생성된 맞춤 문항
+  answer?: boolean;
+  explanation?: string;
+  localFallback?: boolean;
 }
 
 interface QuizResult {
@@ -75,7 +79,57 @@ const DEFAULT_BUDDY_NICKNAME = "야구짝꿍";
 const MAX_BUDDY_NICKNAME_LENGTH = 10;
 const GENDER_STORAGE_KEY = "baseballCoachGender"; // 성별 임시 저장(브라우저)
 const CHECKIN_XP = 20;
+const CHEER_XP = 5;
 const XP_PER_LEVEL = 100;
+const DAILY_QUIZ_TARGET = 5;
+const QUIZ_XP_BY_DIFFICULTY: Record<string, number> = {
+  왕초보: 5,
+  초보: 7,
+  중급: 10,
+  고급: 15,
+};
+const LOCAL_FALLBACK_QUIZZES: QuizQuestion[] = [
+  {
+    quiz_id: -1,
+    question: "스트라이크가 3개가 되면 타자는 삼진 아웃이다.",
+    difficulty: "왕초보",
+    answer: true,
+    explanation: "맞아요. 스트라이크 3개가 선언되면 타자는 삼진으로 아웃됩니다.",
+    localFallback: true,
+  },
+  {
+    quiz_id: -2,
+    question: "파울볼은 항상 스트라이크 개수와 상관없이 아웃으로 처리된다.",
+    difficulty: "초보",
+    answer: false,
+    explanation: "아니에요. 보통 파울은 스트라이크로 계산되지만, 파울만으로 바로 아웃되는 것은 아닙니다.",
+    localFallback: true,
+  },
+  {
+    quiz_id: -3,
+    question: "홈런은 타자가 모든 베이스를 밟고 홈으로 돌아와 득점하는 플레이다.",
+    difficulty: "왕초보",
+    answer: true,
+    explanation: "맞아요. 홈런을 치면 타자는 1루, 2루, 3루를 지나 홈까지 밟아 득점합니다.",
+    localFallback: true,
+  },
+  {
+    quiz_id: -4,
+    question: "수비 팀은 한 이닝에 아웃카운트 3개를 잡으면 공격과 수비를 바꾼다.",
+    difficulty: "초보",
+    answer: true,
+    explanation: "맞아요. 한 이닝의 절반은 아웃카운트 3개가 쌓이면 끝납니다.",
+    localFallback: true,
+  },
+  {
+    quiz_id: -5,
+    question: "볼넷은 투수가 볼 4개를 던졌을 때 타자가 1루로 나가는 상황이다.",
+    difficulty: "초보",
+    answer: true,
+    explanation: "맞아요. 볼이 4개가 되면 타자는 볼넷으로 1루에 출루합니다.",
+    localFallback: true,
+  },
+];
 const CHILD_CHARACTER_SRC = "/img/tamagotchi-child.png?v=transparent-fixed";
 const ADULT_CHARACTER_SRC = "/img/tamagotchi-adult.png?v=transparent-fixed-gap";
 const FALLBACK_CHARACTER_SRC = "/img/character.png";
@@ -243,6 +297,12 @@ function getDifficultyColor(difficulty?: string) {
   }
 }
 
+function fillDailyQuizzes(questions: QuizQuestion[]) {
+  const used = new Set(questions.map((question) => question.quiz_id));
+  const fallback = LOCAL_FALLBACK_QUIZZES.filter((question) => !used.has(question.quiz_id));
+  return [...questions, ...fallback].slice(0, DAILY_QUIZ_TARGET);
+}
+
 function todayKey() {
   return localDateKey();
 }
@@ -292,6 +352,25 @@ function fallbackStatus(authToken: string): AttendanceStatus {
 
 function saveFallback(authToken: string, status: AttendanceStatus) {
   localStorage.setItem(attendanceStorageKey(authToken), JSON.stringify(status));
+}
+
+function pendingXpStorageKey(authToken: string) {
+  return `${attendanceStorageKey(authToken)}:pendingXp`;
+}
+
+function loadPendingXp(authToken: string): number {
+  const value = Number(localStorage.getItem(pendingXpStorageKey(authToken)) || 0);
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function savePendingXp(authToken: string, amount: number) {
+  const key = pendingXpStorageKey(authToken);
+  const next = Math.max(0, Math.round(amount));
+  if (next <= 0) {
+    localStorage.removeItem(key);
+  } else {
+    localStorage.setItem(key, String(next));
+  }
 }
 
 function applyLocalCheckIn(authToken: string, current: AttendanceStatus): AttendanceStatus {
@@ -414,6 +493,7 @@ export default function AttendanceCheckIn({
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizLoadError, setQuizLoadError] = useState("");
   const [showQuiz, setShowQuiz] = useState(false);
+  const [keyboardShiftPx, setKeyboardShiftPx] = useState(0);
   // 테스트 패널용 값 (SHOW_TEST_PANEL=true 일 때만 사용)
   const [testLevel, setTestLevel] = useState(1);
   const [testTeam, setTestTeam] = useState(""); // "" = 무소속(default)
@@ -433,6 +513,33 @@ export default function AttendanceCheckIn({
     [status.xp],
   );
 
+  function applyXpToStatus(current: AttendanceStatus, amount: number, message?: string): AttendanceStatus {
+    const xp = current.xp + amount;
+    return {
+      ...current,
+      xp,
+      level: Math.floor(xp / XP_PER_LEVEL) + 1,
+      xp_to_next: XP_PER_LEVEL - (xp % XP_PER_LEVEL),
+      gained_xp: amount,
+      message: message ?? current.message,
+    };
+  }
+
+  function addPendingXp(amount: number) {
+    savePendingXp(authToken, loadPendingXp(authToken) + amount);
+  }
+
+  function subtractPendingXp(amount: number) {
+    savePendingXp(authToken, loadPendingXp(authToken) - amount);
+  }
+
+  function mergePendingXp(serverStatus: AttendanceStatus): AttendanceStatus {
+    const pendingXp = loadPendingXp(authToken);
+    return pendingXp > 0
+      ? applyXpToStatus(serverStatus, pendingXp, serverStatus.message)
+      : serverStatus;
+  }
+
   // 짝꿍 별명 (dev에서 추가됨)
   const displayBuddyNickname = buddyNickname.trim() || DEFAULT_BUDDY_NICKNAME;
 
@@ -446,8 +553,9 @@ export default function AttendanceCheckIn({
   // 무소속인데 실제 레벨이 2 이상이면 안내 배너 표시용
   const levelLockedByNoTeam = !charTeam && rawLevel >= 2;
 
-  const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 3);
-  const displayProgress = SHOW_TEST_PANEL ? 0 : (progress || 60);
+  const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 1);
+  const displayProgress = SHOW_TEST_PANEL ? 0 : progress;
+  const cheerCompleted = dailyState.cheerCooldownActive;
   const characterSrc = useMemo(
     () => getCharacterImage(charLevel, charTeam, charGender),
     [charLevel, charTeam, charGender],
@@ -570,6 +678,24 @@ export default function AttendanceCheckIn({
   }, [characterSrc]);
 
   useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const syncKeyboardInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardShiftPx(Math.min(180, Math.round(inset * 0.34)));
+    };
+
+    syncKeyboardInset();
+    viewport.addEventListener("resize", syncKeyboardInset);
+    viewport.addEventListener("scroll", syncKeyboardInset);
+    return () => {
+      viewport.removeEventListener("resize", syncKeyboardInset);
+      viewport.removeEventListener("scroll", syncKeyboardInset);
+    };
+  }, []);
+
+  useEffect(() => {
     setGender(loadGender(authToken));
     setPendingGender(loadGender(authToken));
     const nextBuddyNickname = loadBuddyNickname(authToken, initialBuddyNickname);
@@ -681,6 +807,28 @@ export default function AttendanceCheckIn({
   }
 
   useEffect(() => {
+    if (!dailyState.cheerCooldownActive || !dailyState.cheerAvailableAt) return;
+
+    const remainingMs = dailyState.cheerAvailableAt - Date.now();
+    if (remainingMs <= 0) {
+      updateDailyState((current) => ({
+        ...current,
+        cheerCooldownActive: false,
+      }));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      updateDailyState((current) => ({
+        ...current,
+        cheerCooldownActive: false,
+      }));
+    }, Math.min(remainingMs, CHEER_COOLDOWN_MS));
+
+    return () => window.clearTimeout(timer);
+  }, [dailyState.cheerAvailableAt, dailyState.cheerCooldownActive]);
+
+  useEffect(() => {
     onCheckedTodayChange?.(status.checked_today || dailyState.todayAttendanceDone);
   }, [dailyState.todayAttendanceDone, onCheckedTodayChange, status.checked_today]);
 
@@ -778,8 +926,9 @@ export default function AttendanceCheckIn({
         if (!response.ok) return;
         const data = (await response.json()) as AttendanceStatus;
         if (!ignore) {
-          setStatus(data);
-          saveFallback(authToken, data);
+          const merged = mergePendingXp(data);
+          setStatus(merged);
+          saveFallback(authToken, merged);
           updateDailyState((current) =>
             syncAttendance(current, data.last_checkin_date, todayKey())
           );
@@ -863,11 +1012,12 @@ export default function AttendanceCheckIn({
           answered_count: number;
         };
         if (!ignore) {
-          setQuizQuestions(data.questions);
+          const questions = fillDailyQuizzes(data.questions);
           setQuizResults(data.results);
-          setCurrentQuizIdx(data.answered_count);
+          setQuizQuestions(questions);
+          setCurrentQuizIdx(Math.min(data.answered_count, questions.length));
           setShowingResult(false);
-          setQuizLoadError(data.questions.length > 0 ? "" : "오늘 풀 수 있는 퀴즈가 없어요.");
+          setQuizLoadError(questions.length > 0 ? "" : "오늘 풀 수 있는 퀴즈가 없어요.");
         }
       } catch {
         if (!ignore) {
@@ -895,8 +1045,9 @@ export default function AttendanceCheckIn({
       if (!response.ok) throw new Error("attendance api failed");
 
       const data = (await response.json()) as AttendanceStatus;
-      setStatus(data);
-      saveFallback(authToken, data);
+      const merged = mergePendingXp(data);
+      setStatus(merged);
+      saveFallback(authToken, merged);
       const speech = randomSpeech(ATTENDANCE_SPEECHES, nickname);
       updateDailyState((current) => applyAttendance(current, todayKey(), speech));
     } catch {
@@ -915,6 +1066,28 @@ export default function AttendanceCheckIn({
 
     setQuizLoading(true);
     try {
+      if (question.localFallback) {
+        const isCorrect = answer === question.answer;
+        const xpEarned = isCorrect ? QUIZ_XP_BY_DIFFICULTY[question.difficulty] ?? 5 : 0;
+        const result: QuizResult = {
+          is_correct: isCorrect,
+          xp_earned: xpEarned,
+          explanation: question.explanation ?? "",
+        };
+
+        setQuizResults((prev) => ({ ...prev, [String(question.quiz_id)]: result }));
+        setShowingResult(true);
+        if (xpEarned > 0) {
+          addPendingXp(xpEarned);
+          setStatus((current) => {
+            const next = applyXpToStatus(current, xpEarned);
+            saveFallback(authToken, next);
+            return next;
+          });
+        }
+        return;
+      }
+
       const response = await fetch(apiUrl("/quiz/answer"), {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
@@ -937,13 +1110,7 @@ export default function AttendanceCheckIn({
       setShowingResult(true);
       if (data.xp_earned > 0) {
         setStatus((current) => {
-          const xp = current.xp + data.xp_earned;
-          const next = {
-            ...current,
-            xp,
-            level: Math.floor(xp / XP_PER_LEVEL) + 1,
-            xp_to_next: XP_PER_LEVEL - (xp % XP_PER_LEVEL),
-          };
+          const next = applyXpToStatus(current, data.xp_earned);
           saveFallback(authToken, next);
           return next;
         });
@@ -960,9 +1127,31 @@ export default function AttendanceCheckIn({
     setCurrentQuizIdx((index) => index + 1);
   }
 
-  function handleCheer() {
+  async function handleCheer() {
+    if (dailyState.cheerCooldownActive) return;
     const speech = randomSpeech(CHEER_SPEECHES, nickname);
     updateDailyState((current) => applyCheer(current, todayKey(), speech));
+    addPendingXp(CHEER_XP);
+    setStatus((current) => {
+      const next = applyXpToStatus(current, CHEER_XP, "응원 완료! +5XP를 받았어요.");
+      saveFallback(authToken, next);
+      return next;
+    });
+
+    try {
+      const response = await fetch(apiUrl("/attendance/cheer-xp"), {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      if (!response.ok) return;
+      const data = (await response.json()) as AttendanceStatus;
+      subtractPendingXp(CHEER_XP);
+      const merged = mergePendingXp(data);
+      setStatus(merged);
+      saveFallback(authToken, merged);
+    } catch {
+      // Local XP has already been applied so the UI stays responsive offline.
+    }
   }
 
   function handleDecorate() {
@@ -973,7 +1162,6 @@ export default function AttendanceCheckIn({
   const currentResult = currentQuestion ? quizResults[String(currentQuestion.quiz_id)] : null;
   const answeredCount = Object.keys(quizResults).length;
   const allDone = quizQuestions.length > 0 && answeredCount >= quizQuestions.length;
-  const totalQuizXp = Object.values(quizResults).reduce((sum, result) => sum + result.xp_earned, 0);
 
   // ===== 프로필 판정 전: 설정 화면 번쩍임 방지를 위해 빈 패널만 표시 =====
   if (!profileChecked) {
@@ -990,7 +1178,14 @@ export default function AttendanceCheckIn({
   // ===== 성별을 아직 안 골랐으면: 성별 선택 화면 =====
   if (!gender || !buddyNickname.trim()) {
     return (
-      <section className="attendance-panel tamagotchi-setup-panel" aria-label="야구짝꿍 초기 설정" style={{ fontFamily: TAMAGOTCHI_FONT }}>
+      <section
+        className="attendance-panel tamagotchi-setup-panel"
+        aria-label="야구짝꿍 초기 설정"
+        style={{
+          fontFamily: TAMAGOTCHI_FONT,
+          "--keyboard-shift": `${keyboardShiftPx}px`,
+        } as CSSProperties}
+      >
         <div className="tamagotchi-setup-card">
           <p className="eyebrow">Start</p>
           <h2>야구짝꿍을 설정해주세요</h2>
@@ -1277,7 +1472,9 @@ export default function AttendanceCheckIn({
 
       <div className="tamagotchi-actions">
         <button
-          className="tamagotchi-action is-check"
+          className={`tamagotchi-action is-check${
+            dailyState.todayAttendanceDone || status.checked_today ? " is-complete" : ""
+          }`}
           type="button"
           disabled={dailyState.todayAttendanceDone || status.checked_today || isLoading}
           onClick={handleCheckIn}
@@ -1292,12 +1489,14 @@ export default function AttendanceCheckIn({
           <strong>꾸미기</strong>
         </button>
         <button
-          className="tamagotchi-action is-cheer"
+          className={`tamagotchi-action is-cheer${cheerCompleted ? " is-complete" : ""}`}
           type="button"
+          disabled={cheerCompleted}
           onClick={handleCheer}
         >
           <span><Megaphone /></span>
-          <strong>{dailyState.todayCheerDone ? "응원완료" : "응원하기"}</strong>
+          <strong>{cheerCompleted ? "응원완료" : "응원하기"}</strong>
+          {!cheerCompleted ? <em>+5XP</em> : null}
         </button>
         <button
           className="tamagotchi-action is-quiz"
@@ -1321,11 +1520,6 @@ export default function AttendanceCheckIn({
           {allDone ? (
             <div className="quiz-done-message">
               <p>오늘 퀴즈 완료!</p>
-              {totalQuizXp > 0 ? (
-                <p className="quiz-total-xp">
-                  퀴즈 획득 XP: <strong>+{totalQuizXp} XP</strong>
-                </p>
-              ) : null}
             </div>
           ) : (
             <>
@@ -1377,7 +1571,7 @@ export default function AttendanceCheckIn({
                       {currentResult.is_correct ? "정답!" : "오답"}
                     </span>
                     {currentResult.xp_earned > 0 ? (
-                      <span className="quiz-xp-badge">+{currentResult.xp_earned} XP</span>
+                      <span className="quiz-xp-badge">+{currentResult.xp_earned}XP</span>
                     ) : null}
                   </div>
                   <p className="quiz-explanation">{currentResult.explanation}</p>

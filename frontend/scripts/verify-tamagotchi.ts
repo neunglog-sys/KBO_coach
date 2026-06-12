@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import {
   applyAttendance,
   applyCheer,
+  CHEER_COOLDOWN_MS,
   initializeTamagotchiState,
   replaceSpeechAddressee,
   syncAttendance,
 } from "../src/data/tamagotchiState";
+
+const baseNow = new Date("2026-06-07T09:00:00+09:00").getTime();
 
 // Scenario 1: new account
 const day1 = initializeTamagotchiState(null, "2026-06-07", "기본 멘트");
@@ -13,18 +16,19 @@ assert.equal(day1.cheerPower, 0);
 assert.equal(day1.moodStatus, "보통");
 
 // Scenario 2: first cheer + duplicate cheer on the same day
-const day1Cheered = applyCheer(day1, "2026-06-07", "첫 응원");
+const day1Cheered = applyCheer(day1, "2026-06-07", "첫 응원", baseNow);
 assert.equal(day1Cheered.cheerPower, 10);
 assert.equal(day1Cheered.todayCheerDone, true);
+assert.equal(day1Cheered.cheerCooldownActive, true);
 
-const day1CheeredAgain = applyCheer(day1Cheered, "2026-06-07", "다시 응원");
+const day1CheeredAgain = applyCheer(day1Cheered, "2026-06-07", "다시 응원", baseNow + 1000);
 assert.equal(day1CheeredAgain.cheerPower, 10);
 assert.equal(day1CheeredAgain.speechText, "다시 응원");
 
 // Scenario 3: cheer on the next day
 const day2 = initializeTamagotchiState(day1CheeredAgain, "2026-06-08", "둘째 날");
 assert.equal(day2.cheerPower, 10);
-const day2Cheered = applyCheer(day2, "2026-06-08", "둘째 날 응원");
+const day2Cheered = applyCheer(day2, "2026-06-08", "둘째 날 응원", baseNow + CHEER_COOLDOWN_MS + 1000);
 assert.equal(day2Cheered.cheerPower, 20);
 
 // Scenario 4: skip one day and apply one penalty on the following access
@@ -51,6 +55,7 @@ const completed = applyCheer(
   applyAttendance(day4, "2026-06-10", "출석"),
   "2026-06-10",
   "응원",
+  baseNow + CHEER_COOLDOWN_MS * 2 + 2000,
 );
 assert.equal(completed.cheerPower, 25);
 assert.equal(completed.moodStatus, "좋음");
@@ -128,4 +133,4 @@ assert.equal(
   "기다리고 있었어, 니크네임!",
 );
 
-console.log("PASS 다마고치 신규값, 일일 응원, 패널티, 상태 유지, 상하한");
+console.log("PASS 다마고치 신규값, 3시간 응원 쿨다운, 패널티, 상태 유지, 상하한");

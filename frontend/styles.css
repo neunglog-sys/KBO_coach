@@ -1567,15 +1567,18 @@ select:focus {
 .tamagotchi-setup-panel {
   display: grid;
   grid-template-columns: 1fr;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
   width: 100%;
   min-height: 100%;
+  transform: translateY(calc(-1 * var(--keyboard-shift, 0px)));
+  transition: transform 180ms ease;
 }
 
 .tamagotchi-setup-card {
   display: grid;
   gap: 18px;
-  align-content: center;
+  align-content: start;
   width: 100%;
   min-height: 100%;
   padding: clamp(72px, 11vh, 98px) clamp(18px, 6vw, 32px) 32px;
@@ -1753,7 +1756,7 @@ select:focus {
   background:
     radial-gradient(circle at 88% 0%, rgba(126, 211, 255, 0.24) 0 86px, transparent 87px),
     linear-gradient(180deg, #ffffff 0%, #f5fbff 62%, #ecf8f2 100%);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .attendance-mascot {
@@ -2154,6 +2157,7 @@ select:focus {
     height: 100dvh;
     max-height: none;
     border-radius: 0;
+    overflow: hidden;
   }
 
   .attendance-window-close {
@@ -2186,10 +2190,11 @@ select:focus {
   }
 
   .tamagotchi-setup-card {
-    gap: 14px;
-    min-height: 100%;
+    gap: 12px;
+    align-content: start;
+    min-height: auto;
     border-radius: 0;
-    padding: 76px 18px 28px;
+    padding: calc(env(safe-area-inset-top, 0px) + 76px) 18px calc(env(safe-area-inset-bottom, 0px) + 28px);
   }
 
   .tamagotchi-gender-options {
@@ -2197,7 +2202,7 @@ select:focus {
   }
 
   .tamagotchi-gender-card {
-    min-height: 132px;
+    min-height: 128px;
     border-radius: 18px;
     padding: 12px;
   }
@@ -2840,6 +2845,16 @@ select:focus {
   overflow-wrap: break-word;
 }
 
+.tamagotchi-action em {
+  grid-column: 2;
+  margin-top: -8px;
+  color: #f28c18;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .tamagotchi-action.is-check {
   border-color: #126dff;
   background: #eef8ff;
@@ -2879,6 +2894,29 @@ select:focus {
 .tamagotchi-action:disabled {
   opacity: 0.72;
   cursor: not-allowed;
+}
+
+.tamagotchi-action.is-complete {
+  transform: translateY(2px);
+  color: #6b7280;
+  background: #e5e7eb;
+  border-color: #cbd5e1;
+  box-shadow:
+    inset 0 4px 10px rgba(15, 23, 42, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.tamagotchi-action.is-complete span {
+  background: #94a3b8;
+  box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.2);
+}
+
+.tamagotchi-action.is-complete strong {
+  color: #475569;
+}
+
+.tamagotchi-action.is-complete em {
+  color: #64748b;
 }
 
 .tamagotchi-notice {
@@ -3454,6 +3492,23 @@ html.theme-dark .app-shell {
 .theme-dark .tamagotchi-action.is-quiz {
   color: #eef4ff;
   background: #152238;
+}
+
+.theme-dark .tamagotchi-action.is-complete {
+  color: #cbd5e1;
+  background: #1f2937;
+  border-color: #475569;
+  box-shadow:
+    inset 0 4px 10px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(148, 163, 184, 0.2);
+}
+
+.theme-dark .tamagotchi-action.is-complete span {
+  background: #64748b;
+}
+
+.theme-dark .tamagotchi-action.is-complete strong {
+  color: #cbd5e1;
 }
 
 .theme-dark .attendance-window:has(.tamagotchi-dashboard) .attendance-window-close::before {
