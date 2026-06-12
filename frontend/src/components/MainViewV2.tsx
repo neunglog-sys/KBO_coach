@@ -1412,11 +1412,24 @@ export function MainViewV2({
             <button
               type="button"
               className={`stage-mic ${isListening ? "is-on" : ""}`}
-              onClick={toggleMic}
+              // 앱: 무전기 방식 — 누르는 동안 녹음, 떼면 자동 제출. 웹: 기존 토글.
+              onClick={() => { if (!Capacitor.isNativePlatform()) toggleMic(); }}
+              onPointerDown={() => {
+                if (!Capacitor.isNativePlatform() || isListening) return;
+                stopSpeaking();
+                void startNativeSTT();
+              }}
+              onPointerUp={() => {
+                if (Capacitor.isNativePlatform() && isListening) void finishNativeSTT(true);
+              }}
+              onPointerCancel={() => {
+                if (Capacitor.isNativePlatform() && isListening) void finishNativeSTT(false);
+              }}
+              onContextMenu={(e) => e.preventDefault()}
               disabled={!supportsSTT}
               aria-pressed={isListening}
-              aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
-              title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
+              aria-label={isListening ? "녹음 중 — 떼면 전송" : "누르고 말하기"}
+              title={supportsSTT ? "누르고 있는 동안 녹음, 떼면 전송" : "이 환경은 음성 인식을 지원하지 않습니다"}
             >
               <VoiceWaveIcon />
             </button>
