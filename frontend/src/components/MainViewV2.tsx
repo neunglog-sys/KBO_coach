@@ -393,9 +393,13 @@ export function MainViewV2({
     }
   }, []);
 
-  // 뒤로가기(iOS 엣지 스와이프·안드 하드웨어 버튼) = 열린 화면 닫고 홈으로
+  // 뒤로가기(iOS 엣지 스와이프·안드 하드웨어 버튼) = 열린 화면 닫고 홈으로.
+  // 히스토리 엔트리는 "열린 화면 1개당 1개"만 유지 — 홈에서 스와이프해도 전환이 안 일어나게.
+  const overlayHistoryRef = useRef(false);
+
   useEffect(() => {
     const onPop = () => {
+      overlayHistoryRef.current = false;
       stopSpeaking();
       setClosingOverlay(null);
       setIsAttendanceOpen(false);
@@ -409,6 +413,14 @@ export function MainViewV2({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // UI 버튼(X·뒤로)으로 닫을 때 쌓인 히스토리 엔트리를 소비 — 닫기는 popstate 핸들러가 수행
+  function consumeOverlayHistory() {
+    if (overlayHistoryRef.current) {
+      overlayHistoryRef.current = false;
+      window.history.back();
+    }
+  }
+
   function closeOverlay(
     overlay: "tamagotchi" | "stadium" | "settings",
     afterClose?: () => void,
@@ -419,6 +431,7 @@ export function MainViewV2({
       if (overlay === "stadium") setIsStadiumPageOpen(false);
       if (overlay === "settings") setIsSettingsOpen(false);
       setClosingOverlay(null);
+      consumeOverlayHistory();   // 쌓인 히스토리 엔트리 소비 (홈에서 스와이프 시 유령 전환 방지)
       afterClose?.();
     };
 
@@ -449,8 +462,13 @@ export function MainViewV2({
     setIsSettingsOpen(key === "settings");
     setShowRecords(key === "record");
     setShowChat(key === "chat");
-    // 뒤로가기(iOS 스와이프·안드 버튼)용 히스토리 엔트리 — popstate에서 홈 복귀
-    window.history.pushState({ view: key }, "");
+    // 뒤로가기용 히스토리 엔트리 — 화면→화면 이동은 교체(replace)로 스택을 1개로 유지
+    if (overlayHistoryRef.current) {
+      window.history.replaceState({ view: key }, "");
+    } else {
+      window.history.pushState({ view: key }, "");
+      overlayHistoryRef.current = true;
+    }
   }
 
   // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
@@ -1486,7 +1504,7 @@ export function MainViewV2({
       {showRecords ? (
         <MyRecordsView
           authToken={authToken}
-          onBack={() => setShowRecords(false)}
+          onBack={() => { setShowRecords(false); consumeOverlayHistory(); }}
           onNavigate={switchToMenuTarget}
         />
       ) : null}
@@ -1494,7 +1512,7 @@ export function MainViewV2({
       {showChat ? (
         <TeamChatView
           authToken={authToken}
-          onBack={() => setShowChat(false)}
+          onBack={() => { setShowChat(false); consumeOverlayHistory(); }}
           onNavigate={switchToMenuTarget}
         />
       ) : null}
