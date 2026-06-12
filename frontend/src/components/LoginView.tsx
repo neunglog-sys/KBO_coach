@@ -6,6 +6,7 @@ interface LoginViewProps {
   onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
   onGoogleLogin?: () => Promise<void>;
   onKakaoLogin?: () => void;
+  onNaverLogin?: () => void;
   onShowRegister: () => void;
 }
 
@@ -19,7 +20,7 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onShowRegister }: LoginViewProps) {
+export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onNaverLogin, onShowRegister }: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -55,6 +56,15 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
     setSocialNotice("");
     if (onKakaoLogin) {
       onKakaoLogin();
+    } else {
+      handleSocialClick();
+    }
+  }
+
+  function handleNaverClick() {
+    setSocialNotice("");
+    if (onNaverLogin) {
+      onNaverLogin();
     } else {
       handleSocialClick();
     }
@@ -171,8 +181,8 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           <button
             type="button"
             className="auth-social-button is-naver"
-            aria-label="네이버로 로그인 (준비 중)"
-            onClick={handleSocialClick}
+            aria-label="네이버로 로그인"
+            onClick={handleNaverClick}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
