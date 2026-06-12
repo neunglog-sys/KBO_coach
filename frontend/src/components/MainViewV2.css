@@ -583,3 +583,8 @@
 .stage-paused .stage-bg-ground {
   animation-play-state: paused;
 }
+
+/* 키보드 열림: 채팅 로그 높이 제한 확대 — 키보드 위 좁은 공간에서도 대화가 여러 줄 보이게 */
+.kb-open .stage-chatlog {
+  max-height: min(34vh, calc(100dvh - var(--keyboard-inset, 0px) - 260px));
+}

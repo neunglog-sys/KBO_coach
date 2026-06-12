@@ -16,6 +16,8 @@ const config: CapacitorConfig = {
     // 웹뷰 자체 스크롤 OFF — 키보드가 화면(배경)을 통째로 끌어올리는 iOS 내장 동작 차단.
     // 앱은 고정 레이아웃 SPA라 안전 (채팅 목록 등 내부 스크롤은 영향 없음).
     scrollEnabled: false,
+    // 웹뷰 밑바탕 흰색 — iOS 키보드 하단(지구본·마이크 줄)이 반투명이라 어두운 밑바탕이 비쳐 보이던 문제
+    backgroundColor: "#ffffff",
   },
   plugins: {
     // 앱 실행 시 WebView가 이전 세션(옛 화면)을 잠깐 보여주는 깜빡임을 가린다.
