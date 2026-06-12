@@ -175,7 +175,7 @@
   padding: 8px 7px;
   background: rgba(255, 255, 255, 0.58);
   box-shadow:
-    0 8px 22px rgba(39, 103, 158, 0.1),
+    0 3px 8px rgba(39, 103, 158, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(14px) saturate(125%);
   -webkit-backdrop-filter: blur(14px) saturate(125%);
@@ -200,8 +200,7 @@
   padding: 0 7px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 58%, #edf4fa 100%);
   box-shadow:
-    0 3px 0 rgba(98, 134, 169, 0.2),
-    0 6px 10px rgba(33, 72, 110, 0.09),
+    0 2px 5px rgba(33, 72, 110, 0.08),
     inset 0 1px 0 #fff,
     inset 0 -1px 0 rgba(102, 137, 170, 0.1);
   transition:
@@ -219,9 +218,8 @@
   background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 54%, #e4efff 100%);
   transform: translateY(-1px);
   box-shadow:
-    0 4px 0 rgba(18, 91, 220, 0.22),
-    0 8px 12px rgba(18, 91, 220, 0.12),
-    0 0 0 3px rgba(18, 109, 255, 0.12),
+    0 2px 6px rgba(18, 91, 220, 0.08),
+    0 0 0 2px rgba(18, 109, 255, 0.1),
     inset 0 1px 0 #fff !important;
 }
 
@@ -288,7 +286,7 @@
 }
 
 .stadium-page-search button:active {
-  transform: translateY(3px);
+  transform: translateY(1px);
 }
 
 .stadium-page-search-button {
@@ -296,8 +294,7 @@
   color: #fff;
   background: linear-gradient(180deg, #31b873 0%, #108d55 58%, #087342 100%);
   box-shadow:
-    0 4px 0 rgba(5, 101, 57, 0.28),
-    0 7px 12px rgba(7, 114, 66, 0.18),
+    0 2px 5px rgba(7, 114, 66, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
     inset 0 -1px 0 rgba(0, 69, 38, 0.18);
   text-shadow: 0 1px 1px rgba(0, 65, 37, 0.26);
@@ -308,8 +305,7 @@
   color: #0a1732;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 56%, #e8f1f9 100%);
   box-shadow:
-    0 4px 0 rgba(98, 134, 169, 0.2),
-    0 7px 12px rgba(33, 72, 110, 0.1),
+    0 2px 5px rgba(33, 72, 110, 0.08),
     inset 0 1px 0 #fff,
     inset 0 -1px 0 rgba(102, 137, 170, 0.1);
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -362,8 +358,7 @@
   padding: 12px;
   background: var(--color-card, #fff);
   box-shadow:
-    0 10px 0 rgba(86, 130, 171, 0.12),
-    0 16px 28px rgba(39, 103, 158, 0.15),
+    0 3px 8px rgba(39, 103, 158, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
@@ -374,8 +369,7 @@
   color: #0a1732;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 56%, #eaf2f9 100%);
   box-shadow:
-    0 3px 0 rgba(98, 134, 169, 0.18),
-    0 6px 10px rgba(33, 72, 110, 0.08),
+    0 2px 5px rgba(33, 72, 110, 0.08),
     inset 0 1px 0 #fff;
   font-size: 0.84rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -396,9 +390,9 @@
 }
 
 .stadium-page-team-list button:active {
-  transform: translateY(3px);
+  transform: translateY(1px);
   box-shadow:
-    0 1px 0 rgba(98, 134, 169, 0.16),
+    0 1px 3px rgba(98, 134, 169, 0.08),
     inset 0 2px 3px rgba(46, 82, 116, 0.1);
 }
 
@@ -407,8 +401,7 @@
   color: #fff;
   background: linear-gradient(180deg, #4b94ff 0%, #176dff 58%, #0b56cb 100%);
   box-shadow:
-    0 4px 0 rgba(8, 72, 177, 0.28),
-    0 8px 13px rgba(18, 91, 220, 0.18),
+    0 2px 5px rgba(18, 91, 220, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.38),
     inset 0 -1px 0 rgba(0, 54, 153, 0.18);
   text-shadow: 0 1px 1px rgba(0, 48, 140, 0.25);
