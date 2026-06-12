@@ -793,16 +793,16 @@
   gap: 10px;
 }
 
-.stadium-page-food-heading small {
-  flex: 0 0 auto;
-  margin-right: 10px;
+.stadium-page-food-ai-notice {
+  margin: -4px 10px 8px 0;
   color: #7b8798;
   font-size: 0.66rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-weight: 600;
   font-synthesis: none;
+  line-height: 1.35;
+  text-align: right;
   white-space: nowrap;
-  transform: translateY(6px);
 }
 
 .stadium-page-food-card {
@@ -1115,10 +1115,9 @@
     gap: 4px 8px;
   }
 
-  .stadium-page-food-heading small {
+  .stadium-page-food-ai-notice {
     margin-right: 8px;
     font-size: 0.58rem;
-    transform: translateY(5px);
   }
 
   .stadium-page-food-image {
