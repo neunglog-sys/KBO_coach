@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 interface RegisterViewProps {
   error: string;
@@ -96,11 +96,28 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [nickname, setNickname] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [agreed, setAgreed] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [formError, setFormError] = useState("");
+  // 필드별 에러: 해당 입력칸에 빨간 테두리 + 칸 아래 빨간 안내문
+  type FieldKey = "email" | "password" | "passwordConfirm" | "nickname";
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
+
+  function clearFieldError(key: FieldKey) {
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  }
+
+  // 서버 에러(예: "이미 가입된 이메일")를 키워드로 해당 필드에 배정
+  useEffect(() => {
+    if (!error) return;
+    if (error.includes("이메일")) setFieldErrors((prev) => ({ ...prev, email: error }));
+    else if (error.includes("닉네임")) setFieldErrors((prev) => ({ ...prev, nickname: error }));
+    else if (error.includes("비밀번호")) setFieldErrors((prev) => ({ ...prev, password: error }));
+    else setFormError(error);
+  }, [error]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const allChecked = useMemo(
@@ -128,19 +145,29 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanEmail = email.trim();
+    const cleanNickname = nickname.trim();
 
+    // 필드별 검증 — 문제가 있는 칸마다 빨간 테두리 + 안내문
+    const errors: Partial<Record<FieldKey, string>> = {};
     if (!EMAIL_RE.test(cleanEmail)) {
-      setFormError("이메일 형식으로 다시 작성하세요. 예: id@naver.com");
-      return;
+      errors.email = "이메일 형식으로 작성해주세요.\n예: id@mail.com";
     }
-    if (password.length < 4) {
-      setFormError("비밀번호는 4자 이상으로 입력해 주세요.");
-      return;
+    if (!password) {
+      errors.password = "비밀번호를 입력해 주세요.";
+    } else if (password.length < 4) {
+      errors.password = "비밀번호는 최소 4자 이상 입력해주세요.";
     }
-    if (password !== passwordConfirm) {
-      setFormError("비밀번호가 일치하지 않습니다.");
-      return;
+    if (!passwordConfirm) {
+      errors.passwordConfirm = "비밀번호를 한 번 더 입력해 주세요.";
+    } else if (password !== passwordConfirm) {
+      errors.passwordConfirm = "비밀번호가 일치하지 않습니다.";
     }
+    if (!cleanNickname) {
+      errors.nickname = "닉네임을 입력해 주세요.";
+    }
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) return;
+
     const requiredOk = AGREEMENTS.filter((item) => item.required).every(
       (item) => agreed[item.key],
     );
@@ -153,9 +180,7 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
     setFormError("");
 
     try {
-      // 닉네임 입력칸이 없어 이메일 아이디 부분을 기본 닉네임으로 사용한다.
-      const defaultNickname = cleanEmail.split("@")[0];
-      await onRegister(cleanEmail, password, defaultNickname, "");
+      await onRegister(cleanEmail, password, cleanNickname, "");
     } finally {
       setIsSubmitting(false);
     }
@@ -177,7 +202,7 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
 
         <h2 className="auth-reg-title">가입하기</h2>
 
-        <form id="registerForm" onSubmit={handleSubmit}>
+        <form id="registerForm" onSubmit={handleSubmit} noValidate>
           <div className="auth-reg-field">
             <label htmlFor="registerId">이메일</label>
             <input
@@ -185,15 +210,24 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
               type="text"
               inputMode="email"
               autoComplete="username"
+              className={fieldErrors.email ? "is-invalid" : ""}
               placeholder="이메일을 입력하세요"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
                 setFormError("");
+                clearFieldError("email");
+              }}
+              onBlur={() => {
+                // 칸을 벗어나는 즉시 형식 검사 (입력 중에는 방해 안 함)
+                const value = email.trim();
+                if (value && !EMAIL_RE.test(value)) {
+                  setFieldErrors((prev) => ({ ...prev, email: "이메일 형식으로 작성해주세요.\n예: id@mail.com" }));
+                }
               }}
               required
             />
-
+            {fieldErrors.email ? <p className="auth-field-error" role="alert">{fieldErrors.email}</p> : null}
           </div>
 
           <div className="auth-reg-field">
@@ -204,9 +238,20 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 minLength={4}
+                className={fieldErrors.password ? "is-invalid" : ""}
                 placeholder="비밀번호를 입력하세요"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  clearFieldError("password");
+                  clearFieldError("passwordConfirm"); // 비밀번호가 바뀌면 불일치 표시도 갱신 대상
+                }}
+                onBlur={() => {
+                  // 칸을 벗어나는 즉시 길이 검사 (입력했는데 4자 미만일 때만)
+                  if (password && password.length < 4) {
+                    setFieldErrors((prev) => ({ ...prev, password: "비밀번호는 최소 4자 이상 입력해주세요." }));
+                  }
+                }}
                 required
               />
               <button
@@ -218,6 +263,7 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
                 <EyeIcon off={showPassword} />
               </button>
             </div>
+            {fieldErrors.password ? <p className="auth-field-error" role="alert">{fieldErrors.password}</p> : null}
           </div>
 
           <div className="auth-reg-field">
@@ -227,9 +273,19 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
                 id="registerPwConfirm"
                 type={showPasswordConfirm ? "text" : "password"}
                 autoComplete="new-password"
+                className={fieldErrors.passwordConfirm ? "is-invalid" : ""}
                 placeholder="비밀번호를 한 번 더 입력하세요"
                 value={passwordConfirm}
-                onChange={(event) => setPasswordConfirm(event.target.value)}
+                onChange={(event) => {
+                  setPasswordConfirm(event.target.value);
+                  clearFieldError("passwordConfirm");
+                }}
+                onBlur={() => {
+                  // 확인 칸을 벗어나는 즉시 일치 여부 검사 (둘 다 입력된 경우에만)
+                  if (passwordConfirm && password && password !== passwordConfirm) {
+                    setFieldErrors((prev) => ({ ...prev, passwordConfirm: "비밀번호가 일치하지 않습니다." }));
+                  }
+                }}
                 required
               />
               <button
@@ -241,6 +297,27 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
                 <EyeIcon off={showPasswordConfirm} />
               </button>
             </div>
+            {fieldErrors.passwordConfirm ? <p className="auth-field-error" role="alert">{fieldErrors.passwordConfirm}</p> : null}
+          </div>
+
+          <div className="auth-reg-field">
+            <label htmlFor="registerNickname">닉네임</label>
+            <input
+              id="registerNickname"
+              type="text"
+              autoComplete="nickname"
+              maxLength={12}
+              className={fieldErrors.nickname ? "is-invalid" : ""}
+              placeholder="사용할 닉네임을 입력하세요"
+              value={nickname}
+              onChange={(event) => {
+                setNickname(event.target.value);
+                setFormError("");
+                clearFieldError("nickname");
+              }}
+              required
+            />
+            {fieldErrors.nickname ? <p className="auth-field-error" role="alert">{fieldErrors.nickname}</p> : null}
           </div>
 
           <div className="auth-agree">
@@ -311,7 +388,7 @@ export function RegisterView({ error, onRegister, onShowLogin }: RegisterViewPro
           </div>
 
           <p id="registerError" className="error-text" role="alert">
-            {formError || error}
+            {formError}
           </p>
 
           <button type="submit" className="auth-reg-submit" disabled={isSubmitting}>
