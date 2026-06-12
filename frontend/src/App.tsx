@@ -214,9 +214,11 @@ export function App() {
     void import("@capacitor/keyboard").then(({ Keyboard }) => {
       const show = Keyboard.addListener("keyboardWillShow", (info) => {
         document.documentElement.style.setProperty("--keyboard-inset", `${info.keyboardHeight}px`);
+        document.documentElement.classList.add("kb-open");
       });
       const hide = Keyboard.addListener("keyboardWillHide", () => {
         document.documentElement.style.setProperty("--keyboard-inset", "0px");
+        document.documentElement.classList.remove("kb-open");
         window.scrollTo(0, 0);   // 키보드가 끌어올린 화면 어긋남 복원
       });
       cleanup = () => {
