@@ -1198,8 +1198,8 @@ export function MainViewV2({
       <div className="stage-bg" aria-hidden="true">
         {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
-          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
-          <img className="stage-bg-image" src="/img/background_sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/sky.png" alt="" />
+          <img className="stage-bg-image" src="/img/sky.png" alt="" />
         </div>
         {/* 경기장 레이어 (앞, 빠르게) — 같은 이미지 2장으로 끊김 없이 루프(-50% 이동 시 두 번째 장이 첫 장 위치로) */}
         <div className="stage-bg-track stage-bg-ground">
