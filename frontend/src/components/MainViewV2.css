@@ -571,3 +571,8 @@
 .plat-ios .stage-nav {
   top: calc(var(--stage-nav-top) - 3px);
 }
+
+/* 키보드 열림: 홈바 여백(safe-area-bottom)은 키보드 밑에 깔리므로 제외 — 입력줄이 키보드에 바짝 붙게 */
+.kb-open .stage-chat {
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 8px) !important;
+}
