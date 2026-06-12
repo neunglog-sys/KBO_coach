@@ -12,7 +12,7 @@ import { RegisterView } from "./components/RegisterView";
 import { TeamSelectOnboarding } from "./components/TeamSelectOnboarding";
 
 // 팀 선택 온보딩 강제 표시 (개발용 — 배포/발표 전 반드시 false!)
-const FORCE_SHOW_TEAM_ONBOARDING = true;
+const FORCE_SHOW_TEAM_ONBOARDING = false;
 
 const DEMO_AUTH = {
   id: "admin",
