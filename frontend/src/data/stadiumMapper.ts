@@ -370,6 +370,29 @@ function compact(values: Array<string | null | undefined>): string[] {
   return values.map((value) => value?.trim()).filter((value): value is string => Boolean(value));
 }
 
+function uniqueCompact(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  return compact(values).filter((value) => {
+    const key = value.replace(/\s+/g, " ");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function objectParticle(value: string): "을" | "를" {
+  const lastCharacter = value.trim().at(-1);
+  if (!lastCharacter) return "를";
+
+  const codePoint = lastCharacter.charCodeAt(0);
+  const hasFinalConsonant =
+    codePoint >= 0xac00 &&
+    codePoint <= 0xd7a3 &&
+    (codePoint - 0xac00) % 28 !== 0;
+
+  return hasFinalConsonant ? "을" : "를";
+}
+
 function splitList(value: string | null): string[] {
   if (!value) return [];
   return value
@@ -442,10 +465,13 @@ function extractFoodItems(value: string | null, teamCode: string): Food[] {
 
 export function mapStadium(row: StadiumApiRow): Stadium {
   const stadiumName = row.name ?? row.home_stadium ?? "구장정보 준비 중";
-  const description = compact([
+  const descriptionParts = compact([
     row.features,
-    row.city ? `${row.city}을 대표하는 ${row.team_name}의 홈구장입니다.` : null,
-  ]).join(" ");
+    row.city
+      ? `${row.city}${objectParticle(row.city)} 대표하는 ${row.team_name}의 홈구장입니다.`
+      : null,
+  ]);
+  const description = descriptionParts.join("\n");
 
   return {
     stadiumId: row.stadium_id,
@@ -466,7 +492,7 @@ export function mapStadium(row: StadiumApiRow): Stadium {
     ]),
     foods: extractFoodItems(row.food, row.team_code),
     regionInfo: {
-      transportation: compact([
+      transportation: uniqueCompact([
         row.subway,
         row.ktx_info,
         row.taxi_info,

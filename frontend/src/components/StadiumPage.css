@@ -179,14 +179,10 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(14px) saturate(125%);
   -webkit-backdrop-filter: blur(14px) saturate(125%);
-  transition: grid-template-columns 0.26s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  transition: box-shadow 0.25s ease;
 }
 
 /* 검색창 focus 시 슬라이드 확장 — 검색 버튼 트랙을 0으로 줄여 입력창에 폭을 양보 */
-.stadium-page-search.is-search-focused {
-  grid-template-columns: 1fr 0px 64px;
-}
-
 .stadium-page-search label {
   position: relative;
   display: flex;
@@ -314,11 +310,6 @@
 }
 
 /* focus 시 검색 버튼은 트랙과 함께 사라지도록 처리 */
-.stadium-page-search.is-search-focused .stadium-page-search-button {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .stadium-page-search-button:focus,
 .stadium-page-search-button:focus-visible,
 .stadium-page-team-button:focus,
@@ -682,6 +673,7 @@
   font-synthesis: none;
   line-height: 1.65;
   word-break: keep-all;
+  white-space: pre-wrap;
 }
 
 .stadium-page-map-card {
@@ -1086,10 +1078,6 @@
     grid-template-columns: 1fr 48px 58px;
     gap: 4px;
     padding: 7px 6px;
-  }
-
-  .stadium-page-search.is-search-focused {
-    grid-template-columns: 1fr 0px 58px;
   }
 
   .stadium-page-search button {

@@ -45,7 +45,6 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   const [isTeamListVisible, setIsTeamListVisible] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [teamListHeight, setTeamListHeight] = useState(0);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const teamListRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +61,6 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
   }, [isTeamListOpen]);
 
   function handleSearchFocus() {
-    setIsSearchFocused(true);
     // 검색창 확장과 팀 선택 슬라이드가 동시에 펼쳐져 겹치지 않도록 정리
     setIsTeamListOpen(false);
   }
@@ -177,9 +175,7 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
           onSearch={handleSearch}
           onSelectTeam={handleSelectTeamToggle}
           isTeamListOpen={isTeamListOpen}
-          isFocused={isSearchFocused}
           onFocus={handleSearchFocus}
-          onBlur={() => setIsSearchFocused(false)}
           inputRef={searchInputRef}
         />
         {isTeamListMounted ? (
