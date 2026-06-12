@@ -13,10 +13,11 @@ const config: CapacitorConfig = {
     cleartext: true,
   },
   plugins: {
-    // iOS: 키보드가 화면을 '덮지' 않고 웹뷰를 줄이게 — 하단 고정 채팅 입력창이 키보드 위로 올라옴.
-    // (안드로이드는 기존 adjustResize 동작 그대로)
+    // iOS: 키보드가 화면(웹뷰)을 건드리지 않게 고정 — resize=native는 100dvh 무대가
+    // 재계산되며 배경이 찌그러지는 부작용. 대신 키보드 높이를 JS로 받아(App.tsx)
+    // 하단 채팅 시트만 그만큼 올린다(--keyboard-inset).
     Keyboard: {
-      resize: "native",
+      resize: "none",
     },
   },
 };

@@ -201,6 +201,27 @@ export function App() {
     initDb().catch((e) => console.error("SQLite 초기화 실패", e));
   }, []);
 
+  // iOS: 키보드 높이를 CSS 변수로 전달 — 화면(웹뷰)은 고정한 채(resize=none)
+  // 하단 입력 시트만 키보드 위로 올린다. 닫힐 때 잔여 스크롤 어긋남도 복원.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return;
+    let cleanup: (() => void) | undefined;
+    void import("@capacitor/keyboard").then(({ Keyboard }) => {
+      const show = Keyboard.addListener("keyboardWillShow", (info) => {
+        document.documentElement.style.setProperty("--keyboard-inset", `${info.keyboardHeight}px`);
+      });
+      const hide = Keyboard.addListener("keyboardWillHide", () => {
+        document.documentElement.style.setProperty("--keyboard-inset", "0px");
+        window.scrollTo(0, 0);   // 키보드가 끌어올린 화면 어긋남 복원
+      });
+      cleanup = () => {
+        void show.then((h) => h.remove());
+        void hide.then((h) => h.remove());
+      };
+    });
+    return () => cleanup?.();
+  }, []);
+
   // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
   useEffect(() => {
     saveAppSettings(appSettings);

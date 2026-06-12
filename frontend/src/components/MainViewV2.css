@@ -245,7 +245,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--keyboard-inset, 0px);   /* iOS: 키보드 높이만큼 시트만 상승 (App.tsx에서 주입) */
+  transition: bottom 0.25s ease;
   z-index: 3;
   display: flex;
   flex-direction: column;
