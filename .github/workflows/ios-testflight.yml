@@ -66,10 +66,12 @@ jobs:
       - name: Archive (signed)
         # 서명 설정은 CLI 전역 주입 금지 — SPM 패키지 타겟이 프로비저닝 프로파일을 거부함.
         # 앱 타겟의 Release 빌드 설정(project.pbxproj)에 Manual 서명이 박혀 있다.
+        # 빌드 번호는 워크플로 실행 번호 + 100 자동 사용 — 수동 증가/중복 업로드 방지.
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App \
             -configuration Release -sdk iphoneos \
-            -archivePath $RUNNER_TEMP/App.xcarchive archive
+            -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            CURRENT_PROJECT_VERSION=$((100 + ${{ github.run_number }}))
 
       - name: Export & upload to TestFlight
         env:
