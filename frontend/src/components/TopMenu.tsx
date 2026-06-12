@@ -25,31 +25,31 @@ const MENU_ITEMS: ReadonlyArray<{
   {
     target: "chat",
     icon: "💬",
-    imgSrc: `${ICON_BASE_PATH}/icon_chat.png?v=8`,
+    imgSrc: `${ICON_BASE_PATH}/채팅방.png?v=9`,
     label: "채팅방",
   },
   {
     target: "record",
     icon: "📒",
-    imgSrc: `${ICON_BASE_PATH}/icon_note.png?v=8`,
+    imgSrc: `${ICON_BASE_PATH}/나만의기록.png?v=9`,
     label: "나만의 기록",
   },
   {
     target: "tamagotchi",
     icon: "🥕",
-    imgSrc: `${ICON_BASE_PATH}/icon_buddy.png?v=8`,
+    imgSrc: `${ICON_BASE_PATH}/야구짝꿍.png?v=9`,
     label: "야구짝꿍",
   },
   {
     target: "stadium",
     icon: "🏟️",
-    imgSrc: `${ICON_BASE_PATH}/icon_stadium.png?v=8`,
+    imgSrc: `${ICON_BASE_PATH}/구장정보.png?v=9`,
     label: "구장정보",
   },
   {
     target: "settings",
     icon: "⚙️",
-    imgSrc: `${ICON_BASE_PATH}/icon_settings.png?v=8`,
+    imgSrc: `${ICON_BASE_PATH}/설정.png?v=9`,
     label: "설정",
   },
 ];

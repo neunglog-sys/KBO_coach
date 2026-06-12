@@ -14,6 +14,7 @@ from db_pg import get_conn
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 CHECKIN_XP = 20
+CHEER_XP = 5
 XP_PER_LEVEL = 100
 
 
@@ -243,6 +244,15 @@ def check_in(authorization: str | None = Header(default=None)):
         else None,
     }
     return _to_status(next_state, gained_xp=CHECKIN_XP, message="\ucd9c\uc11d \uc644\ub8cc! \uacbd\ud5d8\uce58\uac00 \uc62c\ub790\uc5b4\uc694.")
+
+
+@router.post("/cheer-xp", response_model=AttendanceStatus)
+def cheer_xp(authorization: str | None = Header(default=None)):
+    key = _user_key(authorization)
+    _migrate_token_state(authorization, key)
+    add_xp(key, CHEER_XP)
+    state = _get_state(key)
+    return _to_status(state, gained_xp=CHEER_XP, message="\uc751\uc6d0 \uc644\ub8cc! +5XP\ub97c \ubc1b\uc558\uc5b4\uc694.")
 
 
 _ensure_table()
