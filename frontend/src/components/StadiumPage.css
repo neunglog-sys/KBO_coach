@@ -35,13 +35,13 @@
 
 .stadium-page {
   --page-pad-x: 18px;
-  --stadium-glass-bg: rgba(255, 255, 255, 0.7);
-  --stadium-glass-bg-strong: rgba(255, 255, 255, 0.84);
+  --stadium-glass-bg: rgba(255, 255, 255, 0.4);
+  --stadium-glass-bg-strong: rgba(255, 255, 255, 0.4);
   --stadium-glass-border: rgba(255, 255, 255, 0.68);
   --stadium-glass-shadow:
     0 10px 28px rgba(39, 103, 158, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
-  --stadium-glass-filter: blur(16px) saturate(125%);
+  --stadium-glass-filter: blur(4px) saturate(110%);
   position: relative;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--page-pad-x) calc(24px + env(safe-area-inset-bottom));
   color: #1c2536;
@@ -562,8 +562,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.58), transparent 24%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 54%, rgba(255, 255, 255, 0.12));
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.12), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 54%, rgba(255, 255, 255, 0.03));
 }
 
 .stadium-page-guide-card > *,
@@ -706,8 +706,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.58), transparent 24%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 54%, rgba(255, 255, 255, 0.12));
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.12), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 54%, rgba(255, 255, 255, 0.03));
 }
 
 .stadium-page-map-card > * {
@@ -927,22 +927,70 @@
   background: var(--stadium-glass-bg-strong);
 }
 
+.stadium-page :is(
+  .stadium-page-guide-card,
+  .stadium-page-map-card,
+  .stadium-page-tips,
+  .stadium-page-food-card,
+  .stadium-page-region-card,
+  .stadium-page-empty
+) {
+  background: var(--stadium-glass-bg);
+  backdrop-filter: var(--stadium-glass-filter);
+  -webkit-backdrop-filter: var(--stadium-glass-filter);
+}
+
 .stadium-page-tips li {
   border-color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--stadium-glass-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: var(--stadium-glass-filter);
+  -webkit-backdrop-filter: var(--stadium-glass-filter);
+}
+
+.stadium-page :is(
+  .stadium-page-map,
+  .stadium-page-map-error,
+  .stadium-page-food-image
+) {
+  background: var(--stadium-glass-bg);
+  backdrop-filter: var(--stadium-glass-filter);
+  -webkit-backdrop-filter: var(--stadium-glass-filter);
 }
 
 .stadium-page-tabs {
-  background: rgba(255, 255, 255, 0.56);
+  background: var(--stadium-glass-bg);
+  backdrop-filter: var(--stadium-glass-filter);
+  -webkit-backdrop-filter: var(--stadium-glass-filter);
 }
 
 .stadium-page-tabs button.is-active {
-  border-color: rgba(255, 255, 255, 0.86);
-  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.4);
   box-shadow:
-    0 4px 10px rgba(55, 91, 123, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    0 2px 6px rgba(55, 91, 123, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(4px) saturate(110%);
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+}
+
+/* Override shared theme surfaces so the two horizontal stadium bars stay at 30%. */
+.stadium-page .stadium-page-search,
+.stadium-page .stadium-page-tabs {
+  background: rgba(255, 255, 255, 0.4) !important;
+  box-shadow:
+    0 3px 8px rgba(39, 103, 158, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+  backdrop-filter: blur(4px) saturate(110%) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(110%) !important;
+}
+
+.stadium-page .stadium-page-tabs button.is-active {
+  border-color: rgba(255, 255, 255, 0.62) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  box-shadow:
+    0 2px 6px rgba(55, 91, 123, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
 }
 
 .stadium-page-guide-copy h3,
