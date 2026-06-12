@@ -86,7 +86,26 @@
       "Bash(npm install *)",
       "Bash(node -e \"const p=require\\('capacitor-kakao-login-plugin/package.json'\\);console.log\\(p.version, JSON.stringify\\(p.peerDependencies||{}\\)\\)\")",
       "Bash(grep -oE \"^KAKAO_[A-Z_]+=\" .env)",
-      "Bash(sed -n '89,115p' services/api/auth.py)"
+      "Bash(sed -n '89,115p' services/api/auth.py)",
+      "Bash(node -e \"const re=/\\(던지다|던져|던지는|던지고|던져봐|던져줘|투구|피칭|송구|throw|pitch\\)/i; ['공을 던져','송구 연습','투구폼','피칭머신','오늘 날씨'].forEach\\(s=>console.log\\(s, '→', re.test\\(s\\)?'throw':'-'\\)\\)\")",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(npx --no-install @gltf-transform/cli simplify .opt-tmp/a.glb .opt-tmp/b2.glb --ratio 0.15 --error 0.0008 --lock-border true)",
+      "Bash(npx --no-install @gltf-transform/cli resize .opt-tmp/b2.glb .opt-tmp/c2.glb --width 1024 --height 1024)",
+      "Bash(npx --no-install @gltf-transform/cli webp .opt-tmp/c2.glb .opt-tmp/d2.glb)",
+      "Bash(npx --no-install @gltf-transform/cli draco .opt-tmp/d2.glb .opt-tmp/final.glb)",
+      "Bash(echo \"draco exit: $?\")",
+      "Bash(awk '{print \"final.glb: \"$5\" bytes\"}')",
+      "Bash(npx --no-install @gltf-transform/cli draco --help)",
+      "Bash(npx --no-install @gltf-transform/cli draco public/model/3d/zz_nodraco.glb public/model/3d/zz_draco16.glb --quantize-position 16 --quantize-normal 12 --quantize-texcoord 14 --quantize-generic 16)",
+      "Bash(node -e \"const{NodeIO}=require\\('@gltf-transform/core'\\);const{MeshoptSimplifier}=require\\('meshoptimizer'\\);console.log\\('모듈 OK'\\)\")",
+      "Bash(node .opt-tmp/selective.cjs \".model-src/260611_raw_throw.glb\" \".opt-tmp/sel.glb\")",
+      "Bash(awk '{print \"sel.glb: \"$5\" bytes\"}')",
+      "Bash(npx --no-install @gltf-transform/cli resize .opt-tmp/sel.glb .opt-tmp/sc.glb --width 1024 --height 1024)",
+      "Bash(npx --no-install @gltf-transform/cli webp .opt-tmp/sc.glb .opt-tmp/sd.glb)",
+      "Bash(npx --no-install @gltf-transform/cli draco .opt-tmp/sd.glb public/model/3d/zz_selective.glb)",
+      "Bash(awk '{print \"최종 zz_selective: \"$5\" bytes\"}')",
+      "Bash(awk '{print $5,$9}')",
+      "Bash(unzip -l android/app/build/outputs/apk/debug/app-debug.apk)"
     ]
   }
 }

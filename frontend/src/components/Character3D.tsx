@@ -12,14 +12,17 @@ interface Character3DProps {
   greetSignal?: number;
   /** 값이 바뀔 때마다(증가) 잠깐 뛰는(빠른 걷기) 모션을 재생한다. */
   runSignal?: number;
+  /** 값이 바뀔 때마다(증가) 던지기(throw) 모션을 1회 재생한다. */
+  throwSignal?: number;
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/260611_test_opt.glb";
+const MODEL_URL = "/model/3d/260611_light.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
 const WALK_NAME = "walk"; // 걷기 클립 — 기본 루프(항상 재생)
+const THROW_NAME = "throw"; // 던지기 클립 — throwSignal 시 1회 재생
 const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
@@ -28,7 +31,7 @@ const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
 
-export default function Character3D({ isSpeaking, greetSignal, runSignal, className }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   // 애니메이션 루프가 항상 최신 isSpeaking 값을 읽도록 ref로 보관
   const speakingRef = useRef(isSpeaking);
@@ -37,6 +40,8 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
   const greetRef = useRef<(() => void) | null>(null);
   // 모델 로드 후 채워지는 "뛰기(빠른 걷기) 트리거" 함수. runSignal 변화 시 호출.
   const runRef = useRef<(() => void) | null>(null);
+  // 모델 로드 후 채워지는 "던지기 모션 재생" 함수. throwSignal 변화 시 호출.
+  const throwRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -95,6 +100,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
     let walkAction: THREE.AnimationAction | null = null;
     let runUntil = 0;               // 걷기/뛰기 종료 시각(>now면 재생 중)
     let hiUntil = 0;                // 인사 재생 중 종료 시각(이 동안 걷기 제어 정지)
+    let throwUntil = 0;             // 던지기 재생 중 종료 시각(이 동안 걷기 제어 정지)
     let walkStopPending = false;    // 시간 만료 후 '현재 걷기 사이클을 마치고' 정자세로 멈추기 위한 대기 플래그
     // 입모양 shape key(morph target)를 가진 메시들.
     // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
@@ -140,6 +146,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
           const walkClip =
             THREE.AnimationClip.findByName(gltf.animations, WALK_NAME) ?? gltf.animations[0];
           const hiClip = THREE.AnimationClip.findByName(gltf.animations, MOTION_NAME);
+          const throwClip = THREE.AnimationClip.findByName(gltf.animations, THROW_NAME);
 
           // 걷기는 항상 '재생'시키되 평소엔 첫 프레임(서있는 자세)에 멈춰둔다 → 깔끔한 정지 포즈.
           walkAction = mixer.clipAction(walkClip);
@@ -157,6 +164,20 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
             mixer.addEventListener("finished", (e) => {
               if (e.action === hiAction && walkAction) {
                 hiUntil = 0;
+                walkAction.setEffectiveWeight(1);
+              }
+            });
+          }
+
+          let throwAction: THREE.AnimationAction | null = null;
+          if (throwClip) {
+            throwAction = mixer.clipAction(throwClip);
+            throwAction.setLoop(THREE.LoopOnce, 1);
+            throwAction.clampWhenFinished = false;
+            // 던지기 끝 → 걷기(정지 포즈)로 복귀
+            mixer.addEventListener("finished", (e) => {
+              if (e.action === throwAction && walkAction) {
+                throwUntil = 0;
                 walkAction.setEffectiveWeight(1);
               }
             });
@@ -188,6 +209,20 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
 
           if (hiAction) playHi(); // 등장 시 인사 1회 후 정지
           greetRef.current = playHi;
+
+          // 던지기 1회: 걷기 끄고(weight 0) throw 재생 → 끝나면 정지 포즈 복귀.
+          throwRef.current = () => {
+            if (!throwAction || !throwClip || !walkAction) return;
+            runUntil = 0;
+            hiUntil = 0;
+            walkStopPending = false;
+            walkAction.paused = true;
+            walkAction.time = 0;
+            walkAction.setEffectiveWeight(0);
+            throwAction.reset().setEffectiveWeight(1).play();
+            throwUntil = performance.now() + throwClip.duration * 1000 + 400;
+            renderQuietUntil = throwUntil;
+          };
 
           // 걷기/뛰기: RUN_MS 동안 재생 후 정지(첫 프레임).
           runRef.current = () => {
@@ -221,7 +256,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
       if (speakingRef.current) renderQuietUntil = now + 400;
       // 걷기/인사 모션이 진행 중(또는 사이클 마무리 대기 중)이면 TTS가 도중에 끊겨도 끝까지 돌려야
       // 정자세로 복귀한다. (이게 없으면 발화 중단 시 렌더가 멈춰 걷는 자세 그대로 얼어붙음)
-      const motionActive = walkAction != null && (now < runUntil || now < hiUntil || walkStopPending);
+      const motionActive = walkAction != null && (now < runUntil || now < hiUntil || now < throwUntil || walkStopPending);
       // 모션 종료 직후 정자세 복귀 로직이 실행될 프레임을 보장(발화가 renderQuietUntil을 덮어써도 꼬리 유지).
       if (motionActive) renderQuietUntil = Math.max(renderQuietUntil, now + 300);
       // 걷기 루프(idleLooping) 중엔 항상 렌더. 그 외엔 발화/인트로/모션/정착 동안만.
@@ -230,7 +265,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
 
       // 걷기/뛰기 시간이 끝나면 즉시 끊지 않고 '현재 사이클을 마치고' 멈추도록 예약한다.
       // 실제 정지는 mixer의 'loop' 이벤트(사이클 경계=정자세)에서 수행 → 부자연스러운 스냅 방지.
-      if (walkAction && now >= hiUntil && now >= runUntil && !walkAction.paused) {
+      if (walkAction && now >= hiUntil && now >= runUntil && now >= throwUntil && !walkAction.paused) {
         walkStopPending = true;
       }
 
@@ -297,6 +332,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
       renderer.dispose();
       greetRef.current = null;
       runRef.current = null;
+      throwRef.current = null;
       walkAction = null;
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
@@ -315,6 +351,12 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, classN
     if (!runSignal) return;
     runRef.current?.();
   }, [runSignal]);
+
+  // throwSignal 이 바뀌면(0 제외) 던지기 모션 1회 재생. 모델 로드 전이면 무시.
+  useEffect(() => {
+    if (!throwSignal) return;
+    throwRef.current?.();
+  }, [throwSignal]);
 
   return (
     <div
