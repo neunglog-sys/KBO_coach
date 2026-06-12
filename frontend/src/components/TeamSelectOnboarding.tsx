@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 import { LatudiCharacter } from "./LatudiCharacter";
 
@@ -37,7 +37,14 @@ const TEAMS: ReadonlyArray<{
 export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboardingProps) {
   const [selectedCode, setSelectedCode] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false); // 저장 완료 표시 (개발 모드에서 창이 유지될 때 확인용)
   const [error, setError] = useState("");
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const selectedTeam = TEAMS.find((t) => t.code === selectedCode) ?? null;
 
@@ -55,7 +62,14 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
         body: JSON.stringify({ fav_team_code: selectedCode }),
       });
       if (!res.ok) throw new Error("update failed");
-      onComplete(selectedCode); // App.tsx의 favTeamCode가 채워지며 이 창은 다시 안 뜸
+      onComplete(selectedCode); // App.tsx의 favTeamCode가 채워짐 (실제 모드에선 이 창이 즉시 닫힘)
+      // 개발 모드(FORCE)에선 창이 유지되므로: "저장되었어요" 표시 후 버튼 초기화
+      setSaved(true);
+      window.setTimeout(() => {
+        if (!mountedRef.current) return; // 창이 이미 닫혔으면 무시
+        setSaved(false);
+        setIsSaving(false);
+      }, 1200);
     } catch {
       setError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
       setIsSaving(false);
@@ -147,7 +161,7 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
           padding: "15px 0",
           borderRadius: 14,
           border: "none",
-          background: selectedCode ? "#126dff" : "#c2cde4",
+          background: saved ? "#1aa05c" : selectedCode ? "#126dff" : "#c2cde4",
           color: "#fff",
           fontSize: 16,
           fontWeight: 900,
@@ -155,7 +169,7 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
           transition: "background 0.15s",
         }}
       >
-        {isSaving ? "저장 중..." : selectedTeam ? `${selectedTeam.name}로 시작하기` : "구단을 선택해주세요"}
+        {saved ? "저장되었어요 ✓" : isSaving ? "저장 중..." : selectedTeam ? `${selectedTeam.name}로 시작하기` : "구단을 선택해주세요"}
       </button>
     </section>
   );
