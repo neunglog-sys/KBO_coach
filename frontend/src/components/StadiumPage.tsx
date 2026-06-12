@@ -216,7 +216,9 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
             <StadiumGuideTab stadium={selectedStadium} stadiums={stadiums} />
           ) : null}
           {activeTab === "food" ? <StadiumFoodTab stadium={selectedStadium} /> : null}
-          {activeTab === "region" ? <StadiumRegionTab stadium={selectedStadium} /> : null}
+          {activeTab === "region" ? (
+            <StadiumRegionTab stadium={selectedStadium} stadiums={stadiums} />
+          ) : null}
         </>
       ) : (
         <div className="stadium-page-empty">준비 중입니다</div>

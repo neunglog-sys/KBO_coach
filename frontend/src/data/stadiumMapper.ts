@@ -6,9 +6,14 @@ export interface Food {
 }
 
 export interface RegionInfo {
-  transportation: string[];
+  transportation: TransportationInfo[];
   attractions: string[];
   nearbyAreas: string[];
+}
+
+export interface TransportationInfo {
+  kind: "subway" | "bus" | "taxi" | "parking";
+  text: string;
 }
 
 export interface Stadium {
@@ -370,10 +375,13 @@ function compact(values: Array<string | null | undefined>): string[] {
   return values.map((value) => value?.trim()).filter((value): value is string => Boolean(value));
 }
 
-function uniqueCompact(values: Array<string | null | undefined>): string[] {
+function uniqueTransportation(
+  values: Array<TransportationInfo | null>,
+): TransportationInfo[] {
   const seen = new Set<string>();
-  return compact(values).filter((value) => {
-    const key = value.replace(/\s+/g, " ").trim();
+  return values.filter((value): value is TransportationInfo => {
+    if (!value?.text.trim()) return false;
+    const key = value.text.replace(/\s+/g, " ").trim();
     if (
       seen.has(key) ||
       Array.from(seen).some((existing) => existing.includes(key) || key.includes(existing))
@@ -383,6 +391,24 @@ function uniqueCompact(values: Array<string | null | undefined>): string[] {
     seen.add(key);
     return true;
   });
+}
+
+function transportationItems(row: StadiumApiRow): TransportationInfo[] {
+  const ktxItems = row.ktx_info
+    ? row.ktx_info.split(/\s*\/\s*/).map((text): TransportationInfo => {
+        if (/택시/.test(text)) return { kind: "taxi", text };
+        if (/버스|대중교통/.test(text)) return { kind: "bus", text };
+        return { kind: "subway", text };
+      })
+    : [];
+
+  return uniqueTransportation([
+    row.subway ? { kind: "subway", text: row.subway } : null,
+    ...ktxItems,
+    row.taxi_info ? { kind: "taxi", text: row.taxi_info } : null,
+    row.bus_info ? { kind: "bus", text: row.bus_info } : null,
+    row.parking ? { kind: "parking", text: row.parking } : null,
+  ]);
 }
 
 function objectParticle(value: string): "을" | "를" {
@@ -503,13 +529,7 @@ export function mapStadium(row: StadiumApiRow): Stadium {
     ]),
     foods: extractFoodItems(row.food, row.team_code),
     regionInfo: {
-      transportation: uniqueCompact([
-        row.subway,
-        row.ktx_info,
-        row.taxi_info,
-        row.bus_info,
-        row.parking,
-      ]),
+      transportation: transportationItems(row),
       attractions: extractTourismPlaces(row.tourism),
       nearbyAreas: splitPlaces(row.accommodations),
     },
