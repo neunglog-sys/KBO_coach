@@ -46,6 +46,7 @@ jobs:
           JWT_SECRET: "${{ secrets.JWT_SECRET }}"
           GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_ID }}"
           KAKAO_REST_KEY: "${{ secrets.KAKAO_REST_KEY }}"
+          KAKAO_CLIENT_SECRET: "${{ secrets.KAKAO_CLIENT_SECRET }}"
           NAVER_CLIENT_ID: "${{ secrets.NAVER_CLIENT_ID }}"
           NAVER_CLIENT_SECRET: "${{ secrets.NAVER_CLIENT_SECRET }}"
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
