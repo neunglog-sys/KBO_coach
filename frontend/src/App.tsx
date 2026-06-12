@@ -201,6 +201,51 @@ export function App() {
     initDb().catch((e) => console.error("SQLite 초기화 실패", e));
   }, []);
 
+  // 스플래시 화면: 웹 첫 화면이 실제로 그려진 뒤에 숨긴다.
+  // (자동 숨김을 끄고 여기서 내려야, WebView가 이전 세션의 옛 화면을 잠깐 보여주는 깜빡임을 가린다.)
+  useEffect(() => {
+    let hidden = false;
+    const hide = () => {
+      if (hidden) return;
+      hidden = true;
+      import("@capacitor/splash-screen")
+        .then(({ SplashScreen }) => SplashScreen.hide())
+        .catch(() => {});
+    };
+    // 첫 페인트 직후(더블 rAF) 숨김 + 혹시 실패할 경우를 대비한 안전망 타이머.
+    requestAnimationFrame(() => requestAnimationFrame(hide));
+    const t = window.setTimeout(hide, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // 플랫폼별 CSS 분기용 클래스 (예: .plat-ios — 배경 스크롤 속도 등)
+  useEffect(() => {
+    document.documentElement.classList.add(`plat-${Capacitor.getPlatform()}`);
+  }, []);
+
+  // iOS: 키보드 높이를 CSS 변수로 전달 — 화면(웹뷰)은 고정한 채(resize=none)
+  // 하단 입력 시트만 키보드 위로 올린다. 닫힐 때 잔여 스크롤 어긋남도 복원.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return;
+    let cleanup: (() => void) | undefined;
+    void import("@capacitor/keyboard").then(({ Keyboard }) => {
+      const show = Keyboard.addListener("keyboardWillShow", (info) => {
+        document.documentElement.style.setProperty("--keyboard-inset", `${info.keyboardHeight}px`);
+        document.documentElement.classList.add("kb-open");
+      });
+      const hide = Keyboard.addListener("keyboardWillHide", () => {
+        document.documentElement.style.setProperty("--keyboard-inset", "0px");
+        document.documentElement.classList.remove("kb-open");
+        window.scrollTo(0, 0);   // 키보드가 끌어올린 화면 어긋남 복원
+      });
+      cleanup = () => {
+        void show.then((h) => h.remove());
+        void hide.then((h) => h.remove());
+      };
+    });
+    return () => cleanup?.();
+  }, []);
+
   // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
   useEffect(() => {
     saveAppSettings(appSettings);

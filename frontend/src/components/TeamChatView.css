@@ -424,6 +424,8 @@
 
 /* 입력바 — 모든 화면에서 하단 고정 */
 .chat-inputbar {
+  margin-bottom: var(--keyboard-inset, 0px);   /* iOS: 키보드 위로 입력줄 상승 */
+  transition: margin-bottom 0.25s ease;
   position: relative;
   left: auto;
   right: auto;
