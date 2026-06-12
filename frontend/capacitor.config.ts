@@ -18,6 +18,15 @@ const config: CapacitorConfig = {
     scrollEnabled: false,
   },
   plugins: {
+    // 앱 실행 시 WebView가 이전 세션(옛 화면)을 잠깐 보여주는 깜빡임을 가린다.
+    // 자동으로 숨기지 않고(launchAutoHide:false), 웹 첫 화면이 그려진 뒤 App.tsx에서 hide() 호출.
+    SplashScreen: {
+      launchAutoHide: false,
+      backgroundColor: "#0e1018",
+      showSpinner: false,
+      androidSplashResourceName: "splash",
+      splashImmersive: false,
+    },
     // iOS: 키보드가 화면(웹뷰)을 건드리지 않게 고정 — resize=native는 100dvh 무대가
     // 재계산되며 배경이 찌그러지는 부작용. 대신 키보드 높이를 JS로 받아(App.tsx)
     // 하단 채팅 시트만 그만큼 올린다(--keyboard-inset).
