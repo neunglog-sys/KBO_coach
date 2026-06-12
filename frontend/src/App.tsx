@@ -201,6 +201,11 @@ export function App() {
     initDb().catch((e) => console.error("SQLite 초기화 실패", e));
   }, []);
 
+  // 플랫폼별 CSS 분기용 클래스 (예: .plat-ios — 배경 스크롤 속도 등)
+  useEffect(() => {
+    document.documentElement.classList.add(`plat-${Capacitor.getPlatform()}`);
+  }, []);
+
   // iOS: 키보드 높이를 CSS 변수로 전달 — 화면(웹뷰)은 고정한 채(resize=none)
   // 하단 입력 시트만 키보드 위로 올린다. 닫힐 때 잔여 스크롤 어긋남도 복원.
   useEffect(() => {

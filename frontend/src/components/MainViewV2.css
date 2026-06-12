@@ -547,3 +547,11 @@
   background: var(--color-background, #f4f6fb);
   pointer-events: none;
 }
+/* iOS: 화면비 특성상 배경 흐름이 빨라 보임 — 절반 속도로 보정 (App.tsx가 plat-ios 클래스 부여) */
+.plat-ios .stage-bg-sky {
+  animation-duration: 160s;
+}
+
+.plat-ios .stage-bg-ground {
+  animation-duration: 80s;
+}
