@@ -9,6 +9,10 @@ import { LoginView } from "./components/LoginView";
 // import { MainView } from "./components/MainView"; // 구버전 메인(되돌리려면 이 줄 + 아래 JSX 교체)
 import { MainViewV2 } from "./components/MainViewV2";
 import { RegisterView } from "./components/RegisterView";
+import { TeamSelectOnboarding } from "./components/TeamSelectOnboarding";
+
+// 팀 선택 온보딩 강제 표시 (개발용 — 배포/발표 전 반드시 false!)
+const FORCE_SHOW_TEAM_ONBOARDING = true;
 
 const DEMO_AUTH = {
   id: "admin",
@@ -406,20 +410,29 @@ export function App() {
   return (
     <main className="app-shell">
       {isLoggedIn ? (
-        <MainViewV2
-          authToken={authToken}
-          favTeamCode={favTeamCode}
-          nickname={nickname}
-          buddyNickname={buddyNickname}
-          notificationEnabled={appSettings.notificationEnabled}
-          onNotificationEnabledChange={(notificationEnabled) =>
-            setAppSettings((current) => ({ ...current, notificationEnabled }))
-          }
-          onNicknameChange={handleNicknameChange}
-          onFavTeamChange={handleFavTeamChange}
-          onBuddyNicknameChange={handleBuddyNicknameChange}
-          onLogout={handleLogout}
-        />
+        <>
+          <MainViewV2
+            authToken={authToken}
+            favTeamCode={favTeamCode}
+            nickname={nickname}
+            buddyNickname={buddyNickname}
+            notificationEnabled={appSettings.notificationEnabled}
+            onNotificationEnabledChange={(notificationEnabled) =>
+              setAppSettings((current) => ({ ...current, notificationEnabled }))
+            }
+            onNicknameChange={handleNicknameChange}
+            onFavTeamChange={handleFavTeamChange}
+            onBuddyNicknameChange={handleBuddyNicknameChange}
+            onLogout={handleLogout}
+          />
+          {/* 최초 1회 응원구단 선택 — favTeamCode 없을 때만. FORCE 플래그는 개발용 */}
+          {FORCE_SHOW_TEAM_ONBOARDING || (authToken && !favTeamCode) ? (
+            <TeamSelectOnboarding
+              authToken={authToken}
+              onComplete={handleFavTeamChange}
+            />
+          ) : null}
+        </>
       ) : authMode === "register" ? (
         <RegisterView
           error={registerError}
