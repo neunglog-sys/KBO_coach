@@ -23,6 +23,12 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Select latest Xcode
+        # App Store Connect가 iOS 26 SDK(Xcode 26+) 빌드만 수리 — 기본 선택이 구버전이라 최신으로 전환
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
       - uses: actions/setup-node@v4
         with:
           node-version: 22
