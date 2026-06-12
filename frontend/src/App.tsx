@@ -229,6 +229,8 @@ export function App() {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return;
     let cleanup: (() => void) | undefined;
     void import("@capacitor/keyboard").then(({ Keyboard }) => {
+      // 키보드 위 기본 액세서리 바(완료 버튼) 복구 — 플러그인 설치 시 기본값이 숨김이라 명시적으로 켠다
+      void Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
       const show = Keyboard.addListener("keyboardWillShow", (info) => {
         document.documentElement.style.setProperty("--keyboard-inset", `${info.keyboardHeight}px`);
         document.documentElement.classList.add("kb-open");
