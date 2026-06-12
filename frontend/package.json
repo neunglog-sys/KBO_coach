@@ -37,6 +37,9 @@
     "sql.js": "^1.14.1",
     "three": "^0.160.0"
   },
+  "overrides": {
+    "gh-pages": "^6.3.0"
+  },
   "devDependencies": {
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
