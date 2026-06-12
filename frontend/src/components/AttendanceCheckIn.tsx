@@ -1496,7 +1496,6 @@ export default function AttendanceCheckIn({
         >
           <span><Megaphone /></span>
           <strong>{cheerCompleted ? "응원완료" : "응원하기"}</strong>
-          {!cheerCompleted ? <em>+5XP</em> : null}
         </button>
         <button
           className="tamagotchi-action is-quiz"
