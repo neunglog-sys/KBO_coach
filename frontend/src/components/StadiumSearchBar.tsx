@@ -7,9 +7,7 @@ interface StadiumSearchBarProps {
   onSearch: () => void;
   onSelectTeam: () => void;
   isTeamListOpen: boolean;
-  isFocused: boolean;
   onFocus: () => void;
-  onBlur: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
 }
 
@@ -19,9 +17,7 @@ export function StadiumSearchBar({
   onSearch,
   onSelectTeam,
   isTeamListOpen,
-  isFocused,
   onFocus,
-  onBlur,
   inputRef,
 }: StadiumSearchBarProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -31,10 +27,7 @@ export function StadiumSearchBar({
   }
 
   return (
-    <form
-      className={`stadium-page-search${isFocused ? " is-search-focused" : ""}`}
-      onSubmit={handleSubmit}
-    >
+    <form className="stadium-page-search" onSubmit={handleSubmit}>
       <label>
         <Search aria-hidden="true" />
         <input
@@ -45,14 +38,9 @@ export function StadiumSearchBar({
           aria-label="구단명, 구장명 또는 지역 이름"
           onChange={(event) => onChange(event.target.value)}
           onFocus={onFocus}
-          onBlur={onBlur}
         />
       </label>
-      <button
-        className="stadium-page-search-button"
-        type="submit"
-        tabIndex={isFocused ? -1 : 0}
-      >
+      <button className="stadium-page-search-button" type="submit">
         검색
       </button>
       <button

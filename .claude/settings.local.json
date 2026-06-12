@@ -114,7 +114,11 @@
       "Bash(rm -f appframes/*.png)",
       "Bash(ffmpeg -i \"Downloads/Screen_Recording_20260612_132950_One UI Home.mp4\" -vf \"fps=6\" \"appframes/f_%02d.png\" -y)",
       "Bash(echo \"경로: C:\\\\\\\\Users\\\\\\\\82102_asozp43\\\\\\\\appframes\")",
-      "Bash(node -e \"console.log\\(require\\('@capacitor/splash-screen/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('@capacitor/splash-screen/package.json'\\).version\\)\")",
+      "Bash(gh pr *)",
+      "PowerShell(gh pr list --head android --json number,title,mergeable,mergeStateStatus,baseRefName)",
+      "PowerShell($g = Get-Command gh -ErrorAction SilentlyContinue; if \\($g\\) { $g.Source } else { \"NOT FOUND in PATH\" }; $p = \"$env:LOCALAPPDATA\\\\GitHubCLI\\\\gh.exe\",\"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\",\"${env:ProgramFiles\\(x86\\)}\\\\GitHub CLI\\\\gh.exe\"; foreach \\($x in $p\\) { if \\(Test-Path $x\\) { \"FOUND: $x\" } })",
+      "PowerShell($in = \"protocol=https`nhost=github.com`n`n\"; $in | git credential fill 2>$null | ForEach-Object { if \\($_ -match '^\\(protocol|host|username\\)='\\) { $_ } elseif \\($_ -match '^password='\\) { \"password=<<<FOUND length \" + \\($_.Length - 9\\) + \">>>\" } })"
     ]
   }
 }

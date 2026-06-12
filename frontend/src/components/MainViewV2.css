@@ -24,7 +24,7 @@
   /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
   /* 경기장(ground) 레이어가 차지하는 높이 — 작게 할수록 축소(줌아웃)되어 하단에 깔린다.
      캐릭터 발이 지면에 닿도록 이 값으로 맞춘다. */
-  --stage-ground-height: 90%;
+  --stage-ground-height: 80%;
   --stage-chat-limit: clamp(150px, 22vh, 220px);
   --stage-content-width: min(680px, 100%);
 }
@@ -79,7 +79,7 @@
 .stage-bg-image {
   flex: 0 0 auto;
   width: auto;
-  height: 100%;
+  height: 90%;
   max-width: none;
   display: block;
   user-select: none;
@@ -550,6 +550,7 @@
   background: var(--color-background, #f4f6fb);
   pointer-events: none;
 }
+
 /* iOS: 화면비 특성상 배경 흐름이 빨라 보임 — 절반 속도로 보정 (App.tsx가 plat-ios 클래스 부여) */
 .plat-ios .stage-bg-sky {
   animation-duration: 160s;
