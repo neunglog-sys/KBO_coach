@@ -597,7 +597,7 @@ export default function SettingsView({
       {confirmAction ? (
         <div className="settings-confirm-backdrop" role="presentation" onClick={closeConfirmModal}>
           <section
-            className="settings-confirm-modal"
+            className={`settings-confirm-modal is-${confirmAction}`}
             role="dialog"
             aria-modal="true"
             aria-label={confirmAction === "logout" ? "로그아웃 확인" : "회원탈퇴 확인"}
@@ -613,7 +613,7 @@ export default function SettingsView({
                   </button>
                   <button
                     type="button"
-                    className="settings-primary-button"
+                    className="settings-primary-button settings-blue-action-button"
                     disabled={isSubmitting}
                     onClick={() => void handleLogoutConfirm()}
                   >
