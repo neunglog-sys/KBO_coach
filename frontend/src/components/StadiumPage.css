@@ -897,6 +897,233 @@
   background: #176dff;
 }
 
+.stadium-region-tab {
+  display: grid;
+  gap: 10px;
+}
+
+.stadium-region-summary,
+.stadium-region-section {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--stadium-glass-border);
+  border-radius: 20px;
+  background: var(--stadium-glass-bg);
+  box-shadow: var(--stadium-glass-shadow);
+  backdrop-filter: var(--stadium-glass-filter);
+  -webkit-backdrop-filter: var(--stadium-glass-filter);
+}
+
+.stadium-region-summary {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-color: rgba(var(--stadium-region-accent), 0.2);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--stadium-region-accent), 0.13),
+      rgba(255, 255, 255, 0.5) 72%
+    );
+  box-shadow:
+    0 6px 12px rgba(var(--stadium-region-accent), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.stadium-region-summary::before,
+.stadium-region-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 0, rgba(255, 255, 255, 0.22), transparent 32%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 58%);
+}
+
+.stadium-region-summary > *,
+.stadium-region-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stadium-region-summary-label {
+  margin: 0 0 3px;
+  color: rgba(var(--stadium-region-accent), 0.78);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.stadium-region-summary h3,
+.stadium-region-section h3 {
+  margin: 0;
+  color: #10243e;
+  letter-spacing: -0.02em;
+}
+
+.stadium-region-summary h3 {
+  font-size: 1.25rem;
+}
+
+.stadium-region-address {
+  margin: 5px 0 0;
+  color: #42566f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.stadium-region-summary-tags,
+.stadium-region-area-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stadium-region-summary-tags span,
+.stadium-region-area-tags span {
+  border: 1px solid rgba(102, 156, 218, 0.22);
+  border-radius: 999px;
+  color: #225c9e;
+  background: rgba(227, 242, 255, 0.76);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stadium-region-summary-tags span {
+  padding: 7px 9px;
+  border-color: rgba(var(--stadium-region-accent), 0.2);
+  color: rgb(var(--stadium-region-accent));
+  background: rgba(var(--stadium-region-accent), 0.08);
+}
+
+.stadium-region-section {
+  padding: 14px;
+}
+
+.stadium-region-section > header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 11px;
+}
+
+.stadium-region-section h3 {
+  font-size: 1rem;
+}
+
+.stadium-region-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+.stadium-region-heading-icon img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.stadium-region-transport-list {
+  display: grid;
+  gap: 7px;
+}
+
+.stadium-region-transport-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  border: 1px solid rgba(185, 211, 235, 0.6);
+  border-radius: 13px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.stadium-region-transport-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  overflow: visible;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.stadium-region-transport-icon img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  object-fit: contain;
+  object-position: center;
+  transform: none;
+  filter: drop-shadow(0 2px 3px rgba(42, 76, 108, 0.12));
+}
+
+.stadium-region-transport-row strong {
+  display: block;
+  margin: 0 0 2px;
+  color: #17314f;
+  font-size: 0.78rem;
+}
+
+.stadium-region-transport-row p {
+  margin: 0;
+  color: #40556e;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.stadium-region-transport-row p + p {
+  margin-top: 3px;
+}
+
+.stadium-region-attraction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.stadium-region-attraction-grid span {
+  display: grid;
+  min-height: 40px;
+  place-items: center;
+  border: 1px solid rgba(174, 205, 235, 0.66);
+  border-radius: 12px;
+  padding: 8px;
+  color: #294b70;
+  background: rgba(255, 255, 255, 0.46);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.stadium-region-area-tags span {
+  padding: 8px 11px;
+  font-size: 0.76rem;
+}
+
+.stadium-region-empty {
+  margin: 3px 0 0;
+  border-radius: 12px;
+  padding: 13px;
+  color: #718198;
+  background: rgba(255, 255, 255, 0.38);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* Shared, restrained glass treatment for every card on the stadium screen. */
 .stadium-page-top-menu,
 .stadium-page-search,
