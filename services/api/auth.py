@@ -196,6 +196,9 @@ def register(body: RegisterIn):
             cur.execute("SELECT 1 FROM users WHERE email = %s", (body.email,))
             if cur.fetchone():
                 raise HTTPException(status_code=409, detail="이미 가입된 이메일")
+            cur.execute("SELECT 1 FROM users WHERE nickname = %s", (body.nickname,))
+            if cur.fetchone():
+                raise HTTPException(status_code=409, detail="중복되는 닉네임입니다.")
             cur.execute(
                 """INSERT INTO users (email, password_hash, nickname, fav_team_code)
                    VALUES (%s, %s, %s, %s)
@@ -597,6 +600,12 @@ def update_profile(body: UpdateProfileIn, user_id: int = Depends(current_user_id
     try:
         with conn, conn.cursor() as cur:
             ensure_user_profile_columns(conn)
+            if nickname is not None:
+                cur.execute(
+                    "SELECT 1 FROM users WHERE nickname = %s AND user_id != %s",
+                    (nickname, user_id))
+                if cur.fetchone():
+                    raise HTTPException(status_code=409, detail="중복되는 닉네임입니다.")
             cur.execute(
                 "UPDATE users "
                 "SET fav_team_code = COALESCE(%s, fav_team_code), "
