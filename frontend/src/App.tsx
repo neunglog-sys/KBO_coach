@@ -231,9 +231,19 @@ export function App() {
     void import("@capacitor/keyboard").then(({ Keyboard }) => {
       // 키보드 위 기본 액세서리 바(완료 버튼) 복구 — 플러그인 설치 시 기본값이 숨김이라 명시적으로 켠다
       void Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
+      // 키보드가 가린 높이를 실측(visualViewport)으로 계산 — 플러그인 수치는 완료 버튼 바
+      // 포함 여부가 기기마다 달라 시트와 키보드 사이에 틈이 생긴다. 실측이 항상 정확.
+      const applyInset = (fallback: number) => {
+        const vv = window.visualViewport;
+        const measured = vv ? Math.round(window.innerHeight - vv.height - vv.offsetTop) : 0;
+        const inset = measured > 60 ? measured : fallback;
+        document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
+      };
       const show = Keyboard.addListener("keyboardWillShow", (info) => {
-        document.documentElement.style.setProperty("--keyboard-inset", `${info.keyboardHeight}px`);
+        applyInset(info.keyboardHeight);
         document.documentElement.classList.add("kb-open");
+        // 키보드 등장 애니메이션이 끝난 뒤 실측값으로 한 번 더 보정
+        window.setTimeout(() => applyInset(info.keyboardHeight), 350);
       });
       const hide = Keyboard.addListener("keyboardWillHide", () => {
         document.documentElement.style.setProperty("--keyboard-inset", "0px");
