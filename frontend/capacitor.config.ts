@@ -12,6 +12,17 @@ const config: CapacitorConfig = {
     androidScheme: "http",
     cleartext: true,
   },
+  plugins: {
+    // 앱 실행 시 WebView가 이전 세션(옛 화면)을 잠깐 보여주는 깜빡임을 가린다.
+    // 자동으로 숨기지 않고(launchAutoHide:false), 웹 첫 화면이 그려진 뒤 App.tsx에서 hide() 호출.
+    SplashScreen: {
+      launchAutoHide: false,
+      backgroundColor: "#0e1018",
+      showSpinner: false,
+      androidSplashResourceName: "splash",
+      splashImmersive: false,
+    },
+  },
 };
 
 export default config;

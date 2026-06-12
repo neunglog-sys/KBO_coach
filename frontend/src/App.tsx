@@ -201,6 +201,23 @@ export function App() {
     initDb().catch((e) => console.error("SQLite 초기화 실패", e));
   }, []);
 
+  // 스플래시 화면: 웹 첫 화면이 실제로 그려진 뒤에 숨긴다.
+  // (자동 숨김을 끄고 여기서 내려야, WebView가 이전 세션의 옛 화면을 잠깐 보여주는 깜빡임을 가린다.)
+  useEffect(() => {
+    let hidden = false;
+    const hide = () => {
+      if (hidden) return;
+      hidden = true;
+      import("@capacitor/splash-screen")
+        .then(({ SplashScreen }) => SplashScreen.hide())
+        .catch(() => {});
+    };
+    // 첫 페인트 직후(더블 rAF) 숨김 + 혹시 실패할 경우를 대비한 안전망 타이머.
+    requestAnimationFrame(() => requestAnimationFrame(hide));
+    const t = window.setTimeout(hide, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // 로그인 상태면 안드로이드 FCM 토큰을 백엔드에 등록 (웹은 내부에서 스킵)
   useEffect(() => {
     saveAppSettings(appSettings);
