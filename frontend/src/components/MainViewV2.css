@@ -562,6 +562,6 @@
 
 /* 키보드 열림(kb-open): 공복이를 남은 화면 띠로 올려 계속 보이게 */
 .kb-open .stage-character {
-  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.45)) scale(0.72);
+  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.24)) scale(0.8);
   transition: transform 0.25s ease;
 }
