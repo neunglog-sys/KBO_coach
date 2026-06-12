@@ -51,6 +51,7 @@ const MOODS = [
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const GOAL_KEY = "myRecordGoalDays";
 const GOAL_RESET_KEY = "myRecordGoalResetDate";
+const STREAK_DATES_KEY = "myRecordStreakDates";
 const MYTEAM_KEY = "myTeamCode";
 
 // 헥스 색을 흰색 쪽으로 amt(0~1)만큼 밝게 보정. (어두운 팀 색을 그라데이션용으로 띄움)
@@ -73,10 +74,36 @@ function fmt(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function koreaTodayKey(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function dateKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function loadStreakDates(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STREAK_DATES_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((d): d is string => typeof d === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStreakDates(dates: string[]) {
+  localStorage.setItem(STREAK_DATES_KEY, JSON.stringify(Array.from(new Set(dates)).sort()));
+}
+
 function calcStreak(dateSet: Set<string>, resetDate: string | null): number {
   let streak = 0;
-  const d = new Date();
-  const todayKey = fmt(d);
+  const d = new Date(`${koreaTodayKey()}T00:00:00+09:00`);
+  const todayKey = koreaTodayKey();
   if ((resetDate && todayKey <= resetDate) || !dateSet.has(todayKey)) return 0;
   while (true) {
     const key = fmt(d);
@@ -93,9 +120,11 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
   const [monthGames, setMonthGames] = useState<Record<string, unknown>[]>([]);
   const [goalDays, setGoalDays] = useState<number>(() => Number(localStorage.getItem(GOAL_KEY)) || 3);
   const [goalResetDate, setGoalResetDate] = useState<string | null>(() => localStorage.getItem(GOAL_RESET_KEY));
+  const [streakDates, setStreakDates] = useState<string[]>(loadStreakDates);
   const [editingGoal, setEditingGoal] = useState(false);
 
   const today = new Date();
+  const todayKey = koreaTodayKey();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [modalDate, setModalDate] = useState<string | null>(null);
@@ -215,10 +244,11 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     return map;
   }, [records]);
 
-  const streak = useMemo(
-    () => calcStreak(new Set(records.map((r) => r.record_date)), goalResetDate),
-    [goalResetDate, records],
-  );
+  const streak = useMemo(() => {
+    const challengeDates = new Set(streakDates);
+    if (recordsByDate.has(todayKey)) challengeDates.add(todayKey);
+    return calcStreak(challengeDates, goalResetDate);
+  }, [goalResetDate, recordsByDate, streakDates, todayKey]);
   const progress = Math.min(100, Math.round((streak / Math.max(1, goalDays)) * 100));
   const remain = Math.max(0, goalDays - streak);
   const reachedGoal = streak >= goalDays;
@@ -248,11 +278,13 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
 
   function saveGoal(value: number) {
     const v = Math.max(1, Math.min(365, Math.round(value) || 1));
-    const resetDate = fmt(new Date());
+    const resetDate = todayKey;
     setGoalDays(v);
     setGoalResetDate(resetDate);
+    setStreakDates([]);
     localStorage.setItem(GOAL_KEY, String(v));
     localStorage.setItem(GOAL_RESET_KEY, resetDate);
+    saveStreakDates([]);
     setEditingGoal(false);
   }
 
@@ -268,6 +300,22 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
   function handleSideMenuNavigate(target: TopMenuTarget) {
     if (target === "record") return;
     onNavigate?.(target);
+  }
+
+  function rememberTodayStreakDate(savedDate: string) {
+    if (savedDate !== todayKey) return;
+    const next = Array.from(new Set([...streakDates, todayKey])).sort();
+    setGoalResetDate(null);
+    localStorage.removeItem(GOAL_RESET_KEY);
+    setStreakDates(next);
+    saveStreakDates(next);
+  }
+
+  function forgetTodayStreakDate(deletedDate: string) {
+    if (deletedDate !== todayKey) return;
+    const next = streakDates.filter((d) => d !== todayKey);
+    setStreakDates(next);
+    saveStreakDates(next);
   }
 
   return (
@@ -374,10 +422,10 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
         <div className="cal-grid">
           {calendarCells.map((day, idx) => {
             if (day === null) return <span key={`e${idx}`} className="cal-cell empty" />;
-            const dateStr = fmt(new Date(viewYear, viewMonth, day));
+            const dateStr = dateKey(viewYear, viewMonth, day);
             const rec = recordsByDate.get(dateStr);
             const game = scheduleByDate.get(dateStr);
-            const isToday = dateStr === fmt(today);
+            const isToday = dateStr === todayKey;
             const mood = moodByKey(rec?.mood ?? null);
             const opp = game ? teamByCode(game.oppCode) : undefined;
             return (
@@ -414,7 +462,12 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
           existing={recordsByDate.get(modalDate) ?? null}
           authToken={authToken}
           onClose={() => setModalDate(null)}
-          onSaved={async () => {
+          onSaved={async (savedDate, action) => {
+            if (action === "delete") {
+              forgetTodayStreakDate(savedDate);
+            } else {
+              rememberTodayStreakDate(savedDate);
+            }
             await reload();
             setModalDate(null);
           }}
@@ -470,7 +523,7 @@ function RecordModal({
   existing: RecordRow | null;
   authToken: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (date: string, action: "save" | "delete") => void;
 }) {
   const [stadium, setStadium] = useState(existing?.stadium ?? "");
   const [mood, setMood] = useState<string | null>(existing?.mood ?? null);
@@ -481,10 +534,11 @@ function RecordModal({
   // 상대팀: 예정표 우선, (예정표 없고 기존 기록만 있으면) 기록의 상대팀
   const oppCode = game?.oppCode ?? existing?.team_code ?? null;
   const opp = teamByCode(oppCode);
+  const isFutureDate = date > koreaTodayKey();
   const hasGame = Boolean(game || existing);
 
   async function handleSave() {
-    if (!oppCode || !mood || !authToken) return;
+    if (isFutureDate || !oppCode || !mood || !authToken) return;
     setSaving(true);
     try {
       // 날짜당 1건 유지: 기존 기록 있으면 삭제 후 생성 (백엔드 update 없음)
@@ -506,7 +560,7 @@ function RecordModal({
           game_id: game?.gameId ?? (myTeam ? `${myTeam.code} vs ${oppCode}` : oppCode),
         }),
       });
-      onSaved();
+      onSaved(date, "save");
     } finally {
       setSaving(false);
     }
@@ -520,7 +574,7 @@ function RecordModal({
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      onSaved();
+      onSaved(date, "delete");
     } finally {
       setSaving(false);
     }
@@ -544,7 +598,9 @@ function RecordModal({
           </button>
         </div>
 
-        {!hasGame ? (
+        {isFutureDate ? (
+          <p className="rec-nogame">아직 경기가 진행되지 않은 날짜라 기록할 수 없어요.</p>
+        ) : !hasGame ? (
           <p className="rec-nogame">이 날은 우리 팀 경기 일정이 없어요.</p>
         ) : (
           <>
@@ -607,7 +663,7 @@ function RecordModal({
                 type="button"
                 className="rec-save"
                 onClick={handleSave}
-                disabled={saving || !mood}
+                disabled={saving || isFutureDate || !mood}
               >
                 {saving ? "저장 중" : !mood ? "결과를 선택하세요" : "직관 기록 저장"}
               </button>
