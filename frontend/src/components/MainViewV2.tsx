@@ -1,5 +1,8 @@
 import { FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+// iOS 전용 미니 플러그인 — 음성인식 후 오디오 세션을 재생 모드로 복원 (TTS 소리 작아짐 방지)
+const AudioSession = registerPlugin<{ toPlayback(): Promise<void> }>("AudioSession");
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import { saveChat } from "../db";
@@ -1180,6 +1183,9 @@ export function MainViewV2({
     nativeSttActiveRef.current = false;
     await NativeSTT.stop().catch(() => { });
     await NativeSTT.removeAllListeners().catch(() => { });
+    if (Capacitor.getPlatform() === "ios") {
+      await AudioSession.toPlayback().catch(() => { });   // 수화기 모드 → 스피커 재생 복원
+    }
     setIsListening(false);
     const transcript = nativeSttLastRef.current.trim();
     nativeSttLastRef.current = "";
