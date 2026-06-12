@@ -4,8 +4,12 @@ name: iOS TestFlight Upload
 # 필요 시크릿: IOS_P12_BASE64 / IOS_P12_PASSWORD / IOS_PROFILE_BASE64 /
 #             ASC_KEY_ID / ASC_ISSUER_ID / ASC_API_KEY_BASE64 (+ VITE_*)
 # macOS 분 차감 10배 → 수동 실행 전용.
+# 실행 방법: ① Actions 탭 수동 실행(워크플로가 main에 있을 때) 또는
+#           ② `git tag ios-tf-N && git push origin ios-tf-N` (어느 브랜치에서든 즉시 실행)
 on:
   workflow_dispatch:
+  push:
+    tags: ["ios-tf-*"]
 
 env:
   TEAM_ID: MQY843WD59
