@@ -34,6 +34,7 @@ jobs:
           node-version: 22
       - name: Install deps & build web
         env:
+          VITE_API_BASE: https://kboai-5dea0.web.app   # 앱은 상대경로가 자기 내부로 가므로 필수
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
         run: |
