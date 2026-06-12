@@ -53,12 +53,12 @@ const CODE_TO_TEAM: Record<string, string> = Object.fromEntries(
 );
 
 const SETTING_ICONS = {
-  profile: "/img/baseball_icons2/profile.svg",
-  password: "/img/baseball_icons2/password.svg",
-  teamChange: "/img/baseball_icons2/team_change.svg",
-  logout: "/img/baseball_icons2/logout.svg",
-  withdraw: "/img/baseball_icons2/withdraw.svg",
-  notification: "/img/baseball_icons2/notification.svg",
+  profile: "/img/baseball_icons2/profile.png",
+  password: "/img/baseball_icons2/password.png",
+  teamChange: "/img/baseball_icons2/team_change.png",
+  logout: "/img/baseball_icons2/logout.png",
+  withdraw: "/img/baseball_icons2/withdraw.png",
+  notification: "/img/baseball_icons2/notification.png",
   settings: "/img/baseball_icons2/settings.svg",
 } as const;
 
