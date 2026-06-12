@@ -575,11 +575,19 @@
 
 /* 키보드 열림: 홈바 여백(safe-area-bottom)은 키보드 밑에 깔리므로 제외 — 입력줄이 키보드에 바짝 붙게 */
 .kb-open .stage-chat {
-  padding-bottom: var(--keyboard-inset, 0px) !important;   /* 입력줄이 키보드에 딱 붙게 */
+  /* 시트를 키보드 '위까지만' 올림 — 키보드 뒤로 흰 패널을 깔지 않아 스크린샷에 비치지 않음 */
+  bottom: var(--keyboard-inset, 0px);
+  padding-bottom: 12px !important;
+  transition: bottom 0.25s ease;
 }
 
 /* 메인이 가려진 동안 배경 스크롤 일시정지 — 스와이프 복귀 렉 완화 (진행 위치는 보존됨) */
 .stage-paused .stage-bg-sky,
 .stage-paused .stage-bg-ground {
   animation-play-state: paused;
+}
+
+/* 키보드 열림: 채팅 로그 높이 제한 확대 — 키보드 위 좁은 공간에서도 대화가 여러 줄 보이게 */
+.kb-open .stage-chatlog {
+  max-height: min(34vh, calc(100dvh - var(--keyboard-inset, 0px) - 260px));
 }

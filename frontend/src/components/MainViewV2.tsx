@@ -393,9 +393,12 @@ export function MainViewV2({
     }
   }, []);
 
-  // 뒤로가기(iOS 엣지 스와이프·안드 하드웨어 버튼) = 열린 화면 닫고 홈으로
+  // 뒤로가기 = 열린 화면 닫고 홈으로. 웹뷰 히스토리(스냅샷 전환)를 쓰지 않고
+  // 엣지 스와이프를 직접 감지 — 홈에서 스와이프해도 유령 화면 전환이 없다.
+  const anyOverlayOpenRef = useRef(false);
+
   useEffect(() => {
-    const onPop = () => {
+    const closeAll = () => {
       stopSpeaking();
       setClosingOverlay(null);
       setIsAttendanceOpen(false);
@@ -404,8 +407,43 @@ export function MainViewV2({
       setShowRecords(false);
       setShowChat(false);
     };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+
+    // iOS: 화면 왼쪽 끝(28px)에서 시작한 오른쪽 스와이프 감지
+    let startX = -1;
+    let startY = -1;
+    const onStart = (e: TouchEvent) => {
+      const t0 = e.touches[0];
+      startX = t0 && t0.clientX <= 28 ? t0.clientX : -1;
+      startY = t0?.clientY ?? -1;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (startX < 0 || !anyOverlayOpenRef.current) return;
+      const t0 = e.touches[0];
+      if (!t0) return;
+      if (t0.clientX - startX > 70 && Math.abs(t0.clientY - startY) < 60) {
+        startX = -1;
+        closeAll();
+      }
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+
+    // 안드로이드: 하드웨어 뒤로가기 버튼
+    let removeBack: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      void import("@capacitor/app").then(({ App: CapApp }) => {
+        const h = CapApp.addListener("backButton", () => {
+          if (anyOverlayOpenRef.current) closeAll();
+          else void CapApp.minimizeApp();
+        });
+        removeBack = () => void h.then((x) => x.remove());
+      });
+    }
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      removeBack?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -449,8 +487,6 @@ export function MainViewV2({
     setIsSettingsOpen(key === "settings");
     setShowRecords(key === "record");
     setShowChat(key === "chat");
-    // 뒤로가기(iOS 스와이프·안드 버튼)용 히스토리 엔트리 — popstate에서 홈 복귀
-    window.history.pushState({ view: key }, "");
   }
 
   // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
@@ -1140,7 +1176,7 @@ export function MainViewV2({
   }
 
   async function finishNativeSTT(submit: boolean) {
-    const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+    const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
     nativeSttActiveRef.current = false;
     await NativeSTT.stop().catch(() => { });
     await NativeSTT.removeAllListeners().catch(() => { });
@@ -1152,7 +1188,7 @@ export function MainViewV2({
 
   async function startNativeSTT() {
     try {
-      const { SpeechRecognition: NativeSTT } = await import("@capacitor-community/speech-recognition");
+      const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
       const { available } = await NativeSTT.available();
       if (!available) return;
       const perm = await NativeSTT.requestPermissions();
@@ -1270,6 +1306,7 @@ export function MainViewV2({
   // (iOS 스와이프 복귀 시 전환 렉 완화 — 재개 시 멈춘 지점부터 이어짐)
   const stageHidden =
     isAttendanceOpen || isStadiumPageOpen || isSettingsOpen || showRecords || showChat;
+  anyOverlayOpenRef.current = stageHidden;
 
   return (
     <section className={`stage-view ${stageHidden ? "stage-paused" : ""}`.trim()} aria-label="메인 화면">
