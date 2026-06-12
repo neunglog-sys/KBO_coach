@@ -50,6 +50,7 @@ const MOODS = [
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const GOAL_KEY = "myRecordGoalDays";
+const GOAL_RESET_KEY = "myRecordGoalResetDate";
 const MYTEAM_KEY = "myTeamCode";
 
 // 헥스 색을 흰색 쪽으로 amt(0~1)만큼 밝게 보정. (어두운 팀 색을 그라데이션용으로 띄움)
@@ -72,11 +73,14 @@ function fmt(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function calcStreak(dateSet: Set<string>): number {
+function calcStreak(dateSet: Set<string>, resetDate: string | null): number {
   let streak = 0;
   const d = new Date();
-  if (!dateSet.has(fmt(d))) d.setDate(d.getDate() - 1);
-  while (dateSet.has(fmt(d))) {
+  const todayKey = fmt(d);
+  if ((resetDate && todayKey <= resetDate) || !dateSet.has(todayKey)) return 0;
+  while (true) {
+    const key = fmt(d);
+    if ((resetDate && key <= resetDate) || !dateSet.has(key)) break;
     streak++;
     d.setDate(d.getDate() - 1);
   }
@@ -88,6 +92,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
   const [myTeam, setMyTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [monthGames, setMonthGames] = useState<Record<string, unknown>[]>([]);
   const [goalDays, setGoalDays] = useState<number>(() => Number(localStorage.getItem(GOAL_KEY)) || 3);
+  const [goalResetDate, setGoalResetDate] = useState<string | null>(() => localStorage.getItem(GOAL_RESET_KEY));
   const [editingGoal, setEditingGoal] = useState(false);
 
   const today = new Date();
@@ -210,9 +215,13 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     return map;
   }, [records]);
 
-  const streak = useMemo(() => calcStreak(new Set(records.map((r) => r.record_date))), [records]);
+  const streak = useMemo(
+    () => calcStreak(new Set(records.map((r) => r.record_date)), goalResetDate),
+    [goalResetDate, records],
+  );
   const progress = Math.min(100, Math.round((streak / Math.max(1, goalDays)) * 100));
   const remain = Math.max(0, goalDays - streak);
+  const reachedGoal = streak >= goalDays;
 
   const calendarCells = useMemo(() => {
     const firstDay = new Date(viewYear, viewMonth, 1).getDay();
@@ -239,8 +248,11 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
 
   function saveGoal(value: number) {
     const v = Math.max(1, Math.min(365, Math.round(value) || 1));
+    const resetDate = fmt(new Date());
     setGoalDays(v);
+    setGoalResetDate(resetDate);
     localStorage.setItem(GOAL_KEY, String(v));
+    localStorage.setItem(GOAL_RESET_KEY, resetDate);
     setEditingGoal(false);
   }
 
@@ -304,6 +316,11 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
         <div className="streak-bar">
           <div className="streak-bar-fill" style={{ width: `${progress}%` }} />
         </div>
+        {reachedGoal ? (
+          <p className="streak-goal-message">
+            축하해요! 목표 일수를 채웠어요. 새로운 목표 일수를 다시 적어주세요.
+          </p>
+        ) : null}
         <div className="streak-actions">
           {editingGoal ? (
             <GoalEditor initial={goalDays} onSave={saveGoal} onCancel={() => setEditingGoal(false)} />
