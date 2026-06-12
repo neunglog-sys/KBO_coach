@@ -12,6 +12,13 @@ const config: CapacitorConfig = {
     androidScheme: "http",
     cleartext: true,
   },
+  plugins: {
+    // iOS: 키보드가 화면을 '덮지' 않고 웹뷰를 줄이게 — 하단 고정 채팅 입력창이 키보드 위로 올라옴.
+    // (안드로이드는 기존 adjustResize 동작 그대로)
+    Keyboard: {
+      resize: "native",
+    },
+  },
 };
 
 export default config;
