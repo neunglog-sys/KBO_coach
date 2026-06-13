@@ -458,6 +458,7 @@ def main() -> int:
             sb_df = fetch_scoreboards(session, games_df)
             sb_recs = sb_df.to_dict("records")
             for rec in sb_recs:
+                rec["date"] = ddir          # latest_date()·날짜 쿼리 공통 키
                 rec["game_date"] = ddir
                 rec["collected_date"] = today.isoformat()
             payload = {"dataset": "game_scoreboards", "scope": "single_day",
