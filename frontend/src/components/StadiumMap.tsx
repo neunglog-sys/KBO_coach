@@ -9,6 +9,7 @@ declare global {
 }
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
+const KAKAO_LOAD_TIMEOUT_MS = 10_000;
 
 let kakaoLoadPromise: Promise<void> | null = null;
 
@@ -24,8 +25,21 @@ function loadKakaoMaps(): Promise<void> {
     const script = document.createElement("script");
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false`;
     script.async = true;
-    script.onload = () => window.kakao.maps.load(() => resolve());
-    script.onerror = () => reject(new Error("Kakao Maps SDK를 불러오지 못했습니다."));
+    const timeout = window.setTimeout(() => {
+      reject(new Error("Kakao Maps SDK 응답 시간이 초과되었습니다."));
+    }, KAKAO_LOAD_TIMEOUT_MS);
+    script.onload = () => {
+      window.clearTimeout(timeout);
+      if (!window.kakao?.maps?.load) {
+        reject(new Error("Kakao Maps SDK가 현재 앱 출처를 허용하지 않았습니다."));
+        return;
+      }
+      window.kakao.maps.load(() => resolve());
+    };
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(new Error("Kakao Maps SDK를 불러오지 못했습니다."));
+    };
     document.head.appendChild(script);
   }).catch((error: unknown) => {
     kakaoLoadPromise = null;
@@ -60,6 +74,7 @@ export function StadiumMap({
   const markersRef = useRef<Record<string, any>>({});
   const infoWindowRef = useRef<any>(null);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -92,8 +107,13 @@ export function StadiumMap({
 
         setIsReady(true);
       })
-      .catch(() => {
-        if (!cancelled) setHasError(true);
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "지도를 불러오지 못했습니다.",
+          );
+          setHasError(true);
+        }
       });
 
     return () => {
@@ -121,7 +141,7 @@ export function StadiumMap({
   if (hasError) {
     return (
       <div className="stadium-page-map stadium-page-map-error" role="alert">
-        지도를 불러오지 못했습니다.
+        {errorMessage || "지도를 불러오지 못했습니다."}
       </div>
     );
   }

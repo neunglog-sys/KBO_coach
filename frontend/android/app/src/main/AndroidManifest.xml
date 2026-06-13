@@ -55,4 +55,12 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Android 11+(API 30) 패키지 가시성: 음성인식 서비스 조회 허용
+         (없으면 SpeechRecognizer.isRecognitionAvailable()이 false 반환) -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 </manifest>

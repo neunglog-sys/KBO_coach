@@ -217,7 +217,7 @@ export function StadiumPage({ onClose, onNavigate }: StadiumPageProps) {
           ) : null}
           {activeTab === "food" ? <StadiumFoodTab stadium={selectedStadium} /> : null}
           {activeTab === "region" ? (
-            <StadiumRegionTab stadium={selectedStadium} stadiums={stadiums} />
+            <StadiumRegionTab stadium={selectedStadium} />
           ) : null}
         </>
       ) : (
