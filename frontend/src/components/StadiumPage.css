@@ -43,7 +43,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
   --stadium-glass-filter: blur(4px) saturate(110%);
   position: relative;
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--page-pad-x) calc(24px + env(safe-area-inset-bottom));
+  padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 12px) var(--page-pad-x) calc(24px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
   color: #1c2536;
   background:
     radial-gradient(circle at 92% 4%, rgba(124, 198, 255, 0.28), transparent 30%),
@@ -64,8 +64,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: calc(-1 * (env(safe-area-inset-top, 0px) + 12px)) calc(-1 * var(--page-pad-x)) 18px;
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  margin: calc(-1 * (max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 12px)) calc(-1 * var(--page-pad-x)) 18px;
+  padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 12px) 16px 12px;
   background: rgba(241, 247, 252, 0.9);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
