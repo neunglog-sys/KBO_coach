@@ -28,6 +28,27 @@ interface ScheduleGame {
   gameId: string | null;
 }
 
+// /lineups 응답의 경기 1건 (crawl_lineup.py가 kbo.lineups에 적재하는 형태)
+interface LineupPlayer {
+  order: number;
+  position: string;
+  name: string;
+}
+interface LineupGame {
+  game_id: string;
+  date: string;
+  time: string | null;
+  stadium: string | null;
+  away: string; // 팀명(한글 약칭)
+  home: string;
+  away_starter: string | null;
+  home_starter: string | null;
+  away_lineup: LineupPlayer[];
+  home_lineup: LineupPlayer[];
+  lineup_posted: boolean;
+  cancel: string | null;
+}
+
 const CHAR_DIR = "/img/kbo_character_no_outline_pngs";
 const TEAMS = [
   { code: "OB", name: "두산 베어스", short: "두산", color: "#131230", char: `${CHAR_DIR}/Doosan_character_no_outline.png` },
@@ -130,6 +151,39 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [closing, setClosing] = useState(false); // 뒤로가기 슬라이드 아웃용
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+
+  // ===== KBO 공식 기록 연동 (lineups API) =====
+  const [lineupGames, setLineupGames] = useState<LineupGame[]>([]);
+  const [liveDate, setLiveDate] = useState<string>("");
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [lineupTab, setLineupTab] = useState<"away" | "home">("away");
+
+  async function loadTodayGames() {
+    setLiveLoading(true);
+    try {
+      // 1차: 오늘 날짜 명시. 2차: 비어 있으면 date 없이(최신 날짜)로 폴백 → 항상 뭔가 보이게.
+      let d: { date?: string; count?: number; lineups?: LineupGame[] } | null = null;
+      const r1 = await fetch(apiUrl(`/lineups?date=${koreaTodayKey()}`));
+      if (r1.ok) d = await r1.json();
+      if (!d || !Array.isArray(d.lineups) || d.lineups.length === 0) {
+        const r2 = await fetch(apiUrl(`/lineups`));
+        if (r2.ok) d = await r2.json();
+      }
+      if (d && Array.isArray(d.lineups)) {
+        setLineupGames(d.lineups);
+        setLiveDate(typeof d.date === "string" ? d.date : "");
+      }
+    } catch {
+      // 네트워크 오류 시 기존 상태 유지
+    } finally {
+      setLiveLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadTodayGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function reload() {
     if (!authToken) {
@@ -244,6 +298,29 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     return map;
   }, [records]);
 
+  // 내 팀 경기 (lineups 중에서) — 선발투수·타순까지 포함.
+  // 매칭: ① 팀명(short) ② game_id 내 팀코드(예: 20260613OBHT → OB/HT) 양쪽으로 시도해 표기 흔들림에 강하게.
+  const myGame = useMemo(() => {
+    if (!myTeam) return null; // team_code(OB 등) 자체가 없으면 매칭 불가
+    const myCode = myTeam.toUpperCase();
+    const g = lineupGames.find((game) => {
+      if (myShort && (game.home === myShort || game.away === myShort)) return true;
+      // game_id 끝 4글자가 보통 원정+홈 팀코드(2+2). 내 코드 포함 여부로 보조 매칭.
+      const tail = (game.game_id || "").slice(-4).toUpperCase();
+      return tail.includes(myCode);
+    });
+    if (!g) return null;
+    return {
+      ...g,
+      awayTeam: teamByShort(g.away) ?? null,
+      homeTeam: teamByShort(g.home) ?? null,
+    };
+  }, [lineupGames, myShort, myTeam]);
+
+  // 팀 닉네임("KIA 타이거즈" → "타이거즈") — 라인업 탭 표기용
+  const teamNick = (t: (typeof TEAMS)[number] | null, fallback: string) =>
+    t ? t.name.split(" ").slice(-1)[0] : fallback;
+
   const streak = useMemo(() => {
     const challengeDates = new Set(streakDates);
     if (recordsByDate.has(todayKey)) challengeDates.add(todayKey);
@@ -320,7 +397,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
 
   return (
     <section
-      className={`records-view ${closing ? "closing" : ""}`}
+      className={`records-view ${closing ? "closing" : ""} ${modalDate ? "modal-lock" : ""}`}
       aria-label="나만의 야구기록"
       onAnimationEnd={(e) => {
         if (closing && e.target === e.currentTarget) onBack();
@@ -452,6 +529,132 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
           })}
         </div>
         <p className="cal-legend">색 배지 = 우리 팀 경기(상대), 이모지 = 내가 남긴 직관 결과</p>
+      </div>
+
+      {/* ===== KBO 공식 기록 연동 (아래로 스크롤하면 나오는 섹션) ===== */}
+      <div className={`kbo-live-card${modalDate ? " modal-open" : ""}`}>
+        <div className="kbo-live-head">
+          <strong>KBO 공식 기록 연동</strong>
+          <button
+            type="button"
+            className="kbo-live-refresh"
+            onClick={() => void loadTodayGames()}
+            disabled={liveLoading}
+          >
+            {liveLoading ? "불러오는 중…" : "새로고침"}
+          </button>
+        </div>
+
+        {/* 경기 카드: 양팀 선발투수(원) + 중앙 시간/매치업/구장 */}
+        <div className="kbo-game-card">
+          <div className="kbo-game-side">
+            <span
+              className="kbo-pitcher-circle"
+              style={myGame?.awayTeam ? { borderColor: myGame.awayTeam.color } : undefined}
+            >
+              {myGame?.away_starter ?? ""}
+            </span>
+            <span className="kbo-team-name">{myGame?.away ?? ""}</span>
+            <span className="kbo-pitcher-label">{myGame?.away_starter ? "선발" : ""}</span>
+          </div>
+          <div className="kbo-game-center">
+            <strong className="kbo-game-time">
+              {myGame ? myGame.time || "시간 미정" : "--:--"}
+            </strong>
+            <span className="kbo-game-status">
+              {myGame ? (myGame.cancel ? myGame.cancel : "경기 예정") : "오늘 경기 없음"}
+            </span>
+            <span className="kbo-game-matchup">
+              {myGame ? `${myGame.away} vs ${myGame.home}` : "\u00A0"}
+            </span>
+            {myGame?.stadium ? (
+              <span className="kbo-game-stadium">{myGame.stadium}</span>
+            ) : null}
+          </div>
+          <div className="kbo-game-side">
+            <span
+              className="kbo-pitcher-circle"
+              style={myGame?.homeTeam ? { borderColor: myGame.homeTeam.color } : undefined}
+            >
+              {myGame?.home_starter ?? ""}
+            </span>
+            <span className="kbo-team-name">{myGame?.home ?? ""}</span>
+            <span className="kbo-pitcher-label">{myGame?.home_starter ? "선발" : ""}</span>
+          </div>
+        </div>
+
+        {/* 스코어보드 (이닝별 점수) — TODO: 이닝별 점수는 별도 데이터(미수집). 현재 틀만 표시 */}
+        <p className="kbo-sec-title">스코어보드 (이닝별 점수)</p>
+        <div className="kbo-score-wrap">
+          <table className="kbo-score-table">
+            <thead>
+              <tr>
+                <th>팀</th>
+                {Array.from({ length: 9 }, (_, i) => (
+                  <th key={i + 1}>{i + 1}</th>
+                ))}
+                <th>R</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[myGame?.away ?? "원정", myGame?.home ?? "홈"].map((name, row) => (
+                <tr key={`${name}-${row}`}>
+                  <th>{name}</th>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <td key={i}>{myGame ? "-" : ""}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 선발 라인업 — lineups의 타순(order/position/name) 연동 */}
+        <p className="kbo-sec-title">선발 라인업</p>
+        <div className="kbo-lineup-tabs">
+          <button
+            type="button"
+            className={lineupTab === "away" ? "on" : ""}
+            onClick={() => setLineupTab("away")}
+          >
+            {myGame ? teamNick(myGame.awayTeam, myGame.away) : "원정팀"}
+          </button>
+          <button
+            type="button"
+            className={lineupTab === "home" ? "on" : ""}
+            onClick={() => setLineupTab("home")}
+          >
+            {myGame ? teamNick(myGame.homeTeam, myGame.home) : "홈팀"}
+          </button>
+        </div>
+        <div className={`kbo-lineup-box${myGame && (lineupTab === "away" ? myGame.away_lineup : myGame.home_lineup)?.length ? " has-list" : ""}`}>
+          {(() => {
+            if (!myGame) {
+              return (
+                <p className="kbo-lineup-empty">
+                  {myTeamObj
+                    ? `${liveDate || "최근"} ${myTeamObj.short} 경기가 없어요.`
+                    : "내 팀을 설정하면 경기를 보여드려요."}
+                </p>
+              );
+            }
+            const list = lineupTab === "away" ? myGame.away_lineup : myGame.home_lineup;
+            if (!list || list.length === 0) {
+              return <p className="kbo-lineup-empty">아직 라인업이 발표되지 않았어요.</p>;
+            }
+            return (
+              <ol className="kbo-lineup-list">
+                {list.map((p) => (
+                  <li key={p.order} className="kbo-lineup-row">
+                    <span className="kbo-lineup-order">{p.order}</span>
+                    <span className="kbo-lineup-pos">{p.position}</span>
+                    <span className="kbo-lineup-name">{p.name}</span>
+                  </li>
+                ))}
+              </ol>
+            );
+          })()}
+        </div>
       </div>
 
       {modalDate ? (

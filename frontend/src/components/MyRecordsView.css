@@ -20,6 +20,16 @@
   will-change: transform, opacity;
 }
 
+/* 모달(직관 기록 등)이 열린 동안 배경 스크롤 잠금 → 모달 뒤 영역이 밀려 드러나는 것 방지.
+   animation/will-change(transform)을 제거해야 자식 .rec-backdrop의 position:fixed가
+   부모가 아닌 viewport 기준으로 동작 → 화면 전체를 덮음. */
+.records-view.modal-lock {
+  overflow-y: hidden;
+  animation: none;
+  will-change: auto;
+  transform: none;
+}
+
 @keyframes records-enter {
   from {
     opacity: 0.4;
@@ -611,7 +621,7 @@
 .rec-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 1000; /* KBO 카드 등 backdrop-filter가 만든 stacking context보다 확실히 위로 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -824,4 +834,290 @@
 
 .rec-save:disabled {
   opacity: 0.5;
+}
+
+/* ===== KBO 공식 기록 연동 (구상도 기반) ===== */
+.kbo-live-card {
+  position: relative;
+  overflow: hidden;
+  margin: 28px 16px 0;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 6px 12px rgba(28, 37, 54, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -12px 18px rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+/* 모달이 열리면 backdrop-filter를 꺼서 stacking context 해제 → 모달 딤이 이 카드 위를 덮게 함 */
+.kbo-live-card.modal-open {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.kbo-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kbo-live-head strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1c2536;
+}
+
+.kbo-live-refresh {
+  padding: 6px 12px;
+  border: 1px solid rgba(28, 37, 54, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #1c2536;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kbo-live-refresh:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* 경기 카드: 양팀 로고 + 중앙 시간/상태/구장 */
+.kbo-game-card {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px;
+  border: 2px solid #3b5b9d;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.kbo-game-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1c2536;
+}
+
+/* 선발투수 원형 (이름 표시) */
+.kbo-pitcher-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  padding: 4px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #1c2536;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
+.kbo-team-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.kbo-pitcher-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.kbo-game-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.kbo-game-time {
+  color: #1d4ed8;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.kbo-game-status,
+.kbo-game-matchup {
+  color: #4b5563;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.kbo-game-stadium {
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* 섹션 소제목 */
+.kbo-sec-title {
+  margin: 16px 0 8px;
+  text-align: center;
+  color: #1c2536;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+/* 스코어보드 표 — 헤더 행 회색(#D9D9D9, 구상도 지시) */
+.kbo-score-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(28, 37, 54, 0.14);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.kbo-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.kbo-score-table th,
+.kbo-score-table td {
+  padding: 7px 0;
+  border: 1px solid rgba(28, 37, 54, 0.1);
+  text-align: center;
+  min-width: 24px;
+}
+
+.kbo-score-table thead th {
+  background: #d9d9d9;
+  color: #1c2536;
+  font-weight: 800;
+}
+
+.kbo-score-table tbody th {
+  background: rgba(244, 246, 251, 0.8);
+  font-weight: 700;
+  min-width: 44px;
+}
+
+.kbo-score-table td {
+  color: #6b7280;
+}
+
+/* 선발 라인업 탭 — 선택된 팀 하늘색 하이라이트 */
+.kbo-lineup-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(28, 37, 54, 0.1);
+}
+
+.kbo-lineup-tabs button {
+  padding: 8px 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kbo-lineup-tabs button.on {
+  background: #bfdbfe;
+  color: #1e3a8a;
+}
+
+/* 라인업 표시 박스 */
+.kbo-lineup-box {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  border: 1px solid rgba(28, 37, 54, 0.12);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.kbo-lineup-empty,
+.kbo-live-empty {
+  margin: 0;
+  color: #9aa0a6;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.kbo-live-empty {
+  padding: 28px 0;
+}
+
+/* 라인업 리스트 (타순 1~9) */
+.kbo-lineup-box.has-list {
+  display: block;
+  padding: 8px 12px;
+  align-items: stretch;
+}
+
+.kbo-lineup-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.kbo-lineup-row {
+  display: grid;
+  grid-template-columns: 28px 56px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(28, 37, 54, 0.07);
+  font-size: 0.84rem;
+}
+
+.kbo-lineup-row:last-child {
+  border-bottom: none;
+}
+
+.kbo-lineup-order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #bfdbfe;
+  color: #1e3a8a;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.kbo-lineup-pos {
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.kbo-lineup-name {
+  color: #1c2536;
+  font-weight: 700;
 }
