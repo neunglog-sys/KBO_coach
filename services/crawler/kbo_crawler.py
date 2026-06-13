@@ -308,6 +308,56 @@ def fetch_boxscore(session, gid: str):
     return hitters, pitchers
 
 
+SCOREBOARD_API = "/ws/Schedule.asmx/GetScoreBoardScroll"
+
+
+def fetch_scoreboard(session, gid: str) -> dict | None:
+    """한 경기의 이닝별 점수 + R/H/E. 종료 경기만 의미 있음."""
+    r = session.post(BASE + SCOREBOARD_API,
+                     data={"leId": "1", "srId": "0", "seasonId": gid[:4], "gameId": gid},
+                     headers={"X-Requested-With": "XMLHttpRequest",
+                              "Referer": BASE + "/Schedule/GameCenter/Main.aspx"}, timeout=40)
+    r.raise_for_status()
+    d = json.loads(r.text)
+
+    def grid(js):   # table → [[셀,...], ...] (HTML 제거)
+        return [[strip_html(c["Text"]) for c in row["row"]] for row in _rows(js)]
+
+    innings = grid(d.get("table2") or '{"rows":[]}')   # 0=원정, 1=홈 / 회차별 득점
+    rhe = grid(d.get("table3") or '{"rows":[]}')        # 0=원정, 1=홈 / R,H,E,B
+    if len(innings) < 2 or len(rhe) < 2:
+        return None
+
+    def line(side):   # side 0=원정, 1=홈
+        return {"inning_scores": [coerce(x) for x in innings[side]],
+                "R": coerce(rhe[side][0]) if len(rhe[side]) > 0 else None,
+                "H": coerce(rhe[side][1]) if len(rhe[side]) > 1 else None,
+                "E": coerce(rhe[side][2]) if len(rhe[side]) > 2 else None,
+                "B": coerce(rhe[side][3]) if len(rhe[side]) > 3 else None}
+
+    return {
+        "gameId": gid,
+        "away": d.get("AWAY_NM"), "home": d.get("HOME_NM"),
+        "max_inning": coerce(d.get("maxInning")),
+        "away_line": line(0), "home_line": line(1),
+        "crowd": coerce(d.get("CROWD_CN")),
+        "start_time": d.get("START_TM"), "end_time": d.get("END_TM"),
+    }
+
+
+def fetch_scoreboards(session, games_df) -> pd.DataFrame:
+    """그 날 종료된 모든 경기의 이닝별 스코어보드 → DataFrame."""
+    rows = []
+    for _, g in games_df.iterrows():
+        if g.get("상태") != "종료" or not g.get("gameId"):
+            continue
+        sb = fetch_scoreboard(session, g["gameId"])
+        if sb:
+            rows.append(sb)
+        time.sleep(PAGE_DELAY + random.uniform(0, 0.6))
+    return pd.DataFrame(rows)
+
+
 def fetch_boxscores(session, games_df) -> tuple:
     """어제 종료된 모든 경기의 박스스코어를 모아 (hitters_df, pitchers_df) 반환."""
     H, P = [], []
@@ -401,6 +451,24 @@ def main() -> int:
             ok += 1
         except Exception as e:
             print(f"  [FAIL] boxscore: {e}", file=sys.stderr)
+            fail += 1
+
+        # ⑥ 그 날 경기 이닝별 스코어보드 (중첩 구조라 save_json 대신 직접 기록)
+        try:
+            sb_df = fetch_scoreboards(session, games_df)
+            sb_recs = sb_df.to_dict("records")
+            for rec in sb_recs:
+                rec["game_date"] = ddir
+                rec["collected_date"] = today.isoformat()
+            payload = {"dataset": "game_scoreboards", "scope": "single_day",
+                       "game_date": ddir, "collected_date": today.isoformat(),
+                       "count": len(sb_recs), "records": sb_recs}
+            (outdir / "games_scoreboards.json").write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  [OK]   scoreboard: {len(sb_recs)}경기")
+            ok += 1
+        except Exception as e:
+            print(f"  [FAIL] scoreboard: {e}", file=sys.stderr)
             fail += 1
 
     print(f"완료: 성공 {ok} / 실패 {fail}")
