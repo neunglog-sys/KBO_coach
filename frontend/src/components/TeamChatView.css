@@ -41,7 +41,7 @@
   --chat-header-height: 0px;
   --chat-search-height: 0px;
   --chat-switch-height: 0px;
-  --chat-inputbar-space: calc(74px + env(safe-area-inset-bottom, 0px));
+  --chat-inputbar-space: calc(74px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
 }
 
 @supports not (height: 100dvh) {
@@ -92,7 +92,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--chat-header-gap);
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) var(--chat-header-x) calc(var(--chat-header-gap) + 10px);
+  padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 10px) var(--chat-header-x) calc(var(--chat-header-gap) + 10px);
   color: #fff;
 }
 
@@ -431,7 +431,7 @@
   align-items: center;
   gap: 12px;
   margin-top: 0;
-  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  padding: 8px 12px calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 10px);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(0, 0, 0, 0.07);
   z-index: 70;
