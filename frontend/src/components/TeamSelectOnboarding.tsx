@@ -87,7 +87,7 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
         flexDirection: "column",
         alignItems: "center",
         overflowY: "auto",
-        padding: "calc(env(safe-area-inset-top, 0px) + 24px) 16px 24px",
+        padding: "calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 24px) 16px 24px",
         background: "linear-gradient(180deg, #eef6ff 0%, #f7fbff 60%, #ffffff 100%)",
         fontFamily:
           '"Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif',

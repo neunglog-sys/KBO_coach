@@ -17,8 +17,8 @@
   isolation: isolate;
   --stage-side: clamp(14px, 4vw, 24px);
   /* 상단 간격을 양옆 간격(--stage-side)과 동일하게 (노치 안전영역 제외하고 대칭) */
-  --stage-nav-top: calc(env(safe-area-inset-top, 0px) + var(--stage-side));
-  --stage-character-top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 14vh, 140px));
+  --stage-nav-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + var(--stage-side));
+  --stage-character-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(64px, 14vh, 140px));
   --stage-character-size: clamp(320px, min(96vw, 54vh), 500px);
   --stage-bg-rise: clamp(90px, 30vh, 240px);
   /* 배경을 위로 올려 캐릭터가 지면을 밟게 */
@@ -248,13 +248,13 @@
   bottom: 0;
   /* iOS: 시트를 위로 띄우는 대신 키보드 높이만큼 안쪽 패딩을 늘림 —
      흰 카드가 키보드 뒤까지 채워져 배경 틈이 안 보이고, 입력줄은 키보드 위로 올라옴 */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px + var(--keyboard-inset, 0px)) !important;
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 14px + var(--keyboard-inset, 0px)) !important;
   transition: padding-bottom 0.25s ease;
   z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px var(--stage-side) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding: 16px var(--stage-side) calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 14px);
   background: #ffffff;
   /* 그라데이션 페이드 대신 둥근 위 모서리(시트 카드 느낌) */
   border-top-left-radius: 24px;
@@ -531,7 +531,7 @@
 @media (min-width: 768px) {
   .stage-view {
     --stage-content-width: min(680px, calc(100vw - 48px));
-    --stage-nav-top: calc(env(safe-area-inset-top, 0px) + var(--stage-side));
+    --stage-nav-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + var(--stage-side));
   }
 
   .stage-nav {
