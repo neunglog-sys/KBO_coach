@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { apiUrl } from "../api";
 import { AppBackButton } from "./AppBackButton";
 import type { TopMenuTarget } from "./TopMenu";
@@ -397,7 +398,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
 
   return (
     <section
-      className={`records-view ${closing ? "closing" : ""} ${modalDate ? "modal-lock" : ""}`}
+      className={`records-view ${closing ? "closing" : ""}`}
       aria-label="나만의 야구기록"
       onAnimationEnd={(e) => {
         if (closing && e.target === e.currentTarget) onBack();
@@ -532,7 +533,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
       </div>
 
       {/* ===== KBO 공식 기록 연동 (아래로 스크롤하면 나오는 섹션) ===== */}
-      <div className={`kbo-live-card${modalDate ? " modal-open" : ""}`}>
+      <div className="kbo-live-card">
         <div className="kbo-live-head">
           <strong>KBO 공식 기록 연동</strong>
           <button
@@ -783,7 +784,7 @@ function RecordModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="rec-backdrop" role="presentation" onClick={onClose}>
       <div
         className="rec-modal"
@@ -874,7 +875,8 @@ function RecordModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
