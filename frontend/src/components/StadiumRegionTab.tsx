@@ -46,18 +46,8 @@ function EmptyRegionInfo() {
   return <p className="stadium-region-empty">등록된 지역정보가 없습니다</p>;
 }
 
-export function StadiumRegionTab({
-  stadium,
-  stadiums,
-}: {
-  stadium: Stadium;
-  stadiums: Stadium[];
-}) {
-  const teamTags = stadiums
-    .filter((item) => item.stadiumName === stadium.stadiumName)
-    .map((item) => item.teamName)
-    .filter((teamName, index, teamNames) => teamNames.indexOf(teamName) === index);
-  const summaryTags = [...teamTags, stadium.city].filter(
+export function StadiumRegionTab({ stadium }: { stadium: Stadium }) {
+  const summaryTags = [stadium.teamName, stadium.city].filter(
     (tag, index, tags) => Boolean(tag) && tags.indexOf(tag) === index,
   );
   const summaryStyle = {
