@@ -46,6 +46,7 @@ KEYFIELDS = {
     "games":         ["date", "원정팀", "홈팀"],
     "game_hitters":  ["gameId", "팀", "선수명", "타순"],
     "game_pitchers": ["gameId", "팀", "선수명"],
+    "game_scoreboards": ["gameId"],
 }
 
 
