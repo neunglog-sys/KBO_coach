@@ -48,6 +48,7 @@ const TEAM_CODE: Record<string, string> = {
   "NC 다이노스": "NC",
   "키움 히어로즈": "WO",
 };
+
 const CODE_TO_TEAM: Record<string, string> = Object.fromEntries(
   Object.entries(TEAM_CODE).map(([name, code]) => [code, name]),
 );
@@ -429,157 +430,159 @@ export default function SettingsView({
 
   return (
     <section className="settings-app-screen">
-      {/* key={screen}로 화면 전환 시 리마운트 → 슬라이드/페이드 애니메이션 재생 */}
       <div className="settings-screen-anim" key={screen}>
-      {screen === "main" ? (
-        <>
-          <SettingsHeader title="환경 설정" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
+        {screen === "main" ? (
+          <>
+            <SettingsHeader title="환경 설정" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
 
-          <div className="settings-stack">
-            <MenuCard
-              iconSrc={SETTING_ICONS.profile}
-              title="내 정보"
-              description="프로필 및 계정 정보를 확인하고 관리합니다."
-              onClick={() => setScreen("myInfo")}
-            />
-            <div className="settings-large-card">
-              <ToggleRow
-                iconSrc={SETTING_ICONS.notification}
-                title="알림 기능"
-                checked={notificationEnabled}
-                onChange={handleNotificationChange}
+            <div className="settings-stack">
+              <MenuCard
+                iconSrc={SETTING_ICONS.profile}
+                title="내 정보"
+                description="프로필 및 계정 정보를 확인하고 관리합니다."
+                onClick={() => setScreen("myInfo")}
               />
-              <div className="settings-divider" />
-              <ActionRow
-                iconSrc={SETTING_ICONS.logout}
-                title="로그아웃"
+              <div className="settings-large-card">
+                <ToggleRow
+                  iconSrc={SETTING_ICONS.notification}
+                  title="알림 기능"
+                  checked={notificationEnabled}
+                  onChange={handleNotificationChange}
+                />
+                <div className="settings-divider" />
+                <ActionRow
+                  iconSrc={SETTING_ICONS.logout}
+                  title="로그아웃"
+                  onClick={() => {
+                    setNotice("");
+                    setConfirmAction("logout");
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {screen === "myInfo" ? (
+          <>
+            <SettingsHeader title="내 정보" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
+
+            <div className="settings-card-list">
+              <form className="settings-account-card settings-nickname-form" onSubmit={handleNicknameSubmit}>
+                <ImgCircle src={SETTING_ICONS.profile} />
+                <div className="settings-nickname-fields">
+                  <label htmlFor="settings-nickname">닉네임</label>
+                  <div>
+                    <input
+                      id="settings-nickname"
+                      value={nicknameInput}
+                      maxLength={50}
+                      onChange={(event) => setNicknameInput(event.target.value)}
+                    />
+                    <button
+                      className="settings-blue-action-button"
+                      type="submit"
+                      disabled={isSubmitting || nicknameInput.trim() === (nickname?.trim() || "")}
+                    >
+                      변경
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
+              <MenuCard iconSrc={SETTING_ICONS.teamChange} title="응원구단 변경" onClick={() => setScreen("team")} />
+              <MenuCard
+                iconSrc={SETTING_ICONS.withdraw}
+                title="회원탈퇴"
+                danger
                 onClick={() => {
                   setNotice("");
-                  setConfirmAction("logout");
+                  setDeleteConfirmText("");
+                  setConfirmAction("delete");
                 }}
               />
             </div>
-          </div>
-        </>
-      ) : null}
 
-      {screen === "myInfo" ? (
-        <>
-          <SettingsHeader title="내 정보" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
-          <form className="settings-account-card settings-nickname-form" onSubmit={handleNicknameSubmit}>
-            <ImgCircle src={SETTING_ICONS.profile} />
-            <div className="settings-nickname-fields">
-              <label htmlFor="settings-nickname">닉네임</label>
-              <div>
+            {notice ? <p className="settings-notice">{notice}</p> : null}
+          </>
+        ) : null}
+
+        {screen === "password" ? (
+          <>
+            <SettingsHeader title="비밀번호 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
+            <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
+              <label>
+                <span>현재 비밀번호</span>
                 <input
-                  id="settings-nickname"
-                  value={nicknameInput}
-                  maxLength={50}
-                  onChange={(event) => setNicknameInput(event.target.value)}
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                  }
+                  required
                 />
-                <button
-                  className="settings-blue-action-button"
-                  type="submit"
-                  disabled={isSubmitting || nicknameInput.trim() === (nickname?.trim() || "")}
-                >
-                  변경
-                </button>
-              </div>
-            </div>
-          </form>
-          <div className="settings-card-list">
-            <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
-            <MenuCard iconSrc={SETTING_ICONS.teamChange} title="응원구단 변경" onClick={() => setScreen("team")} />
-            <MenuCard
-              iconSrc={SETTING_ICONS.withdraw}
-              title="회원탈퇴"
-              danger
-              onClick={() => {
-                setNotice("");
-                setDeleteConfirmText("");
-                setConfirmAction("delete");
-              }}
-            />
-          </div>
-          {notice ? <p className="settings-notice">{notice}</p> : null}
-        </>
-      ) : null}
+              </label>
+              <label>
+                <span>새로운 비밀번호</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                <span>새로운 비밀번호 확인</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <button className="settings-primary-button settings-blue-action-button" type="submit" disabled={isSubmitting}>
+                변경하기
+              </button>
+              {notice ? <p className="settings-notice">{notice}</p> : null}
+            </form>
+          </>
+        ) : null}
 
-      {screen === "password" ? (
-        <>
-          <SettingsHeader title="비밀번호 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
-          <form className="settings-form-card" onSubmit={handlePasswordChangeSubmit}>
-            <label>
-              <span>현재 비밀번호</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={passwordForm.currentPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label>
-              <span>새로운 비밀번호</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={passwordForm.newPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label>
-              <span>새로운 비밀번호 확인</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={passwordForm.confirmPassword}
-                onChange={(event) =>
-                  setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <button className="settings-primary-button settings-blue-action-button" type="submit" disabled={isSubmitting}>
-              변경하기
-            </button>
-            {notice ? <p className="settings-notice">{notice}</p> : null}
-          </form>
-        </>
-      ) : null}
-
-      {screen === "team" ? (
-        <>
-          <SettingsHeader title="응원구단 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
-          <form className="settings-team-card" onSubmit={handleTeamSubmit}>
-            <fieldset>
-              <legend className="hidden">응원구단 선택</legend>
-              {TEAMS.map((team) => (
-                <label className="settings-radio-row" key={team}>
-                  <input
-                    type="radio"
-                    name="favoriteTeam"
-                    value={team}
-                    checked={selectedTeam === team}
-                    onChange={() => setSelectedTeam(team)}
-                  />
-                  <span aria-hidden="true" />
-                  <strong>{team}</strong>
-                </label>
-              ))}
-            </fieldset>
-            <button className="settings-primary-button settings-blue-action-button" type="submit">
-              변경하기
-            </button>
-            {notice ? <p className="settings-notice">{notice}</p> : null}
-          </form>
-        </>
-      ) : null}
+        {screen === "team" ? (
+          <>
+            <SettingsHeader title="응원구단 변경" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
+            <form className="settings-team-card" onSubmit={handleTeamSubmit}>
+              <fieldset>
+                <legend className="hidden">응원구단 선택</legend>
+                {TEAMS.map((team) => (
+                  <label className="settings-radio-row" key={team}>
+                    <input
+                      type="radio"
+                      name="favoriteTeam"
+                      value={team}
+                      checked={selectedTeam === team}
+                      onChange={() => setSelectedTeam(team)}
+                    />
+                    <span aria-hidden="true" />
+                    <strong>{team}</strong>
+                  </label>
+                ))}
+              </fieldset>
+              <button className="settings-primary-button settings-blue-action-button" type="submit">
+                변경하기
+              </button>
+              {notice ? <p className="settings-notice">{notice}</p> : null}
+            </form>
+          </>
+        ) : null}
       </div>
 
       <SideMenu
