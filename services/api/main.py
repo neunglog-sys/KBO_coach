@@ -136,3 +136,21 @@ def get_lineups(date: str | None = None, game_id: str | None = None):
     d = date or latest_date("lineups")
     rows = list(db.lineups.find({"date": d}, {"_id": 0}))
     return {"date": d, "count": len(rows), "lineups": rows}
+
+
+@app.get("/scoreboards")
+def get_scoreboards(date: str | None = None, game_id: str | None = None):
+    """이닝별 스코어보드 — 경기별 회차 득점 + R/H/E. kbo_crawler가 kbo.game_scoreboards에 적재.
+    - date="YYYY-MM-DD" : 그날 모든 경기 (미지정 시 최신 날짜)
+    - game_id : 특정 경기 1건만
+    각 문서: away/home(팀명), max_inning, away_line/home_line({inning_scores[], R,H,E,B}),
+             crowd, start_time, end_time ...
+    """
+    if game_id:
+        doc = db.game_scoreboards.find_one({"gameId": game_id}, {"_id": 0})
+        if not doc:
+            raise HTTPException(status_code=404, detail="스코어보드 없음")
+        return doc
+    d = date or latest_date("game_scoreboards")
+    rows = list(db.game_scoreboards.find({"date": d}, {"_id": 0}))
+    return {"date": d, "count": len(rows), "scoreboards": rows}

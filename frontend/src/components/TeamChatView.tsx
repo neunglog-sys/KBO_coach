@@ -283,7 +283,12 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
         const fresh: BoardMessage[] = Array.isArray(d.messages) ? d.messages : [];
         if (fresh.length) {
           lastIdRef.current = fresh[fresh.length - 1].message_id;
-          setMessages((prev) => (initial ? fresh : [...prev, ...fresh]));
+          // send()가 낙관적으로 먼저 추가한 내 메시지가 폴링에 다시 딸려와 중복되는 것 방지
+          setMessages((prev) => {
+            if (initial) return fresh;
+            const seen = new Set(prev.map((m) => m.message_id));
+            return [...prev, ...fresh.filter((m) => !seen.has(m.message_id))];
+          });
         }
       } catch {
         /* 무시 */
@@ -318,7 +323,11 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
       if (r.ok) {
         const msg: BoardMessage = await r.json();
         lastIdRef.current = Math.max(lastIdRef.current, msg.message_id);
-        setMessages((prev) => [...prev, { ...msg, is_mine: true }]);
+        // 폴링이 먼저 이 메시지를 반영했을 수 있으니 중복 추가 방지
+        setMessages((prev) =>
+          prev.some((m) => m.message_id === msg.message_id)
+            ? prev
+            : [...prev, { ...msg, is_mine: true }]);
       }
     } catch {
       /* 무시 */
