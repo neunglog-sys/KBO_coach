@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
   },
   server: {
+    // Kakao Maps JavaScript SDK는 capacitor:// 출처를 웹 도메인으로 인정하지 않는다.
+    // iOS WebView를 등록된 https://localhost 출처로 제공한다.
+    iosScheme: "https",
     androidScheme: "http",
     cleartext: true,
   },
