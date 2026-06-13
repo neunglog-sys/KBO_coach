@@ -10,11 +10,38 @@ declare global {
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
 const KAKAO_LOAD_TIMEOUT_MS = 10_000;
+const KAKAO_READY_POLL_MS = 50;
 
 let kakaoLoadPromise: Promise<void> | null = null;
 
+function isKakaoMapsReady() {
+  return Boolean(
+    window.kakao?.maps &&
+      typeof window.kakao.maps.Map === "function" &&
+      typeof window.kakao.maps.LatLng === "function",
+  );
+}
+
+function waitForKakaoMapsReady(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const check = () => {
+      if (isKakaoMapsReady()) {
+        resolve();
+        return;
+      }
+      if (Date.now() - startedAt >= KAKAO_LOAD_TIMEOUT_MS) {
+        reject(new Error("Kakao Maps SDK 초기화 시간이 초과되었습니다."));
+        return;
+      }
+      window.setTimeout(check, KAKAO_READY_POLL_MS);
+    };
+    check();
+  });
+}
+
 function loadKakaoMaps(): Promise<void> {
-  if (window.kakao?.maps) return Promise.resolve();
+  if (isKakaoMapsReady()) return Promise.resolve();
   if (kakaoLoadPromise) return kakaoLoadPromise;
 
   const promise = new Promise<void>((resolve, reject) => {
@@ -34,7 +61,9 @@ function loadKakaoMaps(): Promise<void> {
         reject(new Error("Kakao Maps SDK가 현재 앱 출처를 허용하지 않았습니다."));
         return;
       }
-      window.kakao.maps.load(() => resolve());
+      window.kakao.maps.load(() => {
+        void waitForKakaoMapsReady().then(resolve, reject);
+      });
     };
     script.onerror = () => {
       window.clearTimeout(timeout);

@@ -563,7 +563,7 @@
 
 /* 키보드 열림(kb-open): 공복이를 남은 화면 띠로 올려 계속 보이게 */
 .kb-open .stage-character {
-  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.18)) scale(0.82);
+  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.1)) scale(0.8);
   transition: transform 0.25s ease;
 }
 
@@ -589,5 +589,13 @@
 
 /* 키보드 열림: 채팅 로그 높이 제한 확대 — 키보드 위 좁은 공간에서도 대화가 여러 줄 보이게 */
 .kb-open .stage-chatlog {
-  max-height: min(34vh, calc(100dvh - var(--keyboard-inset, 0px) - 260px));
+  max-height: min(32vh, calc(100dvh - var(--keyboard-inset, 0px) - 380px));
+}
+
+
+.stage-mic {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
 }
