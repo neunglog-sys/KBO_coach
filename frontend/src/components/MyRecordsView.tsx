@@ -516,93 +516,94 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
           </button>
         </div>
 
-        {myTodayGame ? (
-          <>
-            {/* 경기 카드: 양팀 + 시간/상태/구장 */}
-            <div className="kbo-game-card">
-              <div className="kbo-game-side">
-                {myTodayGame.awayTeam ? (
-                  <img src={myTodayGame.awayTeam.char} alt={myTodayGame.awayShort} />
-                ) : (
-                  <span className="kbo-game-logo-fallback">{myTodayGame.awayShort}</span>
-                )}
-                <span>{myTodayGame.awayShort}</span>
-              </div>
-              <div className="kbo-game-center">
-                <strong className="kbo-game-time">{myTodayGame.time || "시간 미정"}</strong>
-                <span className="kbo-game-status">{myTodayGame.status}</span>
-                <span className="kbo-game-matchup">
-                  {myTodayGame.awayShort} vs {myTodayGame.homeShort}
-                </span>
-                {myTodayGame.stadium ? (
-                  <span className="kbo-game-stadium">{myTodayGame.stadium}</span>
-                ) : null}
-              </div>
-              <div className="kbo-game-side">
-                {myTodayGame.homeTeam ? (
-                  <img src={myTodayGame.homeTeam.char} alt={myTodayGame.homeShort} />
-                ) : (
-                  <span className="kbo-game-logo-fallback">{myTodayGame.homeShort}</span>
-                )}
-                <span>{myTodayGame.homeShort}</span>
-              </div>
-            </div>
+        {/* 경기 카드: 양팀 + 시간/상태/구장 (경기 없으면 빈 칸으로 레이아웃 유지) */}
+        <div className="kbo-game-card">
+          <div className="kbo-game-side">
+            {myTodayGame?.awayTeam ? (
+              <img src={myTodayGame.awayTeam.char} alt={myTodayGame.awayShort} />
+            ) : (
+              <span className="kbo-game-logo-fallback">{myTodayGame?.awayShort ?? ""}</span>
+            )}
+            <span>{myTodayGame?.awayShort ?? ""}</span>
+          </div>
+          <div className="kbo-game-center">
+            <strong className="kbo-game-time">{myTodayGame ? myTodayGame.time || "시간 미정" : "--:--"}</strong>
+            <span className="kbo-game-status">
+              {myTodayGame ? myTodayGame.status : "오늘 경기 없음"}
+            </span>
+            <span className="kbo-game-matchup">
+              {myTodayGame ? `${myTodayGame.awayShort} vs ${myTodayGame.homeShort}` : "\u00A0"}
+            </span>
+            {myTodayGame?.stadium ? (
+              <span className="kbo-game-stadium">{myTodayGame.stadium}</span>
+            ) : null}
+          </div>
+          <div className="kbo-game-side">
+            {myTodayGame?.homeTeam ? (
+              <img src={myTodayGame.homeTeam.char} alt={myTodayGame.homeShort} />
+            ) : (
+              <span className="kbo-game-logo-fallback">{myTodayGame?.homeShort ?? ""}</span>
+            )}
+            <span>{myTodayGame?.homeShort ?? ""}</span>
+          </div>
+        </div>
 
-            {/* 스코어보드 (이닝별 점수) — TODO: 이닝별 점수 API 연동 (백엔드 요청 필요) */}
-            <p className="kbo-sec-title">스코어보드 (이닝별 점수)</p>
-            <div className="kbo-score-wrap">
-              <table className="kbo-score-table">
-                <thead>
-                  <tr>
-                    <th>팀</th>
-                    {Array.from({ length: 9 }, (_, i) => (
-                      <th key={i + 1}>{i + 1}</th>
-                    ))}
-                    <th>R</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[myTodayGame.awayShort, myTodayGame.homeShort].map((name) => (
-                    <tr key={name}>
-                      <th>{name}</th>
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <td key={i}>-</td>
-                      ))}
-                    </tr>
+        {/* 스코어보드 (이닝별 점수) — TODO: 이닝별 점수 API 연동 (백엔드 요청 필요) */}
+        <p className="kbo-sec-title">스코어보드 (이닝별 점수)</p>
+        <div className="kbo-score-wrap">
+          <table className="kbo-score-table">
+            <thead>
+              <tr>
+                <th>팀</th>
+                {Array.from({ length: 9 }, (_, i) => (
+                  <th key={i + 1}>{i + 1}</th>
+                ))}
+                <th>R</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                myTodayGame?.awayShort ?? "원정",
+                myTodayGame?.homeShort ?? "홈",
+              ].map((name, row) => (
+                <tr key={`${name}-${row}`}>
+                  <th>{name}</th>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <td key={i}>{myTodayGame ? "-" : ""}</td>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-            {/* 선발 라인업 — TODO: 라인업 API 연동 (kbo.lineups, 백엔드 요청 필요) */}
-            <p className="kbo-sec-title">선발 라인업</p>
-            <div className="kbo-lineup-tabs">
-              <button
-                type="button"
-                className={lineupTab === "away" ? "on" : ""}
-                onClick={() => setLineupTab("away")}
-              >
-                {teamNick(myTodayGame.awayTeam, myTodayGame.awayShort)}
-              </button>
-              <button
-                type="button"
-                className={lineupTab === "home" ? "on" : ""}
-                onClick={() => setLineupTab("home")}
-              >
-                {teamNick(myTodayGame.homeTeam, myTodayGame.homeShort)}
-              </button>
-            </div>
-            <div className="kbo-lineup-box">
-              <p className="kbo-lineup-empty">라인업 데이터를 준비 중이에요.</p>
-            </div>
-          </>
-        ) : (
-          <p className="kbo-live-empty">
-            {myTeamObj
-              ? `오늘은 ${myTeamObj.short} 경기가 없어요.`
-              : "내 팀을 설정하면 오늘 경기를 보여드려요."}
+        {/* 선발 라인업 — TODO: 라인업 API 연동 (kbo.lineups, 백엔드 요청 필요) */}
+        <p className="kbo-sec-title">선발 라인업</p>
+        <div className="kbo-lineup-tabs">
+          <button
+            type="button"
+            className={lineupTab === "away" ? "on" : ""}
+            onClick={() => setLineupTab("away")}
+          >
+            {myTodayGame ? teamNick(myTodayGame.awayTeam, myTodayGame.awayShort) : "원정팀"}
+          </button>
+          <button
+            type="button"
+            className={lineupTab === "home" ? "on" : ""}
+            onClick={() => setLineupTab("home")}
+          >
+            {myTodayGame ? teamNick(myTodayGame.homeTeam, myTodayGame.homeShort) : "홈팀"}
+          </button>
+        </div>
+        <div className="kbo-lineup-box">
+          <p className="kbo-lineup-empty">
+            {myTodayGame
+              ? "라인업 데이터를 준비 중이에요."
+              : myTeamObj
+                ? `오늘은 ${myTeamObj.short} 경기가 없어요.`
+                : "내 팀을 설정하면 오늘 경기를 보여드려요."}
           </p>
-        )}
+        </div>
       </div>
 
       {modalDate ? (
