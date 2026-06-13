@@ -118,3 +118,21 @@ def get_boxscore(game_id: str):
     if not hitters and not pitchers:
         raise HTTPException(status_code=404, detail="경기 기록 없음")
     return {"gameId": game_id, "hitters": hitters, "pitchers": pitchers}
+
+
+@app.get("/lineups")
+def get_lineups(date: str | None = None, game_id: str | None = None):
+    """선발 라인업 — 당일 경기의 선발투수 + 타순(1~9). crawl_lineup.py가 kbo.lineups에 적재.
+    - date="YYYY-MM-DD" : 그날 모든 경기 (미지정 시 lineups 최신 날짜)
+    - game_id : 특정 경기 1건만
+    각 문서: away/home(팀명), away_starter/home_starter(선발투수명),
+             away_lineup/home_lineup([{order,position,name}]), lineup_posted, cancel ...
+    """
+    if game_id:
+        doc = db.lineups.find_one({"game_id": game_id}, {"_id": 0})
+        if not doc:
+            raise HTTPException(status_code=404, detail="라인업 없음")
+        return doc
+    d = date or latest_date("lineups")
+    rows = list(db.lineups.find({"date": d}, {"_id": 0}))
+    return {"date": d, "count": len(rows), "lineups": rows}
