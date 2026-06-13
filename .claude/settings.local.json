@@ -118,7 +118,12 @@
       "Bash(gh pr *)",
       "PowerShell(gh pr list --head android --json number,title,mergeable,mergeStateStatus,baseRefName)",
       "PowerShell($g = Get-Command gh -ErrorAction SilentlyContinue; if \\($g\\) { $g.Source } else { \"NOT FOUND in PATH\" }; $p = \"$env:LOCALAPPDATA\\\\GitHubCLI\\\\gh.exe\",\"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\",\"${env:ProgramFiles\\(x86\\)}\\\\GitHub CLI\\\\gh.exe\"; foreach \\($x in $p\\) { if \\(Test-Path $x\\) { \"FOUND: $x\" } })",
-      "PowerShell($in = \"protocol=https`nhost=github.com`n`n\"; $in | git credential fill 2>$null | ForEach-Object { if \\($_ -match '^\\(protocol|host|username\\)='\\) { $_ } elseif \\($_ -match '^password='\\) { \"password=<<<FOUND length \" + \\($_.Length - 9\\) + \">>>\" } })"
+      "PowerShell($in = \"protocol=https`nhost=github.com`n`n\"; $in | git credential fill 2>$null | ForEach-Object { if \\($_ -match '^\\(protocol|host|username\\)='\\) { $_ } elseif \\($_ -match '^password='\\) { \"password=<<<FOUND length \" + \\($_.Length - 9\\) + \">>>\" } })",
+      "PowerShell(adb devices)",
+      "Read(//c/Users/user/AppData/Local/Android/**)",
+      "Read(//c/Users/user/AppData/Local/Android/Sdk/**)",
+      "Bash(grep -rli \"android\" docs/)",
+      "Bash(grep -rli \"gradlew\\\\|installDebug\\\\|cap run\" docs/ frontend/*.md)"
     ]
   }
 }
