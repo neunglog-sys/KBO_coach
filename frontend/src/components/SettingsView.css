@@ -1438,3 +1438,213 @@
     animation: none;
   }
 }
+/* 카드/아이콘/텍스트 크기 통일 수정 */
+.settings-app-screen {
+  --settings-card-padding: 16px;
+  --settings-card-height: 88px;
+  --settings-card-gap: 14px;
+  --settings-icon-size: 56px;
+}
+
+.settings-stack,
+.settings-card-list {
+  gap: var(--settings-card-gap);
+}
+
+.settings-card-list {
+  grid-auto-rows: var(--settings-card-height);
+}
+
+.settings-menu-card,
+.settings-toggle-row,
+.settings-action-row,
+.settings-account-card {
+  gap: 14px;
+}
+
+.settings-stack > .settings-menu-card,
+.settings-stack > .settings-large-card > .settings-toggle-row,
+.settings-stack > .settings-large-card > .settings-action-row,
+.settings-card-list .settings-account-card,
+.settings-card-list .settings-menu-card,
+.settings-card-list .settings-nickname-form {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--settings-card-height);
+  height: var(--settings-card-height);
+  max-height: var(--settings-card-height);
+  border-radius: 18px;
+  padding: var(--settings-card-padding);
+  align-items: center;
+}
+
+.settings-img-circle,
+.settings-icon-circle,
+.settings-card-list .settings-img-circle,
+.settings-card-list .setting-icon,
+.settings-card-list .settings-icon-circle,
+.settings-menu-card .settings-icon-circle,
+.settings-action-row .settings-icon-circle,
+.settings-toggle-row .settings-icon-circle {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  flex: 0 0 var(--settings-icon-size);
+}
+
+.setting-icon {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  object-fit: contain;
+}
+
+.settings-row-text {
+  gap: 3px;
+}
+
+.settings-row-text strong,
+.settings-stack > .settings-menu-card .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong,
+.settings-card-list .settings-row-text strong {
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.settings-row-text span,
+.settings-stack > .settings-menu-card .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text span,
+.settings-card-list .settings-row-text span {
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
+.settings-nickname-form {
+  grid-template-columns: var(--settings-icon-size) minmax(0, 1fr);
+  column-gap: 14px;
+}
+
+.settings-nickname-fields {
+  --nickname-control-height: 32px;
+  --nickname-button-width: 48px;
+  grid-template-rows: 12px var(--nickname-control-height);
+  gap: 5px;
+}
+
+.settings-nickname-fields label {
+  height: 12px;
+  font-size: 0.66rem;
+  line-height: 12px;
+}
+
+.settings-nickname-fields input {
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  font-size: 0.72rem;
+}
+
+.settings-nickname-fields button {
+  width: var(--nickname-button-width);
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  font-size: 0.64rem;
+}
+
+@media (max-width: 720px) {
+  .settings-app-screen {
+    --settings-card-padding: 16px;
+    --settings-card-height: 88px;
+    --settings-card-gap: 14px;
+    --settings-icon-size: 56px;
+  }
+
+  .settings-stack,
+  .settings-card-list {
+    gap: var(--settings-card-gap);
+  }
+
+  .settings-card-list {
+    grid-auto-rows: var(--settings-card-height);
+  }
+
+  .settings-menu-card,
+  .settings-toggle-row,
+  .settings-action-row,
+  .settings-account-card {
+    gap: 14px;
+  }
+
+  .settings-stack > .settings-menu-card,
+  .settings-stack > .settings-large-card > .settings-toggle-row,
+  .settings-stack > .settings-large-card > .settings-action-row,
+  .settings-card-list .settings-account-card,
+  .settings-card-list .settings-menu-card,
+  .settings-card-list .settings-nickname-form {
+    min-height: var(--settings-card-height);
+    height: var(--settings-card-height);
+    max-height: var(--settings-card-height);
+    padding: var(--settings-card-padding);
+  }
+
+  .settings-img-circle,
+  .settings-icon-circle,
+  .settings-card-list .settings-img-circle,
+  .settings-card-list .setting-icon,
+  .settings-card-list .settings-icon-circle,
+  .settings-menu-card .settings-icon-circle,
+  .settings-action-row .settings-icon-circle,
+  .settings-toggle-row .settings-icon-circle {
+    width: var(--settings-icon-size);
+    height: var(--settings-icon-size);
+    flex: 0 0 var(--settings-icon-size);
+  }
+
+  .setting-icon {
+    width: var(--settings-icon-size);
+    height: var(--settings-icon-size);
+  }
+
+  .settings-row-text strong,
+  .settings-stack > .settings-menu-card .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong,
+  .settings-card-list .settings-row-text strong {
+    font-size: 1rem;
+    line-height: 1.18;
+  }
+
+  .settings-row-text span,
+  .settings-stack > .settings-menu-card .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text span,
+  .settings-card-list .settings-row-text span {
+    font-size: 0.64rem;
+    line-height: 1.25;
+  }
+
+  .settings-nickname-form {
+    grid-template-columns: var(--settings-icon-size) minmax(0, 1fr);
+    column-gap: 14px;
+  }
+
+  .settings-nickname-fields {
+    --nickname-control-height: 32px;
+    --nickname-button-width: 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-nickname-fields {
+    --nickname-control-height: 32px;
+    --nickname-button-width: 48px;
+  }
+
+  .settings-nickname-fields label {
+    font-size: 0.66rem;
+  }
+
+  .settings-nickname-fields input,
+  .settings-nickname-fields button {
+    font-size: 0.64rem;
+  }
+}
