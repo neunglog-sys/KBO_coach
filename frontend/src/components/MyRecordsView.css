@@ -880,11 +880,18 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  justify-items: center;
   gap: 8px;
-  padding: 14px 12px;
+  min-height: 132px;
+  padding: 16px 12px;
   border: 2px solid #3b5b9d;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.7);
+}
+
+.kbo-game-side,
+.kbo-game-center {
+  align-self: center;
 }
 
 .kbo-game-side {
@@ -904,7 +911,7 @@
   justify-content: center;
   width: 60px;
   height: 60px;
-  padding: 4px;
+  padding: 5px;
   border-radius: 50%;
   border: 2px solid #cbd5e1;
   background: #f1f5f9;
@@ -912,9 +919,15 @@
   font-size: 0.82rem;
   font-weight: 800;
   text-align: center;
-  line-height: 1.15;
-  word-break: keep-all;
+  line-height: 1.1;
+  word-break: keep-all;       /* 띄어쓰기 단위로 줄바꿈 → 성+이름이면 2줄 */
+  overflow-wrap: break-word;  /* 한 단어가 너무 길면 강제 줄바꿈 */
+  overflow: hidden;
 }
+
+/* 이름 길이에 따라 글씨 축소 (JSX에서 글자 수로 클래스 부여) */
+.kbo-pitcher-circle.len-mid { font-size: 0.72rem; }
+.kbo-pitcher-circle.len-long { font-size: 0.62rem; line-height: 1.05; }
 
 .kbo-team-name {
   font-size: 0.78rem;
@@ -1106,5 +1119,29 @@
 
 .kbo-lineup-name {
   color: #1c2536;
+  font-weight: 700;
+}
+
+/* 스코어보드 최종 득점(R) 강조 */
+.kbo-score-table .kbo-score-total {
+  font-weight: 800;
+  color: #1c2536;
+  background: rgba(191, 219, 254, 0.35);
+}
+
+/* 경기 상태별 색상 */
+.kbo-game-status.status-ready { color: #2563eb; }   /* 경기 예정 */
+.kbo-game-status.status-live  { color: #dc2626; font-weight: 800; }  /* 경기 중 */
+.kbo-game-status.status-done  { color: #6b7280; }   /* 경기 종료 */
+
+/* KBO 섹션 제목 + 현재 보는 날짜 */
+.kbo-live-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.kbo-live-date {
+  color: #6b7280;
+  font-size: 0.78rem;
   font-weight: 700;
 }
