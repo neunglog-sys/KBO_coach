@@ -1,5 +1,8 @@
 import { FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+// iOS 전용 미니 플러그인 — 음성인식 후 오디오 세션을 재생 모드로 복원 (TTS 소리 작아짐 방지)
+const AudioSession = registerPlugin<{ toPlayback(): Promise<void> }>("AudioSession");
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { apiUrl } from "../api";
 import { saveChat } from "../db";
@@ -1180,6 +1183,9 @@ export function MainViewV2({
     nativeSttActiveRef.current = false;
     await NativeSTT.stop().catch(() => { });
     await NativeSTT.removeAllListeners().catch(() => { });
+    if (Capacitor.getPlatform() === "ios") {
+      await AudioSession.toPlayback().catch(() => { });   // 수화기 모드 → 스피커 재생 복원
+    }
     setIsListening(false);
     const transcript = nativeSttLastRef.current.trim();
     nativeSttLastRef.current = "";
@@ -1412,11 +1418,24 @@ export function MainViewV2({
             <button
               type="button"
               className={`stage-mic ${isListening ? "is-on" : ""}`}
-              onClick={toggleMic}
+              // 앱: 무전기 방식 — 누르는 동안 녹음, 떼면 자동 제출. 웹: 기존 토글.
+              onClick={() => { if (!Capacitor.isNativePlatform()) toggleMic(); }}
+              onPointerDown={() => {
+                if (!Capacitor.isNativePlatform() || isListening) return;
+                stopSpeaking();
+                void startNativeSTT();
+              }}
+              onPointerUp={() => {
+                if (Capacitor.isNativePlatform() && isListening) void finishNativeSTT(true);
+              }}
+              onPointerCancel={() => {
+                if (Capacitor.isNativePlatform() && isListening) void finishNativeSTT(false);
+              }}
+              onContextMenu={(e) => e.preventDefault()}
               disabled={!supportsSTT}
               aria-pressed={isListening}
-              aria-label={isListening ? "마이크 끄기" : "마이크 켜기"}
-              title={supportsSTT ? "마이크 켜기/끄기" : "이 환경은 음성 인식을 지원하지 않습니다"}
+              aria-label={isListening ? "녹음 중 — 떼면 전송" : "누르고 말하기"}
+              title={supportsSTT ? "누르고 있는 동안 녹음, 떼면 전송" : "이 환경은 음성 인식을 지원하지 않습니다"}
             >
               <VoiceWaveIcon />
             </button>
