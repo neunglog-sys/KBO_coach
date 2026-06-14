@@ -510,6 +510,7 @@ export default function AttendanceCheckIn({
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizLoadError, setQuizLoadError] = useState("");
   const [showQuiz, setShowQuiz] = useState(false);
+  const [cheerClock, setCheerClock] = useState(() => Date.now());
   const quizDebugRef = useRef<QuizPersonalizationDebug>({
     currentUserId: "",
     questionHistory: [],
@@ -580,6 +581,14 @@ export default function AttendanceCheckIn({
   const displayLevel = SHOW_TEST_PANEL ? charLevel : (status.level || 1);
   const displayProgress = SHOW_TEST_PANEL ? 0 : progress;
   const cheerCompleted = dailyState.cheerCooldownActive;
+  const cheerRemainingText = useMemo(() => {
+    if (!cheerCompleted || !dailyState.cheerAvailableAt) return "";
+    const remainingMs = Math.max(0, dailyState.cheerAvailableAt - cheerClock);
+    const totalMinutes = Math.ceil(remainingMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  }, [cheerClock, cheerCompleted, dailyState.cheerAvailableAt]);
   const characterSrc = useMemo(
     () => getCharacterImage(charLevel, charTeam, charGender),
     [charLevel, charTeam, charGender],
@@ -843,6 +852,7 @@ export default function AttendanceCheckIn({
     }
 
     const timer = window.setTimeout(() => {
+      setCheerClock(Date.now());
       updateDailyState((current) => ({
         ...current,
         cheerCooldownActive: false,
@@ -851,6 +861,13 @@ export default function AttendanceCheckIn({
 
     return () => window.clearTimeout(timer);
   }, [dailyState.cheerAvailableAt, dailyState.cheerCooldownActive]);
+
+  useEffect(() => {
+    if (!cheerCompleted) return;
+    setCheerClock(Date.now());
+    const timer = window.setInterval(() => setCheerClock(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [cheerCompleted]);
 
   useEffect(() => {
     onCheckedTodayChange?.(status.checked_today || dailyState.todayAttendanceDone);
@@ -1587,7 +1604,12 @@ export default function AttendanceCheckIn({
           onClick={handleCheer}
         >
           <span><Megaphone /></span>
-          <strong>{cheerCompleted ? "응원완료" : "응원하기"}</strong>
+          <div className="tamagotchi-action-copy">
+            <strong>{cheerCompleted ? "응원완료" : "응원하기"}</strong>
+            {cheerCompleted && cheerRemainingText ? (
+              <small>{cheerRemainingText}</small>
+            ) : null}
+          </div>
         </button>
         <button
           className={`tamagotchi-action is-quiz${allDone ? " is-complete" : ""}`}

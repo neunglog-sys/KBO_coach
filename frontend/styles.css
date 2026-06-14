@@ -2855,6 +2855,20 @@ select:focus {
   overflow-wrap: break-word;
 }
 
+.tamagotchi-action-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tamagotchi-action-copy small {
+  color: #1670ff;
+  font-size: clamp(0.64rem, 1.15vw, 0.74rem);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
 .tamagotchi-action.is-check {
   border-color: #126dff;
   background: #eef8ff;
