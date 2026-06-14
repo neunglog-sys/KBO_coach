@@ -31,6 +31,25 @@
   border-radius: 28px;
   box-shadow: 0 24px 80px rgba(0, 24, 72, 0.32);
   scrollbar-width: thin;
+  animation: app-screen-enter 300ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  will-change: transform, opacity;
+}
+
+.stadium-page-backdrop.is-closing {
+  pointer-events: none;
+}
+
+.stadium-page-backdrop.is-closing .stadium-page-window {
+  animation: app-screen-exit 300ms ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stadium-page-backdrop,
+  .stadium-page-window,
+  .stadium-page-backdrop.is-closing,
+  .stadium-page-backdrop.is-closing .stadium-page-window {
+    animation: none;
+  }
 }
 
 .stadium-page {

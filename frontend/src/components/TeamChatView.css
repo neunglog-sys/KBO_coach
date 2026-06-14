@@ -63,7 +63,8 @@
 }
 
 .chat-view.closing {
-  animation: chat-exit 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) both;
+  animation: chat-exit 0.3s ease-in-out both;
+  pointer-events: none;
 }
 
 @keyframes chat-exit {
@@ -421,7 +422,7 @@
 
 /* 입력바 — 모든 화면에서 하단 고정 */
 .chat-inputbar {
-  margin-bottom: var(--keyboard-inset, 0px);
+  margin-bottom: 0;
   transition: margin-bottom 0.25s ease;
   position: relative;
   left: auto;
@@ -436,6 +437,10 @@
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(0, 0, 0, 0.07);
   z-index: 70;
+}
+
+.kb-open .chat-inputbar {
+  padding-bottom: 8px;
 }
 
 .chat-inputbar input {
