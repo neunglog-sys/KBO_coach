@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpenCheck,
   CalendarCheck,
@@ -8,7 +9,6 @@ import {
   Volume2,
 } from "lucide-react";
 import { apiUrl } from "../api";
-import { getRecentQuestions } from "../db";
 import {
   addDays,
   applyAttendance,
@@ -25,6 +25,10 @@ import {
   tamagotchiStorageKey,
   type TamagotchiViewState,
 } from "../data/tamagotchiState";
+import {
+  enforceCustomQuizRules,
+  normalizeQuizTopic,
+} from "../data/quizPersonalization";
 import { type TopMenuTarget } from "./TopMenu";
 import { AppBackButton } from "./AppBackButton";
 import { MenuButton } from "./MenuButton";
@@ -48,6 +52,11 @@ interface QuizQuestion {
   question: string;
   difficulty: string;
   personalized?: boolean;   // 내 최근 질문 주제로 생성된 맞춤 문항
+  isCustom?: boolean;
+  customReason?: string;
+  topic?: string | null;
+  source_question?: string | null;
+  main_topic?: string | null;
   answer?: boolean;
   explanation?: string;
   localFallback?: boolean;
@@ -57,6 +66,14 @@ interface QuizResult {
   is_correct: boolean;
   xp_earned: number;
   explanation: string;
+}
+
+interface QuizPersonalizationDebug {
+  currentUserId: string;
+  questionHistory: Array<{ question: string; mainTopic: string }>;
+  userAskedTopics: string[];
+  quizListBefore: QuizQuestion[];
+  quizListAfter: QuizQuestion[];
 }
 
 // 'man' = 남자, 'girl' = 여자. 아직 안 고르면 null.
@@ -493,6 +510,13 @@ export default function AttendanceCheckIn({
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizLoadError, setQuizLoadError] = useState("");
   const [showQuiz, setShowQuiz] = useState(false);
+  const quizDebugRef = useRef<QuizPersonalizationDebug>({
+    currentUserId: "",
+    questionHistory: [],
+    userAskedTopics: [],
+    quizListBefore: [],
+    quizListAfter: [],
+  });
   const [keyboardShiftPx, setKeyboardShiftPx] = useState(0);
   // 테스트 패널용 값 (SHOW_TEST_PANEL=true 일 때만 사용)
   const [testLevel, setTestLevel] = useState(1);
@@ -988,19 +1012,22 @@ export default function AttendanceCheckIn({
     let ignore = false;
 
     async function loadQuiz() {
+      setQuizQuestions([]);
+      setQuizResults({});
+      setCurrentQuizIdx(0);
+      setShowingResult(false);
+      setQuizLoadError("");
+
+      if (!authToken) {
+        setQuizLoadError("로그인 후 맞춤 퀴즈를 이용할 수 있어요.");
+        return;
+      }
+
       try {
-        // 로컬 SQLite의 최근 챗 질문을 함께 보내면 그 주제로 맞춤 문항 1개가 생성됨
-        // (일시 전달 — 서버에 저장되지 않음. 이력 없으면 빈 배열 → 기존 정적 출제)
-        let recentQuestions: string[] = [];
-        try {
-          recentQuestions = await getRecentQuestions(5);
-        } catch {
-          /* 로컬 DB 미초기화 등 — 정적 출제로 진행 */
-        }
         const response = await fetch(apiUrl("/quiz/daily"), {
           method: "POST",
           headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ recent_questions: recentQuestions }),
+          body: JSON.stringify({}),
         });
         if (!response.ok) {
           if (!ignore) setQuizLoadError("퀴즈 데이터를 불러오지 못했어요.");
@@ -1010,9 +1037,26 @@ export default function AttendanceCheckIn({
           questions: QuizQuestion[];
           results: Record<string, QuizResult>;
           answered_count: number;
+          current_user_id: string;
+          question_history_count: number;
+          question_history: Array<{ question: string; mainTopic: string }>;
+          user_asked_topics: string[];
         };
         if (!ignore) {
-          const questions = fillDailyQuizzes(data.questions);
+          const checkedServerQuestions = enforceCustomQuizRules(
+            data.questions,
+            data.user_asked_topics || [],
+          );
+          const questions = fillDailyQuizzes(
+            checkedServerQuestions,
+          );
+          quizDebugRef.current = {
+            currentUserId: data.current_user_id,
+            questionHistory: data.question_history || [],
+            userAskedTopics: data.user_asked_topics || [],
+            quizListBefore: data.questions,
+            quizListAfter: questions,
+          };
           setQuizResults(data.results);
           setQuizQuestions(questions);
           setCurrentQuizIdx(Math.min(data.answered_count, questions.length));
@@ -1031,6 +1075,42 @@ export default function AttendanceCheckIn({
       ignore = true;
     };
   }, [authToken]);
+
+  function logQuizPersonalization() {
+    const debug = quizDebugRef.current;
+    console.group("[TamagotchiQuiz] custom check");
+    console.log("currentUserId:", debug.currentUserId);
+    console.log("questionHistory:", debug.questionHistory);
+    console.log("userAskedTopics:", debug.userAskedTopics);
+    console.log("quizList:", debug.quizListAfter);
+    console.log("quizList before custom check:", debug.quizListBefore);
+    console.log("quizList after custom check:", debug.quizListAfter);
+    const normalizedAskedTopics = debug.userAskedTopics.map(normalizeQuizTopic);
+    debug.quizListAfter.forEach((quiz) => {
+      const normalizedQuizTopic = normalizeQuizTopic(quiz.topic ?? quiz.main_topic);
+      const shouldBeCustom = Boolean(normalizedQuizTopic)
+        && normalizedAskedTopics.includes(normalizedQuizTopic);
+      console.log({
+        question: quiz.question,
+        quizTopic: quiz.topic ?? quiz.main_topic ?? null,
+        userAskedTopics: debug.userAskedTopics,
+        isCustom: quiz.isCustom === true,
+        shouldBeCustom,
+        reason: shouldBeCustom
+          ? "사용자가 메인에서 질문한 주제라서 맞춤"
+          : "사용자가 질문하지 않은 주제라서 일반 문제",
+      });
+    });
+    console.groupEnd();
+  }
+
+  function handleQuizToggle() {
+    setShowQuiz((current) => {
+      const willOpen = !current;
+      if (willOpen) logQuizPersonalization();
+      return willOpen;
+    });
+  }
 
   async function handleCheckIn() {
     if (dailyState.todayAttendanceDone || status.checked_today || isLoading) return;
@@ -1247,6 +1327,17 @@ export default function AttendanceCheckIn({
           </button>
         </div>
       </section>
+    );
+  }
+
+  if (showLocker) {
+    return (
+      <LockerRoom
+        level={charLevel}
+        teamCode={charTeam}
+        gender={charGender}
+        onClose={() => setShowLocker(false)}
+      />
     );
   }
 
@@ -1499,12 +1590,13 @@ export default function AttendanceCheckIn({
           <strong>{cheerCompleted ? "응원완료" : "응원하기"}</strong>
         </button>
         <button
-          className="tamagotchi-action is-quiz"
+          className={`tamagotchi-action is-quiz${allDone ? " is-complete" : ""}`}
           type="button"
-          onClick={() => setShowQuiz((current) => !current)}
+          disabled={allDone}
+          onClick={handleQuizToggle}
         >
           <span><BookOpenCheck /></span>
-          <strong>퀴즈풀기</strong>
+          <strong>{allDone ? "퀴즈완료" : "퀴즈풀기"}</strong>
         </button>
       </div>
 
@@ -1531,7 +1623,7 @@ export default function AttendanceCheckIn({
                   >
                     {currentQuestion?.difficulty}
                   </span>
-                  {currentQuestion?.personalized ? (
+                  {currentQuestion?.isCustom === true ? (
                     <span className="quiz-difficulty-badge" style={{ background: "#7c5cff" }}>
                       ★ 맞춤
                     </span>
@@ -1601,20 +1693,10 @@ export default function AttendanceCheckIn({
         <b>{status.streak}일째</b>
       </div>
 
-      {/* ===== 꾸미기: 라커룸 도감 오버레이 ===== */}
       </section>
 
-      {showLocker ? (
-        <LockerRoom
-          level={charLevel}
-          teamCode={charTeam}
-          gender={charGender}
-          onClose={() => setShowLocker(false)}
-        />
-      ) : null}
-
       {/* ===== 레벨업 보상 획득 팝업 ===== */}
-      {rewardPopup ? (
+      {rewardPopup ? createPortal(
         <div
           role="dialog"
           aria-label="아이템 획득"
@@ -1659,7 +1741,8 @@ export default function AttendanceCheckIn({
               확인
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
       <style>{`

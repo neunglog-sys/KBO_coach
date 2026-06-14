@@ -16,7 +16,7 @@ import re
 import threading
 from collections import OrderedDict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -25,6 +25,8 @@ from embeddings import embed_text, to_pgvector
 import llm
 import pcache
 import tts
+from attendance import _user_key
+from personalization import record_answer, record_question
 
 router = APIRouter(tags=["chat"])
 
@@ -32,6 +34,41 @@ router = APIRouter(tags=["chat"])
 _CACHE_MAX = 500
 _cache: "OrderedDict[tuple, dict]" = OrderedDict()
 _cache_lock = threading.Lock()
+
+
+def _record_authenticated_question(authorization: str | None, question: str) -> None:
+    key = _user_key(authorization)
+    if not key.startswith("user:"):
+        return
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            record_question(cur, key, question)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+def _record_authenticated_answer(
+    authorization: str | None,
+    question: str,
+    answer: str,
+    rag_context: str | None = None,
+) -> None:
+    key = _user_key(authorization)
+    if not key.startswith("user:"):
+        return
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            record_answer(cur, key, question, answer, rag_context)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
 
 
 def _cache_key(body: "ChatIn"):
@@ -53,6 +90,13 @@ def _cache_put(key, value):
         _cache.move_to_end(key)
         while len(_cache) > _CACHE_MAX:
             _cache.popitem(last=False)
+
+
+def _public_context(used: dict, *, cached: bool = False) -> dict:
+    context = {key: value for key, value in used.items() if key != "rag_context"}
+    if cached:
+        context["cached"] = True
+    return context
 
 CHUNK_MIN_SCORE = 0.45   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외
 
@@ -604,7 +648,8 @@ def _prepare(body: ChatIn):
             "terms": [t["term"] for t in terms], "rules": [r["topic"] for r in rules],
             "culture": [ch["title"] for ch in chunks],
             "facts": [f["name"] for f in facts],
-            "personal": bool(body.personal_context)}
+            "personal": bool(body.personal_context),
+            "rag_context": context_text}
 
     system = _build_system_prompt(persona)
     user = f"""[참고자료]
@@ -623,7 +668,8 @@ def _prepare(body: ChatIn):
 
 
 @router.post("/chat")
-def chat(body: ChatIn):
+def chat(body: ChatIn, authorization: str | None = Header(default=None)):
+    _record_authenticated_question(authorization, body.question)
     # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
     cache_key = None
     if not body.personal_context:
@@ -632,11 +678,29 @@ def chat(body: ChatIn):
         cache_key = _cache_key(body) + (phash,)
         hit = _cache_get(cache_key)
         if hit is not None:   # 메모리 캐시 적중 → 즉시 응답
-            return {"answer": hit["answer"], "context": {**hit["used"], "cached": True}}
+            _record_authenticated_answer(
+                authorization,
+                body.question,
+                hit["answer"],
+                hit.get("used", {}).get("rag_context"),
+            )
+            return {
+                "answer": hit["answer"],
+                "context": _public_context(hit["used"], cached=True),
+            }
         p = pcache.get("chat", cache_key)   # 영속 캐시(배포 생존) 확인
         if p is not None and p[0]:
             _cache_put(cache_key, p[0])     # 메모리에 재적재
-            return {"answer": p[0]["answer"], "context": {**p[0].get("used", {}), "cached": True}}
+            _record_authenticated_answer(
+                authorization,
+                body.question,
+                p[0]["answer"],
+                p[0].get("used", {}).get("rag_context"),
+            )
+            return {
+                "answer": p[0]["answer"],
+                "context": _public_context(p[0].get("used", {}), cached=True),
+            }
 
     system, user, used = _prepare(body)
     if not llm.llm_ready():
@@ -653,12 +717,16 @@ def chat(body: ChatIn):
         entry = {"answer": answer, "used": used}
         _cache_put(cache_key, entry)
         pcache.put("chat", cache_key, payload=entry)   # 비동기 영속화
-    return {"answer": answer, "context": used}
+    _record_authenticated_answer(
+        authorization, body.question, answer, used.get("rag_context")
+    )
+    return {"answer": answer, "context": _public_context(used)}
 
 
 @router.post("/chat/stream")
-def chat_stream(body: ChatIn):
+def chat_stream(body: ChatIn, authorization: str | None = Header(default=None)):
     """답변을 토큰 단위로 흘려보냄(text/plain). 체감 지연 대폭 감소 — 첫 글자가 1초대에 뜸."""
+    _record_authenticated_question(authorization, body.question)
     system, user, _ = _prepare(body)
     if not llm.llm_ready():
         return StreamingResponse(iter(["(아직 LLM 미연결) Vertex 또는 GEMINI_API_KEY를 설정하세요."]),
@@ -743,10 +811,11 @@ def _synth_event(text: str, team_code: str | None) -> dict:
 
 
 @router.post("/chat/voice/stream")
-def chat_voice_stream(body: ChatIn):
+def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=None)):
     """질문 → (Gemini 문장 스트림 ∥ 문장별 TTS) → SSE.
     각 이벤트: {text, audio(base64), mime, visemes, boundaries}. 마지막에 {done:true}.
     프론트는 받은 오디오를 순차 재생 + 텍스트/립싱크 표시."""
+    _record_authenticated_question(authorization, body.question)
     if not llm.llm_ready():
         return StreamingResponse(
             iter([f"data: {json.dumps({'error': 'LLM 미연결'}, ensure_ascii=False)}\n\n"]),

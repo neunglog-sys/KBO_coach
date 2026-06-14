@@ -9,6 +9,7 @@
     "build": "vite build",
     "verify:stadiums": "esbuild ./scripts/verify-stadiums.tsx --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-stadiums.cjs && node node_modules/.cache/verify-stadiums.cjs",
     "verify:tamagotchi": "esbuild ./scripts/verify-tamagotchi.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-tamagotchi.cjs && node node_modules/.cache/verify-tamagotchi.cjs",
+    "verify:quiz-personalization": "esbuild ./scripts/verify-quiz-personalization.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-quiz-personalization.cjs && node node_modules/.cache/verify-quiz-personalization.cjs",
     "verify:settings": "esbuild ./scripts/verify-app-settings.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-app-settings.cjs && node node_modules/.cache/verify-app-settings.cjs",
     "build:android": "vite build --mode android",
     "android:sync": "npm run build:android && cap sync android",

@@ -750,6 +750,61 @@ html.theme-dark .tamagotchi-app-header :is(.app-back-button, .app-menu-button) {
   box-shadow: 0 8px 24px rgba(31, 71, 136, 0.12);
 }
 
+.tamagotchi-dashboard .tamagotchi-action {
+  border-color: rgba(132, 164, 196, 0.44);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 56%, #eaf2f9 100%);
+  box-shadow:
+    0 1px 3px rgba(33, 72, 110, 0.08),
+    inset 0 1px 0 #ffffff,
+    inset 0 -1px 0 rgba(82, 119, 153, 0.08);
+  transform: translateY(0);
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.tamagotchi-dashboard .tamagotchi-action:not(:disabled):hover {
+  border-color: rgba(23, 109, 255, 0.38);
+  background: linear-gradient(180deg, #ffffff 0%, #f1f7ff 54%, #e2efff 100%);
+  box-shadow:
+    0 2px 4px rgba(33, 72, 110, 0.09),
+    inset 0 1px 0 #ffffff,
+    inset 0 -1px 0 rgba(82, 119, 153, 0.09);
+  transform: translateY(-1px);
+}
+
+.tamagotchi-dashboard .tamagotchi-action:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 2px rgba(98, 134, 169, 0.06),
+    inset 0 1px 2px rgba(46, 82, 116, 0.1);
+}
+
+.tamagotchi-dashboard .tamagotchi-action > span {
+  box-shadow:
+    0 1px 2px rgba(30, 64, 105, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.tamagotchi-dashboard .tamagotchi-action.is-check > span {
+  background: linear-gradient(180deg, #4b94ff 0%, #176dff 58%, #0b56cb 100%);
+}
+
+.tamagotchi-dashboard .tamagotchi-action.is-dress > span {
+  background: linear-gradient(180deg, #a77aff 0%, #8758ff 58%, #6537d7 100%);
+}
+
+.tamagotchi-dashboard .tamagotchi-action.is-cheer > span {
+  background: linear-gradient(180deg, #ffb352 0%, #f28c18 58%, #c96b08 100%);
+}
+
+.tamagotchi-dashboard .tamagotchi-action.is-quiz > span {
+  background: linear-gradient(180deg, #51ce82 0%, #25aa59 58%, #16813f 100%);
+}
+
 /* 다크모드: 어두운 유리 */
 html.theme-dark .tamagotchi-dashboard :is(.tamagotchi-status-card, .tamagotchi-streak-card, .tamagotchi-quiz-section, .tamagotchi-action) {
   border: 1px solid rgba(255, 255, 255, 0.14);

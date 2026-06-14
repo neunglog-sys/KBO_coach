@@ -2367,7 +2367,7 @@ select:focus {
     padding: 16px;
   }
   .quiz-done-message {
-    padding-bottom: 16px; /* 섹션 padding 16 기준 + 잉크 여백 2px 보정 → 위아래 시각적 동일 */
+    padding: 0 0 16px;
   }
 
 
@@ -3142,6 +3142,7 @@ html.theme-dark {
     "field streak";
   min-height: auto;
   padding-top: 16px;
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 16px);
 }
 
 .tamagotchi-screen > .tamagotchi-dashboard:not(:has(.tamagotchi-quiz-section)) {
