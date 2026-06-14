@@ -584,7 +584,7 @@ export default function AttendanceCheckIn({
   const cheerRemainingText = useMemo(() => {
     if (!cheerCompleted || !dailyState.cheerAvailableAt) return "";
     const remainingMs = Math.max(0, dailyState.cheerAvailableAt - cheerClock);
-    const totalMinutes = Math.ceil(remainingMs / 60000);
+    const totalMinutes = Math.max(0, Math.ceil(remainingMs / 60000) - 1);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return `${hours}h ${String(minutes).padStart(2, "0")}m`;
