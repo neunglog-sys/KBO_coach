@@ -272,6 +272,17 @@ html.theme-dark :is(
   height: 22px;
 }
 
+.team-onboarding-back .app-back-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.team-onboarding-back .app-back-button svg {
+  width: 18px;
+  height: 18px;
+}
+
 html.theme-dark .app-back-button {
   background: rgba(255, 255, 255, 0.08);
   color: #f8fafc;

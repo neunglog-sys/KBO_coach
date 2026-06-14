@@ -494,6 +494,7 @@ export function App() {
             <TeamSelectOnboarding
               authToken={authToken}
               onComplete={handleFavTeamChange}
+              onBack={handleLogout}
             />
           ) : null}
         </>
