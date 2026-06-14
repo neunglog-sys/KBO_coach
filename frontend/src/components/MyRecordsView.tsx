@@ -763,6 +763,7 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                   side === "away"
                     ? myGame?.away ?? myScheduledGame?.away ?? "원정"
                     : myGame?.home ?? myScheduledGame?.home ?? "홈";
+                const teamColor = teamByShort(teamName)?.color;
                 const line = myScoreboard
                   ? side === "away"
                     ? myScoreboard.away_line
@@ -770,7 +771,11 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                   : null;
                 return (
                   <tr key={side}>
-                    <th>{teamName}</th>
+                    <th
+                      style={teamColor ? { background: teamColor, color: "#fff" } : undefined}
+                    >
+                      {teamName}
+                    </th>
                     {Array.from({ length: inningCount }, (_, i) => {
                       const v = line?.inning_scores?.[i];
                       return <td key={i}>{v === null || v === undefined ? "" : v}</td>;

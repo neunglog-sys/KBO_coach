@@ -241,6 +241,10 @@ export function MainViewV2({
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>(null);
+  // 상단 메뉴 접기/펼치기 (손잡이 탭/드래그로 토글, CSS transition으로 부드럽게)
+  const [navHidden, setNavHidden] = useState(false);
+  const navHandleStartY = useRef<number | null>(null);
+  const navHandleSwiped = useRef(false);
 
   // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
   useEffect(() => {
@@ -1343,9 +1347,48 @@ export function MainViewV2({
         </div>
       </div>
       <div className="stage-white-fade" aria-hidden="true" />
-      <div className="stage-nav-overlay" aria-hidden="true" />
+      <div className={`stage-nav-overlay ${navHidden ? "is-hidden" : ""}`.trim()} aria-hidden="true" />
 
-      <TopMenu ref={topNavRef} active="home" className="stage-nav" onNavigate={handleNav} />
+      <TopMenu
+        ref={topNavRef}
+        active="home"
+        className={`stage-nav ${navHidden ? "is-hidden" : ""}`.trim()}
+        onNavigate={handleNav}
+      />
+
+      {/* 상단 메뉴 손잡이: 탭 또는 위/아래 드래그로 메뉴를 접고 편다 */}
+      <button
+        type="button"
+        className={`stage-nav-handle ${navHidden ? "is-hidden" : ""}`.trim()}
+        aria-label={navHidden ? "상단 메뉴 펴기" : "상단 메뉴 접기"}
+        aria-expanded={!navHidden}
+        onTouchStart={(e) => {
+          navHandleStartY.current = e.touches[0].clientY;
+          navHandleSwiped.current = false;
+        }}
+        onTouchEnd={(e) => {
+          const start = navHandleStartY.current;
+          if (start == null) return;
+          const dy = e.changedTouches[0].clientY - start;
+          if (dy < -16) {
+            setNavHidden(true);
+            navHandleSwiped.current = true;
+          } else if (dy > 16) {
+            setNavHidden(false);
+            navHandleSwiped.current = true;
+          }
+        }}
+        onClick={() => {
+          // 드래그(스와이프)로 이미 처리했으면 탭 토글은 건너뛴다
+          if (navHandleSwiped.current) {
+            navHandleSwiped.current = false;
+            return;
+          }
+          setNavHidden((v) => !v);
+        }}
+      >
+        <span className="stage-nav-handle-grip" aria-hidden="true" />
+      </button>
 
       <div className="stage-character" aria-hidden="false">
         <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} teamCode={skinTeamCode} className="stage-character-canvas" />
