@@ -252,6 +252,19 @@ export function MainViewV2({
     fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => { });
   }, []);
 
+  useEffect(() => {
+    chatCollapsedRef.current = chatCollapsed;
+  }, [chatCollapsed]);
+
+  useEffect(() => {
+    chatHeightRef.current = chatHeight;
+  }, [chatHeight]);
+
+  useEffect(() => {
+    navHiddenRef.current = navHidden;
+    if (!navHidden) setChatAtNavLimit(false);
+  }, [navHidden]);
+
   // 응원팀 홈구장 날씨 → 메인 날씨 애니메이션
   useEffect(() => {
     let alive = true;
@@ -325,8 +338,13 @@ export function MainViewV2({
   // 채팅 시트 / 상단바 DOM 참조 — 드래그 리사이즈 시 최대 높이(상단바 밑) 계산에 사용.
   const chatSectionRef = useRef<HTMLElement | null>(null);
   const topNavRef = useRef<HTMLElement | null>(null);
+  const navHandleRef = useRef<HTMLButtonElement | null>(null);
   // 손잡이 드래그 상태: 시작 Y/높이, 직전 높이, 실제 이동 여부(탭 구분용).
   const chatResizeRef = useRef<{ startY: number; startHeight: number; lastHeight: number; moved: boolean } | null>(null);
+  const chatCollapsedRef = useRef(chatCollapsed);
+  const chatHeightRef = useRef(chatHeight);
+  const navHiddenRef = useRef(navHidden);
+  const [chatAtNavLimit, setChatAtNavLimit] = useState(false);
 
   const supportsSTT =
     Capacitor.isNativePlatform() ||   // 앱은 네이티브 음성인식 플러그인 사용 (iOS 웹뷰는 Web Speech API 미지원)
@@ -450,6 +468,15 @@ export function MainViewV2({
     if (Capacitor.isNativePlatform()) {
       void import("@capacitor/app").then(({ App: CapApp }) => {
         const h = CapApp.addListener("backButton", () => {
+          const miniChatExpanded =
+            activeScreenRef.current === "home" &&
+            (!chatCollapsedRef.current || chatHeightRef.current != null);
+          if (miniChatExpanded) {
+            setChatCollapsed(true);
+            setChatHeight(null);
+            setChatAtNavLimit(false);
+            return;
+          }
           if (anyOverlayOpenRef.current) closeCurrentScreen();
           else void CapApp.minimizeApp();
         });
@@ -1344,6 +1371,23 @@ export function MainViewV2({
   };
 
   // 손잡이 드래그 시작: 현재 높이와 시작 좌표 기록.
+  const computeBoundedMaxChatHeight = () => {
+    const section = chatSectionRef.current;
+    const log = chatLogRef.current;
+    if (!section || !log) return computeMaxChatHeight();
+
+    const viewport = window.visualViewport;
+    const viewportBottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
+    const navRect = topNavRef.current?.getBoundingClientRect();
+    const handleRect = navHandleRef.current?.getBoundingClientRect();
+    const topLimit = navHiddenRef.current
+      ? (handleRect?.bottom ?? 0)
+      : (navRect?.bottom ?? 0);
+    const chrome = section.offsetHeight - log.offsetHeight;
+
+    return Math.max(80, viewportBottom - topLimit - 8 - chrome);
+  };
+
   const handleChatHandleDown = (e: ReactPointerEvent) => {
     const startHeight = chatCollapsed ? 0 : (chatLogRef.current?.offsetHeight ?? 0);
     chatResizeRef.current = { startY: e.clientY, startHeight, lastHeight: startHeight, moved: false };
@@ -1357,11 +1401,12 @@ export function MainViewV2({
     if (!d) return;
     const dy = e.clientY - d.startY;
     if (Math.abs(dy) > 3) d.moved = true;
-    const maxH = computeMaxChatHeight();
+    const maxH = computeBoundedMaxChatHeight();
     const next = Math.min(maxH, Math.max(0, d.startHeight - dy));
     d.lastHeight = next;
     if (chatCollapsed && next > 8) setChatCollapsed(false);
     setChatHeight(next);
+    setChatAtNavLimit(navHiddenRef.current && next >= maxH - 2);
   };
 
   // 드래그 끝: 이동 없으면 탭으로 보고 접기/펼치기 토글. 아주 작게 줄였으면 접는다.
@@ -1372,6 +1417,7 @@ export function MainViewV2({
     if (!d) return;
     if (!d.moved) {
       setChatCollapsed((v) => !v);
+      setChatAtNavLimit(false);
       return;
     }
     if (d.lastHeight < 40) {
@@ -1423,8 +1469,9 @@ export function MainViewV2({
 
       {/* 상단 메뉴 손잡이: 탭 또는 위/아래 드래그로 메뉴를 접고 편다 */}
       <button
+        ref={navHandleRef}
         type="button"
-        className={`stage-nav-handle ${navHidden ? "is-hidden" : ""}`.trim()}
+        className={`stage-nav-handle ${navHidden ? "is-hidden" : ""} ${chatAtNavLimit ? "is-covered-by-chat" : ""}`.trim()}
         aria-label={navHidden ? "상단 메뉴 펴기" : "상단 메뉴 접기"}
         aria-expanded={!navHidden}
         onTouchStart={(e) => {
@@ -1437,9 +1484,11 @@ export function MainViewV2({
           const dy = e.changedTouches[0].clientY - start;
           if (dy < -16) {
             setNavHidden(true);
+            setChatAtNavLimit(false);
             navHandleSwiped.current = true;
           } else if (dy > 16) {
             setNavHidden(false);
+            setChatAtNavLimit(false);
             navHandleSwiped.current = true;
           }
         }}
@@ -1450,6 +1499,7 @@ export function MainViewV2({
             return;
           }
           setNavHidden((v) => !v);
+          setChatAtNavLimit(false);
         }}
       >
         <span className="stage-nav-handle-grip" aria-hidden="true" />
