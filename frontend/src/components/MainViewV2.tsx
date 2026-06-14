@@ -214,6 +214,9 @@ export function MainViewV2({
   const [input, setInput] = useState("");
   // 응원팀별 보내기 버튼 색상(응원팀 없으면 기본 주황). 그림자도 같은 색의 반투명으로 맞춘다.
   const sendColor = TEAM_SEND_COLOR[favTeamCode ?? ""] ?? SEND_COLOR_DEFAULT;
+  // 캐릭터 유니폼/로고 스킨 팀. 디버그/QA용으로 URL ?team=HT 강제 지원(없으면 응원팀).
+  const skinTeamCode =
+    new URLSearchParams(window.location.search).get("team") || favTeamCode;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
@@ -1345,7 +1348,7 @@ export function MainViewV2({
       <TopMenu ref={topNavRef} active="home" className="stage-nav" onNavigate={handleNav} />
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} teamCode={skinTeamCode} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />

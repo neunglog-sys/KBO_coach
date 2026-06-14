@@ -14,10 +14,21 @@ interface Character3DProps {
   runSignal?: number;
   /** 값이 바뀔 때마다(증가) 던지기(throw) 모션을 1회 재생한다. */
   throwSignal?: number;
+  /** 응원팀 코드(HT 등). 팀별 유니폼 색/로고 스킨 적용. 바뀌면 즉시 갱신. */
+  teamCode?: string;
   className?: string;
 }
 
-const MODEL_URL = "/model/3d/260612_Rig_test_opt.glb";
+/** 팀별 유니폼 색(헥사=sRGB 디자인값)·로고 스킨. 코드 없거나 미정의 팀은 모델 기본값 유지. */
+const TEAM_SKINS: Record<string, { uniformMain: string; uniformSt: string; logo?: string }> = {
+  HT: { uniformMain: "#CE0116", uniformSt: "#000000", logo: "/img/team_logo_HT.png" },
+};
+// 유니폼 본판 / 스티치(보조) 머티리얼 이름 (모델 머티리얼명과 일치)
+const UNIFORM_MAIN_MATS = ["M_uniform_main", "M_uniform_arm"];
+const UNIFORM_ST_MATS = ["M_uniform_st", "M_uniform_arm_st"];
+const LOGO_MAT = "M_logo";
+
+const MODEL_URL = "/model/3d/260614_opt.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
@@ -31,11 +42,16 @@ const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
 
-export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, className }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, teamCode, className }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   // 애니메이션 루프가 항상 최신 isSpeaking 값을 읽도록 ref로 보관
   const speakingRef = useRef(isSpeaking);
   speakingRef.current = isSpeaking;
+  // 모델 로드 후 채워지는 "팀 스킨 적용" 함수. teamCode 변화 시 호출(모델 재로드 없이 색/로고만 갱신).
+  const applySkinRef = useRef<((code?: string) => void) | null>(null);
+  // 로드 콜백이 항상 최신 teamCode를 읽도록 ref로 보관
+  const teamCodeRef = useRef(teamCode);
+  teamCodeRef.current = teamCode;
   // 모델 로드 후 채워지는 "인사 모션 재생" 함수. 외부 greetSignal 변화 시 호출.
   const greetRef = useRef<(() => void) | null>(null);
   // 모델 로드 후 채워지는 "뛰기(빠른 걷기) 트리거" 함수. runSignal 변화 시 호출.
@@ -138,6 +154,75 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
         model.position.y += MODEL_VERTICAL_OFFSET;
 
         root.add(model);
+
+        // ===== 팀 스킨(유니폼 색/로고) =====
+        // 유니폼/로고 머티리얼을 이름으로 수집 + 원본 색·로고맵 백업(다른 팀으로 바꾸면 복원).
+        const uniformMainMats: THREE.MeshStandardMaterial[] = [];
+        const uniformStMats: THREE.MeshStandardMaterial[] = [];
+        const logoMats: THREE.MeshStandardMaterial[] = [];
+        const originalColors = new Map<THREE.MeshStandardMaterial, THREE.Color>();
+        const originalLogoMaps = new Map<THREE.MeshStandardMaterial, THREE.Texture | null>();
+        model.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const mm of mats) {
+            const m = mm as THREE.MeshStandardMaterial;
+            if (UNIFORM_MAIN_MATS.includes(m.name)) {
+              uniformMainMats.push(m);
+              if (!originalColors.has(m)) originalColors.set(m, m.color.clone());
+            } else if (UNIFORM_ST_MATS.includes(m.name)) {
+              uniformStMats.push(m);
+              if (!originalColors.has(m)) originalColors.set(m, m.color.clone());
+            } else if (m.name === LOGO_MAT) {
+              logoMats.push(m);
+              if (!originalLogoMaps.has(m)) originalLogoMaps.set(m, m.map);
+            }
+          }
+        });
+
+        const texLoader = new THREE.TextureLoader();
+        const logoTexCache = new Map<string, THREE.Texture>();
+
+        const applySkin = (code?: string) => {
+          const skin = code ? TEAM_SKINS[code] : undefined;
+          if (skin) {
+            const cMain = new THREE.Color().setStyle(skin.uniformMain);
+            const cSt = new THREE.Color().setStyle(skin.uniformSt);
+            for (const m of uniformMainMats) { m.color.copy(cMain); m.needsUpdate = true; }
+            for (const m of uniformStMats) { m.color.copy(cSt); m.needsUpdate = true; }
+            if (skin.logo && logoMats.length) {
+              const url = skin.logo;
+              const finalize = (t: THREE.Texture) => {
+                for (const m of logoMats) {
+                  const old = originalLogoMaps.get(m);
+                  // glTF 텍스처 설정(flipY/래핑/채널)을 그대로 따라가야 UV가 맞는다.
+                  if (old) { t.flipY = old.flipY; t.wrapS = old.wrapS; t.wrapT = old.wrapT; t.channel = old.channel; }
+                  else t.flipY = false;
+                  t.colorSpace = THREE.SRGBColorSpace;
+                  m.map = t;
+                  m.color.setRGB(1, 1, 1); // 베이스컬러 흰색이라야 로고 색이 그대로 보임
+                  m.transparent = true;
+                  m.needsUpdate = true;
+                }
+                renderQuietUntil = performance.now() + 500;
+              };
+              const cached = logoTexCache.get(url);
+              if (cached) finalize(cached);
+              else {
+                const tex = texLoader.load(url, (t) => finalize(t));
+                logoTexCache.set(url, tex);
+              }
+            }
+          } else {
+            // 스킨 없는 팀 → 원본 색/로고로 복원
+            for (const [m, c] of originalColors) { m.color.copy(c); m.needsUpdate = true; }
+            for (const [m, map] of originalLogoMaps) { m.map = map; m.needsUpdate = true; }
+          }
+          renderQuietUntil = performance.now() + 500;
+        };
+        applySkinRef.current = applySkin;
+        applySkin(teamCodeRef.current);
 
         // 평소엔 멈춤(bind 포즈). "걷다/뛰다" 텍스트(runSignal) 때만 잠깐 걷기/뛰기,
         // 인사(greetSignal) 때만 손 흔들기. 둘 다 끝나면 다시 멈춤.
@@ -333,6 +418,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
       greetRef.current = null;
       runRef.current = null;
       throwRef.current = null;
+      applySkinRef.current = null;
       walkAction = null;
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
@@ -357,6 +443,11 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     if (!throwSignal) return;
     throwRef.current?.();
   }, [throwSignal]);
+
+  // teamCode 가 바뀌면 유니폼 색/로고 스킨 갱신(모델 재로드 없이). 로드 전이면 로드 콜백이 적용.
+  useEffect(() => {
+    applySkinRef.current?.(teamCode);
+  }, [teamCode]);
 
   return (
     <div
