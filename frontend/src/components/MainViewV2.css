@@ -18,6 +18,8 @@
   --stage-side: clamp(14px, 4vw, 24px);
   /* 상단 간격을 양옆 간격(--stage-side)과 동일하게 (노치 안전영역 제외하고 대칭) */
   --stage-nav-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + var(--stage-side));
+  /* 상단 메뉴 바의 높이(패딩8 + 버튼80 + 패딩7). 손잡이를 바 바닥에 딱 맞추는 기준. */
+  --stage-nav-bar-h: 95px;
   --stage-character-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(64px, 14vh, 140px));
   --stage-character-size: clamp(320px, min(96vw, 54vh), 500px);
   --stage-bg-rise: clamp(90px, 30vh, 240px);
@@ -117,6 +119,11 @@
   z-index: 3;
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
+  transition: opacity 0.38s ease;
+}
+
+.stage-nav-overlay.is-hidden {
+  opacity: 0;
 }
 
 .stage-nav {
@@ -130,6 +137,55 @@
   align-items: start;
   gap: 2px;
   padding: 0 var(--stage-side);
+  /* 접기/펼치기 부드럽게 */
+  transition: transform 0.38s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.32s ease;
+  will-change: transform;
+}
+
+/* 접힘: 위로 밀어 올려 숨김 */
+.stage-nav.is-hidden {
+  transform: translateY(-170%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 메뉴 접기/펼치기 손잡이 (오른쪽 끝, 작게 — 항상 보임) */
+.stage-nav-handle {
+  position: absolute;
+  /* 바 바닥과 정확히 맞닿게(flush): 메뉴 top + 바 높이 */
+  top: calc(var(--stage-nav-top) + var(--stage-nav-bar-h));
+  /* 손잡이 오른쪽 끝을 바의 라운드 시작점에 맞춤. 화면 오른쪽 끝에서의 거리 —
+     값이 클수록 손잡이가 왼쪽으로(라운드 더 피해서) 이동. 라운드에 안 맞으면 이 값만 조절. */
+  right: 30px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  border-radius: 0 0 11px 11px;
+  background: rgba(15, 23, 42, 0.32);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: top 0.38s cubic-bezier(0.22, 0.8, 0.28, 1), background 0.2s ease;
+}
+
+/* 접힌 상태: 손잡이를 화면 맨 위로 끌어올려 '내려서 펴기' 어포던스 제공 */
+.stage-nav-handle.is-hidden {
+  top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 2px);
+}
+
+/* 손잡이 그립(가로 막대) */
+.stage-nav-handle-grip {
+  display: block;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .stage-nav-item {
@@ -498,6 +554,8 @@
   .stage-view {
     --stage-side: 10px;
     --stage-chat-limit: 190px;
+    /* 작은 화면: 버튼 76px → 바 높이 91px */
+    --stage-nav-bar-h: 91px;
   }
 
   .app-top-menu.stage-nav {
