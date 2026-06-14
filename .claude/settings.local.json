@@ -150,7 +150,12 @@
       "Bash(rm -f _check.png _cover.png _main.png frontend/scripts/cdp_probe.mjs)",
       "Bash(rm -f _home.png _home2.png frontend/scripts/cdp_probe.mjs)",
       "Bash(git check-ignore *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "PowerShell(adb devices)",
+      "Read(//c/Users/user/AppData/Local/Android/**)",
+      "Read(//c/Users/user/AppData/Local/Android/Sdk/**)",
+      "Bash(grep -rli \"android\" docs/)",
+      "Bash(grep -rli \"gradlew\\\\|installDebug\\\\|cap run\" docs/ frontend/*.md)"
     ]
   }
 }

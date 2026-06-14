@@ -394,14 +394,13 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
             ←
           </button>
 
+          <div className="chat-title">
+            <span>{teamObj?.name ?? "응원톡"} 팀 채팅방</span>
+          </div>
+
           <div className="chat-header-actions">
             <MenuButton onClick={() => setSideMenuOpen(true)} />
           </div>
-        </div>
-
-        <div className="chat-title">
-          <strong>Hi!</strong>
-          <span>{teamObj?.name ?? "응원톡"} 팀 채팅방</span>
         </div>
 
         {notice ? (

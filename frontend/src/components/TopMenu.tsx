@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import "./TopMenu.css";
 
 export type TopMenuTarget =
@@ -54,9 +55,12 @@ const MENU_ITEMS: ReadonlyArray<{
   },
 ];
 
-export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
+export const TopMenu = forwardRef<HTMLElement, TopMenuProps>(function TopMenu(
+  { active, onNavigate, className = "" },
+  ref,
+) {
   return (
-    <nav className={`app-top-menu ${className}`.trim()} aria-label="상단 메뉴">
+    <nav ref={ref} className={`app-top-menu ${className}`.trim()} aria-label="상단 메뉴">
       {MENU_ITEMS.map((item) => {
         const isActive = item.target === active;
 
@@ -79,4 +83,4 @@ export function TopMenu({ active, onNavigate, className = "" }: TopMenuProps) {
       })}
     </nav>
   );
-}
+});

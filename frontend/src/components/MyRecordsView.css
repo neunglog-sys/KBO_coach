@@ -15,7 +15,7 @@
   background: #f4f6fb;
   color: #1c2536;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 24px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   animation: records-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
 }
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 12px) 16px 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
   background: #f4f6fb;
 }
 
@@ -91,7 +91,7 @@
   position: relative;
   overflow: hidden;
   margin: 16px 16px 22px;
-  padding: 20px 28px;
+  padding: 20px 20px;
   border-radius: 22px;
   color: #fff;
   background: linear-gradient(135deg,
@@ -130,7 +130,7 @@
 
 .streak-eyebrow {
   margin: 0 0 4px;
-  padding-left: 13px;
+  padding-left: 0;
   font-size: 0.85rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-weight: 600;
@@ -140,10 +140,10 @@
 
 .streak-card-head h2 {
   margin: 0;
-  padding-left: 8px;
-  font-size: 1.7rem;
-  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  font-weight: 600;
+  padding-left: 0;
+  font-size: 1.15rem;
+  font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 400;
   font-synthesis: none;
 }
 
@@ -153,8 +153,8 @@
 }
 
 .streak-char {
-  width: 104px;
-  height: 104px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   flex: 0 0 auto;
   /* 캐릭터를 살짝 위로 올려 카드 안에 자연스럽게 안착 */
@@ -164,7 +164,7 @@
 .streak-goalrow {
   display: flex;
   justify-content: space-between;
-  margin: 16px 8px 8px;
+  margin: 16px 0 8px;
   font-size: 0.9rem;
   font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   font-weight: 600;
@@ -192,7 +192,7 @@
 }
 
 .streak-goal-message {
-  margin: 12px 8px 0;
+  margin: 12px 0 0;
   padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 14px;
@@ -911,23 +911,35 @@
   justify-content: center;
   width: 60px;
   height: 60px;
-  padding: 5px;
   border-radius: 50%;
   border: 2px solid #cbd5e1;
   background: #f1f5f9;
+  overflow: hidden;
+}
+
+/* 원 안 팀 캐릭터 이미지 */
+.kbo-pitcher-char {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+/* 원 아래 선발투수 이름 */
+.kbo-pitcher-name {
+  max-width: 78px;
   color: #1c2536;
   font-size: 0.82rem;
   font-weight: 800;
   text-align: center;
   line-height: 1.1;
-  word-break: keep-all;       /* 띄어쓰기 단위로 줄바꿈 → 성+이름이면 2줄 */
-  overflow-wrap: break-word;  /* 한 단어가 너무 길면 강제 줄바꿈 */
-  overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
-/* 이름 길이에 따라 글씨 축소 (JSX에서 글자 수로 클래스 부여) */
-.kbo-pitcher-circle.len-mid { font-size: 0.72rem; }
-.kbo-pitcher-circle.len-long { font-size: 0.62rem; line-height: 1.05; }
+/* 이름 길이별 글씨 축소 */
+.kbo-pitcher-name.len-mid { font-size: 0.72rem; }
+.kbo-pitcher-name.len-long { font-size: 0.64rem; line-height: 1.05; }
 
 .kbo-team-name {
   font-size: 0.78rem;

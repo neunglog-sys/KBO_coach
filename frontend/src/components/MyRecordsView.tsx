@@ -342,11 +342,20 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     return map;
   }, [monthGames, myShort]);
 
+  // 기록을 '현재 응원팀'으로 스코프: 그 날짜에 내 팀이 치른 경기의 상대(scheduleByDate)와
+  // 기록에 저장된 상대(team_code)가 일치할 때만 = 이 팀으로 남긴 기록 → 표시. 다른 팀 기록은 숨김.
+  // (팀 미설정이거나 상대팀 정보 없는 옛 기록은 그대로 표시)
   const recordsByDate = useMemo(() => {
     const map = new Map<string, RecordRow>();
-    for (const r of records) map.set(r.record_date, r);
+    for (const r of records) {
+      if (myShort && r.team_code) {
+        const sched = scheduleByDate.get(r.record_date);
+        if (!sched || sched.oppCode !== r.team_code) continue; // 다른 팀으로 남긴 기록 → 숨김
+      }
+      map.set(r.record_date, r);
+    }
     return map;
-  }, [records]);
+  }, [records, scheduleByDate, myShort]);
 
   // 내 팀 경기 (lineups 중에서) — 선발투수·타순까지 포함.
   // 매칭: ① 팀명(short) ② game_id 내 팀코드(예: 20260613OBHT → OB/HT) 양쪽으로 시도해 표기 흔들림에 강하게.
@@ -379,20 +388,23 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
     return "";
   };
 
-  // 현재 보는 날짜(liveDate)의 schedule 경기 (lineups 없을 때 미래 경기 폴백용)
+  // 현재 보는 날짜(liveDate)의 schedule 경기 (lineups 없을 때 폴백용 — 과거/미래 모두)
   const myScheduledGame = useMemo(() => {
     if (!liveDate) return null;
     return scheduleByDate.get(liveDate) ?? null;
   }, [scheduleByDate, liveDate]);
 
-  // 미래 경기 여부: lineups엔 없지만 schedule엔 있고, 날짜가 오늘 이후
-  const isFutureScheduled = !myGame && !!myScheduledGame && liveDate > todayKey;
+  // lineups에 경기는 없지만 schedule엔 있는 경우 (점수/라인업 미수집 날짜)
+  const hasScheduledFallback = !myGame && !!myScheduledGame;
+  const isFutureScheduled = hasScheduledFallback && liveDate >= todayKey; // 오늘+미래(라인업 발표 전)
+  const isPastScheduled = hasScheduledFallback && liveDate < todayKey;    // 과거(점수 미수집)
 
-  // 내 경기의 스코어보드 (gameId로 매칭)
+  // 내 경기의 스코어보드 (gameId로 매칭) — lineups 경기 또는 schedule 폴백 경기
   const myScoreboard = useMemo(() => {
-    if (!myGame) return null;
-    return scoreboards.find((s) => s.gameId === myGame.game_id) ?? null;
-  }, [scoreboards, myGame]);
+    const gid = myGame?.game_id ?? myScheduledGame?.gameId ?? null;
+    if (!gid) return null;
+    return scoreboards.find((s) => s.gameId === gid) ?? null;
+  }, [scoreboards, myGame, myScheduledGame]);
 
   // 표에 보여줄 이닝 수 (max_inning, 최소 9). 연장 없으면 9칸.
   const inningCount = useMemo(() => {
@@ -653,36 +665,47 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
         {/* 경기 카드: 양팀 선발투수(원) + 중앙 시간/매치업/구장.
             미래 경기(라인업 발표 전)는 schedule 정보로 상대팀만 표시. */}
         {(() => {
-          // 표시용 통합 데이터: 라인업 있으면 myGame, 없고 미래면 schedule, 둘 다 없으면 null
-          const awayName = myGame?.away ?? (isFutureScheduled
-            ? (myScheduledGame!.isHome ? teamByCode(myScheduledGame!.oppCode)?.short : myShort)
-            : null) ?? "";
-          const homeName = myGame?.home ?? (isFutureScheduled
-            ? (myScheduledGame!.isHome ? myShort : teamByCode(myScheduledGame!.oppCode)?.short)
-            : null) ?? "";
+          // 표시용 통합 데이터: 라인업 있으면 myGame, 없으면 schedule(과거/미래), 둘 다 없으면 null
+          const awayName = myGame?.away ?? myScheduledGame?.away ?? "";
+          const homeName = myGame?.home ?? myScheduledGame?.home ?? "";
           const awayTeamObj = myGame?.awayTeam ?? (awayName ? teamByShort(awayName) ?? null : null);
           const homeTeamObj = myGame?.homeTeam ?? (homeName ? teamByShort(homeName) ?? null : null);
-          const timeText = myGame?.time || myScheduledGame?.time || (myGame || isFutureScheduled ? "시간 미정" : "--:--");
+          const hasCard = !!myGame || hasScheduledFallback;
+          const timeText = myGame?.time || myScheduledGame?.time || (hasCard ? "시간 미정" : "--:--");
           const stadiumText = myGame?.stadium || myScheduledGame?.stadium || "";
-          const hasCard = !!myGame || isFutureScheduled;
+          // 투수 이름/라벨: lineups 있으면 실제 투수, 과거는 기록없음, 미래는 발표 전
+          const awayStarter = myGame?.away_starter ?? null;
+          const homeStarter = myGame?.home_starter ?? null;
+          const starterLabel = (s: string | null) =>
+            s ? "선발" : isFutureScheduled ? "발표 전" : isPastScheduled ? "" : "";
+          const starterName = (s: string | null) =>
+            s ?? (isFutureScheduled ? "미정" : isPastScheduled ? "기록 없음" : "");
           const statusText = myGame
             ? gameStatus
-            : isFutureScheduled
-              ? "경기 예정"
-              : "경기 없음";
+            : isPastScheduled
+              ? "경기 종료"
+              : isFutureScheduled
+                ? "경기 예정"
+                : "경기 없음";
           return (
             <div className="kbo-game-card">
               <div className="kbo-game-side">
                 <span
-                  className={`kbo-pitcher-circle ${pitcherSizeClass(myGame?.away_starter)}`}
+                  className="kbo-pitcher-circle"
                   style={awayTeamObj ? { borderColor: awayTeamObj.color } : undefined}
                 >
-                  {myGame?.away_starter ?? ""}
+                  {awayTeamObj ? (
+                    <img
+                      className="kbo-pitcher-char"
+                      src={awayTeamObj.char}
+                      alt={awayName}
+                    />
+                  ) : null}
                 </span>
-                <span className="kbo-team-name">{awayName}</span>
-                <span className="kbo-pitcher-label">
-                  {myGame?.away_starter ? "선발" : isFutureScheduled ? "발표 전" : ""}
+                <span className={`kbo-pitcher-name ${pitcherSizeClass(awayStarter)}`}>
+                  {starterName(awayStarter)}
                 </span>
+                <span className="kbo-pitcher-label">{starterLabel(awayStarter)}</span>
               </div>
               <div className="kbo-game-center">
                 <strong className="kbo-game-time">{timeText}</strong>
@@ -700,15 +723,21 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
               </div>
               <div className="kbo-game-side">
                 <span
-                  className={`kbo-pitcher-circle ${pitcherSizeClass(myGame?.home_starter)}`}
+                  className="kbo-pitcher-circle"
                   style={homeTeamObj ? { borderColor: homeTeamObj.color } : undefined}
                 >
-                  {myGame?.home_starter ?? ""}
+                  {homeTeamObj ? (
+                    <img
+                      className="kbo-pitcher-char"
+                      src={homeTeamObj.char}
+                      alt={homeName}
+                    />
+                  ) : null}
                 </span>
-                <span className="kbo-team-name">{homeName}</span>
-                <span className="kbo-pitcher-label">
-                  {myGame?.home_starter ? "선발" : isFutureScheduled ? "발표 전" : ""}
+                <span className={`kbo-pitcher-name ${pitcherSizeClass(homeStarter)}`}>
+                  {starterName(homeStarter)}
                 </span>
+                <span className="kbo-pitcher-label">{starterLabel(homeStarter)}</span>
               </div>
             </div>
           );
@@ -732,7 +761,9 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
             <tbody>
               {(["away", "home"] as const).map((side) => {
                 const teamName =
-                  side === "away" ? myGame?.away ?? "원정" : myGame?.home ?? "홈";
+                  side === "away"
+                    ? myGame?.away ?? myScheduledGame?.away ?? "원정"
+                    : myGame?.home ?? myScheduledGame?.home ?? "홈";
                 const line = myScoreboard
                   ? side === "away"
                     ? myScoreboard.away_line
@@ -780,6 +811,13 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                 return (
                   <p className="kbo-lineup-empty">
                     경기 예정 · 선발 라인업은 경기 1시간 전에 공개돼요.
+                  </p>
+                );
+              }
+              if (isPastScheduled) {
+                return (
+                  <p className="kbo-lineup-empty">
+                    이 날짜는 라인업 데이터가 수집되지 않았어요.
                   </p>
                 );
               }

@@ -29,6 +29,8 @@
       { "source": "/pitchers{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/players{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/games{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/scoreboards{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/lineups{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/schedule{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/teams{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/glossary{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
