@@ -1050,20 +1050,19 @@
   place-items: center;
   width: 38px;
   height: 38px;
-  overflow: visible;
-  border-radius: 12px;
-  background: transparent;
+  flex: 0 0 38px;
+  box-sizing: border-box;
+  border: 1px solid rgba(114, 176, 255, 0.16);
+  border-radius: 11px;
+  color: #1670ff;
+  background: rgba(221, 239, 255, 0.72);
+  box-shadow: 0 1px 3px rgba(46, 117, 190, 0.08);
 }
 
-.stadium-region-transport-icon img {
-  display: block;
-  width: 34px;
-  height: 34px;
-  margin: 0;
-  object-fit: contain;
-  object-position: center;
-  transform: none;
-  filter: drop-shadow(0 2px 3px rgba(42, 76, 108, 0.12));
+.stadium-region-transport-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
 }
 
 .stadium-region-transport-row strong {

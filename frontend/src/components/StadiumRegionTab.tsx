@@ -1,4 +1,11 @@
 import type { CSSProperties } from "react";
+import {
+  BusFront,
+  CarTaxiFront,
+  SquareParking,
+  TrainFront,
+  type LucideIcon,
+} from "lucide-react";
 import type { Stadium } from "../data/stadiumData";
 
 type TransportationKind = "subway" | "bus" | "taxi" | "parking";
@@ -18,26 +25,22 @@ const TEAM_ACCENTS: Record<string, string> = {
 
 const TRANSPORTATION_META: Record<
   TransportationKind,
-  { icon: string; label: string; iconSrc?: string }
+  { Icon: LucideIcon; label: string }
 > = {
   subway: {
-    icon: "",
-    iconSrc: "/img/baseball_icons2/subway.png",
+    Icon: TrainFront,
     label: "지하철·기차",
   },
   bus: {
-    icon: "",
-    iconSrc: "/img/baseball_icons2/transport.svg",
+    Icon: BusFront,
     label: "버스",
   },
   taxi: {
-    icon: "",
-    iconSrc: "/img/baseball_icons2/taxi.png",
+    Icon: CarTaxiFront,
     label: "택시",
   },
   parking: {
-    icon: "",
-    iconSrc: "/img/baseball_icons2/parking.png",
+    Icon: SquareParking,
     label: "주차",
   },
 };
@@ -94,10 +97,11 @@ export function StadiumRegionTab({ stadium }: { stadium: Stadium }) {
           <div className="stadium-region-transport-list">
             {transportationEntries.map((kind) => {
               const meta = TRANSPORTATION_META[kind];
+              const TransportIcon = meta.Icon;
               return (
                 <div className="stadium-region-transport-row" key={kind}>
                   <span className={`stadium-region-transport-icon is-${kind}`} aria-hidden="true">
-                    {meta.iconSrc ? <img src={meta.iconSrc} alt="" /> : meta.icon}
+                    <TransportIcon />
                   </span>
                   <div>
                     <strong>{meta.label}</strong>
