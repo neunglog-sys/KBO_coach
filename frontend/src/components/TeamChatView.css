@@ -32,7 +32,7 @@
   animation: chat-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
   will-change: transform, opacity;
 
-  --chat-header-x: 24px;
+  --chat-header-x: 16px;
   --chat-align-x: 12px;
   --chat-title-indent: 12px;
   --chat-header-gap: 10px;
@@ -106,14 +106,14 @@
 .chat-header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .chat-header .chat-back,
 .chat-header .chat-iconbtn,
 .chat-header .chat-header-actions .app-menu-button {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -382,7 +382,9 @@
   font-size: 0.95rem;
   line-height: 1.4;
   word-break: break-word;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.10);
 }
 
 .chat-msg:not(.mine) .chat-bubble {
@@ -431,7 +433,7 @@
   align-items: center;
   gap: 12px;
   margin-top: 0;
-  padding: 8px 12px calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 10px);
+  padding: 16px 12px calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 18px);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(0, 0, 0, 0.07);
   z-index: 70;
