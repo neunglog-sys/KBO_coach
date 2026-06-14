@@ -355,6 +355,8 @@ select:focus {
   background: #cae4f9;
   align-items: start;   /* 카드를 세로 중앙이 아닌 상단 쪽으로 — 공복이 위 빈 공간 축소 */
   padding-top: 32px;
+  /* 하단 약관 문구가 안드 네비게이션 바(3버튼/제스처)와 겹치지 않게 회피 — --sab는 MainActivity 주입 */
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 24px);
 }
 
 .auth-login-card {
