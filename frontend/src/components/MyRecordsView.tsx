@@ -661,6 +661,9 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
             {liveLoading ? "불러오는 중…" : "새로고침"}
           </button>
         </div>
+        <p className="kbo-live-note">
+          경기 기록은 해당 날짜 경기 종료 후 업데이트 됩니다.
+        </p>
 
         {/* 경기 카드: 양팀 선발투수(원) + 중앙 시간/매치업/구장.
             미래 경기(라인업 발표 전)는 schedule 정보로 상대팀만 표시. */}
@@ -673,13 +676,12 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
           const hasCard = !!myGame || hasScheduledFallback;
           const timeText = myGame?.time || myScheduledGame?.time || (hasCard ? "시간 미정" : "--:--");
           const stadiumText = myGame?.stadium || myScheduledGame?.stadium || "";
-          // 투수 이름/라벨: lineups 있으면 실제 투수, 과거는 기록없음, 미래는 발표 전
+          // 아바타 밑 큰 글씨 = 구단명, 작은 글씨 = 선발투수 이름.
           const awayStarter = myGame?.away_starter ?? null;
           const homeStarter = myGame?.home_starter ?? null;
-          const starterLabel = (s: string | null) =>
-            s ? "선발" : isFutureScheduled ? "발표 전" : isPastScheduled ? "" : "";
-          const starterName = (s: string | null) =>
-            s ?? (isFutureScheduled ? "미정" : isPastScheduled ? "기록 없음" : "");
+          // 선발투수 이름(작은 글씨). 라인업 있으면 실제 투수, 미래는 발표 전, 과거는 기록 없음.
+          const starterSub = (s: string | null) =>
+            s ?? (isFutureScheduled ? "발표 전" : isPastScheduled ? "기록 없음" : "");
           const statusText = myGame
             ? gameStatus
             : isPastScheduled
@@ -702,10 +704,10 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                     />
                   ) : null}
                 </span>
-                <span className={`kbo-pitcher-name ${pitcherSizeClass(awayStarter)}`}>
-                  {starterName(awayStarter)}
+                <span className={`kbo-pitcher-name ${pitcherSizeClass(awayName)}`}>
+                  {awayName}
                 </span>
-                <span className="kbo-pitcher-label">{starterLabel(awayStarter)}</span>
+                <span className="kbo-pitcher-label">{starterSub(awayStarter)}</span>
               </div>
               <div className="kbo-game-center">
                 <strong className="kbo-game-time">{timeText}</strong>
@@ -713,9 +715,6 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                   statusText === "경기 종료" ? "done" : statusText === "경기 중" ? "live" : "ready"
                 }`}>
                   {hasCard ? statusText : "오늘 경기 없음"}
-                </span>
-                <span className="kbo-game-matchup">
-                  {hasCard ? `${awayName} vs ${homeName}` : "\u00A0"}
                 </span>
                 {stadiumText ? (
                   <span className="kbo-game-stadium">{stadiumText}</span>
@@ -734,10 +733,10 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
                     />
                   ) : null}
                 </span>
-                <span className={`kbo-pitcher-name ${pitcherSizeClass(homeStarter)}`}>
-                  {starterName(homeStarter)}
+                <span className={`kbo-pitcher-name ${pitcherSizeClass(homeName)}`}>
+                  {homeName}
                 </span>
-                <span className="kbo-pitcher-label">{starterLabel(homeStarter)}</span>
+                <span className="kbo-pitcher-label">{starterSub(homeStarter)}</span>
               </div>
             </div>
           );
