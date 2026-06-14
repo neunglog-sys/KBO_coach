@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
+import { AppBackButton } from "./AppBackButton";
 import { LatudiCharacter } from "./LatudiCharacter";
 
 /**
@@ -13,6 +14,7 @@ import { LatudiCharacter } from "./LatudiCharacter";
 interface TeamSelectOnboardingProps {
   authToken: string;
   onComplete: (favTeamCode: string) => void;
+  onBack: () => void;
 }
 
 // 팀코드(DB) ↔ 표시명 ↔ 라투디 표정(exp3) ↔ 팀 컬러
@@ -34,7 +36,11 @@ const TEAMS: ReadonlyArray<{
   { code: "WO", name: "키움 히어로즈", expression: "kiwoom", color: "#7B0F1F" },
 ];
 
-export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboardingProps) {
+export function TeamSelectOnboarding({
+  authToken,
+  onComplete,
+  onBack,
+}: TeamSelectOnboardingProps) {
   const [selectedCode, setSelectedCode] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false); // 저장 완료 표시 (개발 모드에서 창이 유지될 때 확인용)
@@ -93,6 +99,18 @@ export function TeamSelectOnboarding({ authToken, onComplete }: TeamSelectOnboar
           '"Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif',
       }}
     >
+      <div
+        className="team-onboarding-back"
+        style={{
+          position: "absolute",
+          top: "calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px)",
+          left: 16,
+          zIndex: 1,
+        }}
+      >
+        <AppBackButton onClick={onBack} />
+      </div>
+
       <h1 style={{ margin: "4px 0 6px", fontSize: "1.35rem", fontWeight: 900, color: "#101a36" }}>
         응원할 구단을 선택해주세요
       </h1>
