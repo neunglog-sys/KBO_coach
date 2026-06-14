@@ -90,11 +90,13 @@ export async function getChatHistory(sessionId?: string): Promise<any[]> {
     : select(c, "SELECT * FROM chat_history ORDER BY id DESC LIMIT 100");
 }
 
-/** 최근 사용자 질문 N개(중복 제거, 최신순) — 개인화 퀴즈 출제용.
- *  서버로 일시 전달만 되고 서버에 저장되지 않는다. */
-export async function getRecentQuestions(limit = 5): Promise<string[]> {
+/** 최근 사용자 질문 N개(중복 제거, 최신순) — 서버 계정별 질문 이력 보강용.
+ *  sessionId를 전달하면 해당 로그인 세션의 대화만 조회한다. */
+export async function getRecentQuestions(limit = 5, sessionId?: string): Promise<string[]> {
   const c = await conn();
-  const rows = select(c, "SELECT content FROM chat_history WHERE role='user' ORDER BY id DESC LIMIT 30");
+  const rows = sessionId
+    ? select(c, "SELECT content FROM chat_history WHERE role='user' AND session_id=? ORDER BY id DESC LIMIT 30", [sessionId])
+    : select(c, "SELECT content FROM chat_history WHERE role='user' ORDER BY id DESC LIMIT 30");
   const seen = new Set<string>();
   const out: string[] = [];
   for (const r of rows) {

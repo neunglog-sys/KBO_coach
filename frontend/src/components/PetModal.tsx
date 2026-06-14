@@ -79,7 +79,11 @@ export default function PetModal({ authToken, favTeamCode, onClose }: PetModalPr
           ✕
         </button>
         <div className="pet-modal-body" style={{ width: "100%", display: "block" }}>
-          <AttendanceCheckIn authToken={authToken} favTeamCode={favTeamCode} />
+          <AttendanceCheckIn
+            key={authToken || "signed-out"}
+            authToken={authToken}
+            favTeamCode={favTeamCode}
+          />
         </div>
       </div>
     </div>

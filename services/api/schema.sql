@@ -154,5 +154,21 @@ CREATE TABLE IF NOT EXISTS quiz ( -- 다마고치 OX 퀴즈
     answer BOOLEAN NOT NULL,          -- O=true, X=false
     explanation TEXT,
     difficulty VARCHAR(10),           -- 왕초보/초보/중급/고급
-    category VARCHAR(30)              -- 규칙/용어/기록/관람/역사
+    category VARCHAR(30),             -- 규칙/용어/기록/관람/역사
+    source VARCHAR(10) DEFAULT 'manual',
+    created_for_user_key TEXT,
+    source_question TEXT,
+    main_topic TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_question_history (
+    question_id SERIAL PRIMARY KEY,
+    user_key TEXT NOT NULL,
+    question TEXT NOT NULL,
+    main_topic TEXT,
+    answer_text TEXT,
+    rag_context TEXT,
+    origin TEXT NOT NULL DEFAULT 'chat',
+    asked_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (user_key, question)
 );

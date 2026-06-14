@@ -1117,12 +1117,12 @@ export function MainViewV2({
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
     // 로컬 SQLite에 대화 이력 저장(기기 보관, 서버 미전송) — 개인화 퀴즈 출제 등에 사용
-    void saveChat("frontend-demo", "user", question, favTeamCode || "").catch(() => { });
+    void saveChat(authToken || "guest", "user", question, favTeamCode || "").catch(() => { });
 
     // 통문장 — 답변 전체를 한 번에 합성해야 ElevenLabs가 문맥을 보고 사투리 억양을 살린다.
     // (청킹은 문장마다 따로 합성돼 억양이 평평해져 표준어처럼 들림 → 사용 안 함)
     const answer = await fetchAnswer(question);
-    void saveChat("frontend-demo", "bot", answer, favTeamCode || "").catch(() => { });
+    void saveChat(authToken || "guest", "bot", answer, favTeamCode || "").catch(() => { });
     // 키워드 탐지는 여기서 하되, 실제 모션 발동은 TTS(음성)가 시작될 때로 미룬다.
     // (텍스트가 화면에 나오는 시점이 아니라 캐릭터가 "말하기 시작하는" 순간에 맞춰 움직이도록)
     pendingGreetRef.current = GREET_RE.test(answer) || GREET_RE.test(question);
@@ -1470,6 +1470,7 @@ export function MainViewV2({
               뒤로가기
             </button>
             <AttendanceCheckIn
+              key={authToken || "signed-out"}
               authToken={authToken}
               nickname={nickname}
               buddyNickname={buddyNickname}
