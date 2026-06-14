@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { apiUrl } from "./api";
@@ -158,6 +158,9 @@ export function App() {
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
+  const [showExitHint, setShowExitHint] = useState(false);
+  const lastLoginBackPressRef = useRef(0);
+  const exitHintTimerRef = useRef<number | null>(null);
 
   function applyKakaoSession(kakaoSession: AuthSession) {
     setAuthToken(kakaoSession.authToken);
@@ -222,6 +225,55 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.add(`plat-${Capacitor.getPlatform()}`);
   }, []);
+
+  useEffect(() => {
+    if (
+      isLoggedIn ||
+      !Capacitor.isNativePlatform() ||
+      Capacitor.getPlatform() !== "android"
+    ) {
+      return;
+    }
+
+    const listener = CapacitorApp.addListener("backButton", () => {
+      if (authMode === "register") {
+        setRegisterError("");
+        setAuthMode("login");
+        setShowExitHint(false);
+        window.scrollTo({ top: 0, behavior: "auto" });
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastLoginBackPressRef.current <= 2000) {
+        if (exitHintTimerRef.current !== null) {
+          window.clearTimeout(exitHintTimerRef.current);
+        }
+        void CapacitorApp.exitApp();
+        return;
+      }
+
+      lastLoginBackPressRef.current = now;
+      setShowExitHint(true);
+      if (exitHintTimerRef.current !== null) {
+        window.clearTimeout(exitHintTimerRef.current);
+      }
+      exitHintTimerRef.current = window.setTimeout(() => {
+        setShowExitHint(false);
+        exitHintTimerRef.current = null;
+      }, 2000);
+    });
+
+    return () => {
+      void listener.then((handle) => handle.remove());
+      if (exitHintTimerRef.current !== null) {
+        window.clearTimeout(exitHintTimerRef.current);
+        exitHintTimerRef.current = null;
+      }
+      setShowExitHint(false);
+      lastLoginBackPressRef.current = 0;
+    };
+  }, [authMode, isLoggedIn]);
 
   // iOS: 키보드 높이를 CSS 변수로 전달 — 화면(웹뷰)은 고정한 채(resize=none)
   // 하단 입력 시트만 키보드 위로 올린다. 닫힐 때 잔여 스크롤 어긋남도 복원.
@@ -511,6 +563,7 @@ export function App() {
         <LoginView
           error={loginError}
           notice={loginNotice}
+          showExitHint={showExitHint}
           onLogin={handleLogin}
           onGoogleLogin={handleGoogleLogin}
           onKakaoLogin={handleKakaoLogin}

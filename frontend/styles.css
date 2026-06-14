@@ -452,6 +452,26 @@ select:focus {
   background: #ffffff;
 }
 
+.auth-exit-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 18px);
+  z-index: 500;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: #ffffff;
+  background: rgba(20, 31, 48, 0.82);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .auth-register-card {
   position: relative;
   box-sizing: border-box;

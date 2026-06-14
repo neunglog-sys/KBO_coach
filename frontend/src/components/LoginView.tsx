@@ -3,6 +3,7 @@ import { FormEvent, useState } from "react";
 interface LoginViewProps {
   error: string;
   notice: string;
+  showExitHint?: boolean;
   onLogin: (id: string, password: string, remember: boolean) => Promise<void>;
   onGoogleLogin?: () => Promise<void>;
   onKakaoLogin?: () => void;
@@ -20,7 +21,16 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin, onNaverLogin, onShowRegister }: LoginViewProps) {
+export function LoginView({
+  error,
+  notice,
+  showExitHint = false,
+  onLogin,
+  onGoogleLogin,
+  onKakaoLogin,
+  onNaverLogin,
+  onShowRegister,
+}: LoginViewProps) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -270,6 +280,11 @@ export function LoginView({ error, notice, onLogin, onGoogleLogin, onKakaoLogin,
           {socialNotice}
         </p>
       </form>
+      {showExitHint ? (
+        <p className="auth-exit-hint" role="status" aria-live="polite">
+          뒤로가기를 한번 더 누르면 앱이 꺼집니다.
+        </p>
+      ) : null}
     </section>
   );
 }
