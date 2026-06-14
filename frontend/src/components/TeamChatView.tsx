@@ -9,6 +9,7 @@ interface TeamChatViewProps {
   authToken: string;
   onBack: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
+  requestClose?: boolean;
 }
 
 interface BoardMessage {
@@ -160,7 +161,7 @@ function dateLabel(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}`;
 }
 
-export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProps) {
+export function TeamChatView({ authToken, onBack, onNavigate, requestClose = false }: TeamChatViewProps) {
   const [team, setTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [messages, setMessages] = useState<BoardMessage[]>([]);
   const [notice, setNotice] = useState("");
@@ -338,6 +339,10 @@ export function TeamChatView({ authToken, onBack, onNavigate }: TeamChatViewProp
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) onBack();
     else setClosing(true);
   }
+
+  useEffect(() => {
+    if (requestClose) handleBack();
+  }, [requestClose]);
 
   function handleSideMenuNavigate(target: TopMenuTarget) {
     if (target === "chat") return;

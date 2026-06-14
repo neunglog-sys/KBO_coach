@@ -278,14 +278,21 @@ export function App() {
   // iOS: 키보드 높이를 CSS 변수로 전달 — 화면(웹뷰)은 고정한 채(resize=none)
   // 하단 입력 시트만 키보드 위로 올린다. 닫힐 때 잔여 스크롤 어긋남도 복원.
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return;
+    if (!Capacitor.isNativePlatform()) return;
+    const platform = Capacitor.getPlatform();
     let cleanup: (() => void) | undefined;
     void import("@capacitor/keyboard").then(({ Keyboard }) => {
       // 키보드 위 기본 액세서리 바(완료 버튼) 복구 — 플러그인 설치 시 기본값이 숨김이라 명시적으로 켠다
-      void Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
+      if (platform === "ios") {
+        void Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
+      }
       // 키보드가 가린 높이를 실측(visualViewport)으로 계산 — 플러그인 수치는 완료 버튼 바
       // 포함 여부가 기기마다 달라 시트와 키보드 사이에 틈이 생긴다. 실측이 항상 정확.
       const applyInset = (fallback: number) => {
+        if (platform !== "ios") {
+          document.documentElement.style.setProperty("--keyboard-inset", "0px");
+          return;
+        }
         const vv = window.visualViewport;
         const measured = vv ? Math.round(window.innerHeight - vv.height - vv.offsetTop) : 0;
         const inset = measured > 60 ? measured : fallback;
@@ -305,6 +312,8 @@ export function App() {
       cleanup = () => {
         void show.then((h) => h.remove());
         void hide.then((h) => h.remove());
+        document.documentElement.style.setProperty("--keyboard-inset", "0px");
+        document.documentElement.classList.remove("kb-open");
       };
     });
     return () => cleanup?.();

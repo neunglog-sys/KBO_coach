@@ -36,7 +36,8 @@
 }
 
 .records-view.closing {
-  animation: records-exit 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) both;
+  animation: records-exit 0.3s ease-in-out both;
+  pointer-events: none;
 }
 
 @keyframes records-exit {

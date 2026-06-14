@@ -605,7 +605,7 @@
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: var(--color-background, #f4f6fb);
+  background: #f4f6fb;
   pointer-events: none;
 }
 
@@ -637,6 +637,11 @@
   bottom: var(--keyboard-inset, 0px);
   padding-bottom: 12px !important;
   transition: bottom 0.25s ease;
+}
+
+.plat-android.kb-open .stage-chat {
+  bottom: 0;
+  padding-bottom: 8px !important;
 }
 
 /* 메인이 가려진 동안 배경 스크롤 일시정지 — 스와이프 복귀 렉 완화 (진행 위치는 보존됨) */

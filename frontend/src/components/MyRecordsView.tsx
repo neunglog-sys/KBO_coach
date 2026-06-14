@@ -11,6 +11,7 @@ interface MyRecordsViewProps {
   authToken: string;
   onBack: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
+  requestClose?: boolean;
 }
 
 interface RecordRow {
@@ -160,7 +161,7 @@ function calcStreak(dateSet: Set<string>, resetDate: string | null): number {
   return streak;
 }
 
-export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewProps) {
+export function MyRecordsView({ authToken, onBack, onNavigate, requestClose = false }: MyRecordsViewProps) {
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [myTeam, setMyTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
   const [monthGames, setMonthGames] = useState<Record<string, unknown>[]>([]);
@@ -484,6 +485,10 @@ export function MyRecordsView({ authToken, onBack, onNavigate }: MyRecordsViewPr
       setClosing(true);
     }
   }
+
+  useEffect(() => {
+    if (requestClose) handleBack();
+  }, [requestClose]);
 
   function handleSideMenuNavigate(target: TopMenuTarget) {
     if (target === "record") return;

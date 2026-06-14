@@ -59,6 +59,25 @@
   border-radius: 26px;
   background: #dff5ff;
   box-shadow: 0 26px 76px rgba(0, 0, 0, 0.42);
+  animation: app-screen-enter 300ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  will-change: transform, opacity;
+}
+
+.settings-window-backdrop.is-closing {
+  pointer-events: none;
+}
+
+.settings-window-backdrop.is-closing .settings-window {
+  animation: app-screen-exit 300ms ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-window-backdrop,
+  .settings-window,
+  .settings-window-backdrop.is-closing,
+  .settings-window-backdrop.is-closing .settings-window {
+    animation: none;
+  }
 }
 
 .settings-app-screen {

@@ -240,6 +240,7 @@ export function MainViewV2({
   const [, setAttendanceCheckedToday] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [closingFullScreen, setClosingFullScreen] = useState<"record" | "chat" | null>(null);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>(null);
   // 상단 메뉴 접기/펼치기 (손잡이 탭/드래그로 토글, CSS transition으로 부드럽게)
   const [navHidden, setNavHidden] = useState(false);
@@ -306,6 +307,9 @@ export function MainViewV2({
   const audioStopRef = useRef<(() => void) | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const overlayCloseTimerRef = useRef<number | null>(null);
+  const pendingMenuTargetRef = useRef<TopMenuTarget | null>(null);
+  const activeScreenRef = useRef<TopMenuTarget>("home");
+  const screenTransitionLockRef = useRef(false);
   // 발화 취소 토큰: stopSpeaking 시 증가시켜, 진행 중이거나 곧 시작될 폴백 음성도 무효화한다.
   const speakTokenRef = useRef(0);
   // 답변 텍스트에서 키워드를 미리 탐지해 둔 "대기 중인 모션" 플래그.
@@ -408,14 +412,17 @@ export function MainViewV2({
   const anyOverlayOpenRef = useRef(false);
 
   useEffect(() => {
-    const closeAll = () => {
+    const closeCurrentScreen = () => {
+      if (screenTransitionLockRef.current) return;
       stopSpeaking();
-      setClosingOverlay(null);
-      setIsAttendanceOpen(false);
-      setIsStadiumPageOpen(false);
-      setIsSettingsOpen(false);
-      setShowRecords(false);
-      setShowChat(false);
+      const activeScreen = activeScreenRef.current;
+      if (activeScreen === "tamagotchi") closeOverlay("tamagotchi");
+      else if (activeScreen === "stadium") closeOverlay("stadium");
+      else if (activeScreen === "settings") closeOverlay("settings");
+      else if (activeScreen === "record" || activeScreen === "chat") {
+        screenTransitionLockRef.current = true;
+        setClosingFullScreen(activeScreen);
+      }
     };
 
     // iOS: 화면 왼쪽 끝(28px)에서 시작한 오른쪽 스와이프 감지
@@ -432,7 +439,7 @@ export function MainViewV2({
       if (!t0) return;
       if (t0.clientX - startX > 70 && Math.abs(t0.clientY - startY) < 60) {
         startX = -1;
-        closeAll();
+        closeCurrentScreen();
       }
     };
     window.addEventListener("touchstart", onStart, { passive: true });
@@ -443,7 +450,7 @@ export function MainViewV2({
     if (Capacitor.isNativePlatform()) {
       void import("@capacitor/app").then(({ App: CapApp }) => {
         const h = CapApp.addListener("backButton", () => {
-          if (anyOverlayOpenRef.current) closeAll();
+          if (anyOverlayOpenRef.current) closeCurrentScreen();
           else void CapApp.minimizeApp();
         });
         removeBack = () => void h.then((x) => x.remove());
@@ -461,12 +468,15 @@ export function MainViewV2({
     overlay: "tamagotchi" | "stadium" | "settings",
     afterClose?: () => void,
   ) {
+    if (screenTransitionLockRef.current) return;
+    screenTransitionLockRef.current = true;
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const finish = () => {
       if (overlay === "tamagotchi") setIsAttendanceOpen(false);
       if (overlay === "stadium") setIsStadiumPageOpen(false);
       if (overlay === "settings") setIsSettingsOpen(false);
       setClosingOverlay(null);
+      screenTransitionLockRef.current = false;
       afterClose?.();
     };
 
@@ -481,10 +491,10 @@ export function MainViewV2({
     }
 
     setClosingOverlay(overlay);
-    overlayCloseTimerRef.current = window.setTimeout(finish, 260);
+    overlayCloseTimerRef.current = window.setTimeout(finish, 300);
   }
 
-  function switchToMenuTarget(key: TopMenuTarget) {
+  function openMenuTarget(key: TopMenuTarget) {
     if (overlayCloseTimerRef.current) {
       window.clearTimeout(overlayCloseTimerRef.current);
       overlayCloseTimerRef.current = null;
@@ -497,6 +507,50 @@ export function MainViewV2({
     setIsSettingsOpen(key === "settings");
     setShowRecords(key === "record");
     setShowChat(key === "chat");
+  }
+
+  function finishFullScreenClose(screen: "record" | "chat") {
+    if (screen === "record") setShowRecords(false);
+    if (screen === "chat") setShowChat(false);
+    setClosingFullScreen(null);
+    screenTransitionLockRef.current = false;
+
+    const nextTarget = pendingMenuTargetRef.current;
+    pendingMenuTargetRef.current = null;
+    if (nextTarget) openMenuTarget(nextTarget);
+  }
+
+  function switchToMenuTarget(key: TopMenuTarget) {
+    if (
+      screenTransitionLockRef.current ||
+      closingOverlay ||
+      closingFullScreen ||
+      activeScreenRef.current === key
+    ) {
+      return;
+    }
+
+    const current = activeScreenRef.current;
+    if (current === "tamagotchi") {
+      closeOverlay("tamagotchi", () => openMenuTarget(key));
+      return;
+    }
+    if (current === "stadium") {
+      closeOverlay("stadium", () => openMenuTarget(key));
+      return;
+    }
+    if (current === "settings") {
+      closeOverlay("settings", () => openMenuTarget(key));
+      return;
+    }
+    if (current === "record" || current === "chat") {
+      screenTransitionLockRef.current = true;
+      pendingMenuTargetRef.current = key;
+      setClosingFullScreen(current);
+      return;
+    }
+
+    openMenuTarget(key);
   }
 
   // 오디오 재생 + 립싱크/자막 공통 루프. 스트리밍·블로킹 둘 다 씀.
@@ -1330,6 +1384,17 @@ export function MainViewV2({
   // (iOS 스와이프 복귀 시 전환 렉 완화 — 재개 시 멈춘 지점부터 이어짐)
   const stageHidden =
     isAttendanceOpen || isStadiumPageOpen || isSettingsOpen || showRecords || showChat;
+  activeScreenRef.current = isAttendanceOpen
+    ? "tamagotchi"
+    : isStadiumPageOpen
+      ? "stadium"
+      : isSettingsOpen
+        ? "settings"
+        : showRecords
+          ? "record"
+          : showChat
+            ? "chat"
+            : "home";
   anyOverlayOpenRef.current = stageHidden;
 
   return (
@@ -1600,7 +1665,8 @@ export function MainViewV2({
       {showRecords ? (
         <MyRecordsView
           authToken={authToken}
-          onBack={() => setShowRecords(false)}
+          requestClose={closingFullScreen === "record"}
+          onBack={() => finishFullScreenClose("record")}
           onNavigate={switchToMenuTarget}
         />
       ) : null}
@@ -1608,7 +1674,8 @@ export function MainViewV2({
       {showChat ? (
         <TeamChatView
           authToken={authToken}
-          onBack={() => setShowChat(false)}
+          requestClose={closingFullScreen === "chat"}
+          onBack={() => finishFullScreenClose("chat")}
           onNavigate={switchToMenuTarget}
         />
       ) : null}
