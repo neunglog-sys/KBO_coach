@@ -29,10 +29,10 @@ public class MainActivity extends BridgeActivity {
         }
 
         // 밝은 배경(하늘/흰 시트) 위에서 시스템 바 아이콘을 어둡게 → 잘 보이게.
-        WindowInsetsControllerCompat controller =
-                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        controller.setAppearanceLightStatusBars(true);
-        controller.setAppearanceLightNavigationBars(true);
+        // onCreate에서 한 번만 걸면 일부 기기(삼성 등)에서 이후 시스템이 기본값으로 덮어
+        // 네비 버튼이 흰색으로 보이는 문제가 있어, post + onResume/onWindowFocus에서 재적용한다.
+        applyLightSystemBars();
+        getWindow().getDecorView().post(this::applyLightSystemBars);
 
         // 갤럭시 하단 네비 바(버튼/제스처) 높이를 실시간으로 읽어 CSS 변수(--sab)로 주입.
         // 하단 고정 UI가 max(env(...), var(--sab))로 이 값을 받아 바 위로 자연스럽게 올라온다.
@@ -51,5 +51,27 @@ public class MainActivity extends BridgeActivity {
             return insets;
         });
         ViewCompat.requestApplyInsets(webView);
+    }
+
+    /** 상태바/네비바 아이콘을 어둡게(밝은 배경용). 시스템이 덮을 수 있어 여러 시점에 재적용. */
+    private void applyLightSystemBars() {
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        controller.setAppearanceLightStatusBars(true);
+        controller.setAppearanceLightNavigationBars(true);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        applyLightSystemBars();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyLightSystemBars();
+        }
     }
 }
