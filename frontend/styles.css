@@ -352,7 +352,9 @@ select:focus {
 
 /* === 로그인 화면 (sekkison 느낌) ============================= */
 .login-view.auth-login-screen {
-  background: #ffffff;
+  background: #cae4f9;
+  align-items: start;   /* 카드를 세로 중앙이 아닌 상단 쪽으로 — 공복이 위 빈 공간 축소 */
+  padding-top: 32px;
 }
 
 .auth-login-card {
@@ -381,10 +383,22 @@ select:focus {
   line-height: 1;
 }
 
+/* 앱 아이콘 캐릭터(공복이) — 배경이 아이콘 배경과 같은 하늘색이라 캐릭터만 떠 보인다.
+   border-radius 없이 — 둥근 모서리가 가장자리의 손/글러브를 잘라먹는다. */
+.auth-hero-img {
+  display: block;
+  width: 315px;
+  height: 315px;
+  margin: 0 auto;
+  object-fit: contain;
+  position: relative;
+  top: 1.5cm;
+}
+
 .auth-line-field {
   position: relative;
   margin-bottom: 26px;
-  border-bottom: 1.5px solid #d9d9d9;
+  border-bottom: 2px solid #5580a8;
 }
 
 .auth-line-field input {

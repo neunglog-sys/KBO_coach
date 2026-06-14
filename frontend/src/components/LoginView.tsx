@@ -84,10 +84,7 @@ export function LoginView({
     <section className="login-view auth-login-screen" aria-label="로그인">
       <form id="loginForm" className="auth-login-card" onSubmit={handleSubmit}>
         <div className="auth-hero">
-          <h1 className="auth-hero-title">공복이</h1>
-          <div className="auth-hero-emoji" aria-hidden="true">
-            ⚾
-          </div>
+          <img className="auth-hero-img" src="/img/gongbok.png" alt="공복이" width={315} height={315} />
         </div>
 
         <div className="auth-line-field">
