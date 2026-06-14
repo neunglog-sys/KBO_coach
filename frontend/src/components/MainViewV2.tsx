@@ -311,9 +311,9 @@ export function MainViewV2({
   // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
   // ref로 참조한다. 안 그러면 음성 질문이 mount 시점의 옛 응원팀으로 전송됨(팀 변경 무시).
   const submitQuestionRef = useRef<(raw: string) => void>(() => { });
-  // 채팅 시트 / 캐릭터 DOM 참조 — 드래그 리사이즈 시 최대 높이(발 밑) 계산에 사용.
+  // 채팅 시트 / 상단바 DOM 참조 — 드래그 리사이즈 시 최대 높이(상단바 밑) 계산에 사용.
   const chatSectionRef = useRef<HTMLElement | null>(null);
-  const characterRef = useRef<HTMLDivElement | null>(null);
+  const topNavRef = useRef<HTMLElement | null>(null);
   // 손잡이 드래그 상태: 시작 Y/높이, 직전 높이, 실제 이동 여부(탭 구분용).
   const chatResizeRef = useRef<{ startY: number; startHeight: number; lastHeight: number; moved: boolean } | null>(null);
 
@@ -1259,16 +1259,16 @@ export function MainViewV2({
     switchToMenuTarget(key);
   }
 
-  // 채팅 로그가 커질 수 있는 최대 높이(px) — 시트 윗변이 캐릭터 발 밑(캔버스 하단)을 넘지 않도록.
-  // (시트 전체높이 = 채팅로그 + 손잡이/입력바/패딩 'chrome'. 발 밑까지 남은 공간에서 chrome을 뺀다.)
+  // 채팅 로그가 커질 수 있는 최대 높이(px) — 시트 윗변이 상단바 밑을 넘지 않도록.
+  // (시트 전체높이 = 채팅로그 + 손잡이/입력바/패딩 'chrome'. 상단바 밑까지 남은 공간에서 chrome을 뺀다.)
   const computeMaxChatHeight = () => {
     const section = chatSectionRef.current;
     const log = chatLogRef.current;
     if (!section || !log) return Number.POSITIVE_INFINITY;
     const chrome = section.offsetHeight - log.offsetHeight; // 채팅로그 외 영역 높이
-    const feetY = characterRef.current?.getBoundingClientRect().bottom ?? 0; // 캐릭터 발 밑 라인
-    const gap = 8; // 발 밑과 시트 사이 약간의 여백
-    return Math.max(80, window.innerHeight - feetY - gap - chrome);
+    const navBottomY = topNavRef.current?.getBoundingClientRect().bottom ?? 0; // 상단바 밑 라인
+    const gap = 8; // 상단바 밑과 시트 사이 약간의 여백
+    return Math.max(80, window.innerHeight - navBottomY - gap - chrome);
   };
 
   // 손잡이 드래그 시작: 현재 높이와 시작 좌표 기록.
@@ -1279,7 +1279,7 @@ export function MainViewV2({
     setIsResizingChat(true);
   };
 
-  // 드래그 이동: 위로 끌면 커지고 아래로 끌면 작아진다. 발 밑(최대)까지로 제한.
+  // 드래그 이동: 위로 끌면 커지고 아래로 끌면 작아진다. 상단바 밑(최대)까지로 제한.
   const handleChatHandleMove = (e: ReactPointerEvent) => {
     const d = chatResizeRef.current;
     if (!d) return;
@@ -1331,9 +1331,9 @@ export function MainViewV2({
       <div className="stage-white-fade" aria-hidden="true" />
       <div className="stage-nav-overlay" aria-hidden="true" />
 
-      <TopMenu active="home" className="stage-nav" onNavigate={handleNav} />
+      <TopMenu ref={topNavRef} active="home" className="stage-nav" onNavigate={handleNav} />
 
-      <div className="stage-character" aria-hidden="false" ref={characterRef}>
+      <div className="stage-character" aria-hidden="false">
         <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} className="stage-character-canvas" />
       </div>
 
@@ -1344,7 +1344,7 @@ export function MainViewV2({
         className={`stage-chat ${chatCollapsed ? "is-collapsed" : ""}`}
         aria-label="야구 코치 채팅"
       >
-        {/* 손잡이: 드래그로 크기 조절(발 밑까지) / 탭이면 접기·펼치기 토글 */}
+        {/* 손잡이: 드래그로 크기 조절(상단바 밑까지) / 탭이면 접기·펼치기 토글 */}
         <div
           className="stage-chat-handle"
           role="button"
