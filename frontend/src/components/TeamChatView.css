@@ -36,7 +36,7 @@
   --chat-align-x: 12px;
   --chat-title-indent: 12px;
   --chat-header-gap: 10px;
-  --chat-bottom-gap: 14px;
+  --chat-bottom-gap: 0px;
   --chat-viewport-top: 0px;
   --chat-header-height: 0px;
   --chat-search-height: 0px;
@@ -313,8 +313,7 @@
 }
 
 .chat-log::after {
-  content: "";
-  flex: 0 0 1px;
+  content: none;
 }
 
 .chat-bottom-sentinel {
