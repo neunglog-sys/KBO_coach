@@ -1121,7 +1121,18 @@ export function MainViewV2({
 
     // 통문장 — 답변 전체를 한 번에 합성해야 ElevenLabs가 문맥을 보고 사투리 억양을 살린다.
     // (청킹은 문장마다 따로 합성돼 억양이 평평해져 표준어처럼 들림 → 사용 안 함)
-    const answer = await fetchAnswer(question);
+    // 첫 응답이 7초 넘게 안 오면 서버 혼잡 안내 — Gemini 생성 무한지연 등 백엔드 폴백으로
+    // 못 막는 케이스 대비(임베딩 지연은 embeddings.py의 3초 타임아웃 폴백이 이미 처리).
+    // 정상(폴백 포함) 상한은 ~5초라 7초면 오발 없이 진짜 지연만 잡는다.
+    const slowNoticeTimer = window.setTimeout(() => {
+      setBot("답변이 평소보다 늦어지고 있어요 ⚾ 서버가 잠시 혼잡한가 봐요. 조금만 기다려 주세요!");
+    }, 7000);
+    let answer: string;
+    try {
+      answer = await fetchAnswer(question);
+    } finally {
+      window.clearTimeout(slowNoticeTimer);
+    }
     void saveChat(authToken || "guest", "bot", answer, favTeamCode || "").catch(() => { });
     // 키워드 탐지는 여기서 하되, 실제 모션 발동은 TTS(음성)가 시작될 때로 미룬다.
     // (텍스트가 화면에 나오는 시점이 아니라 캐릭터가 "말하기 시작하는" 순간에 맞춰 움직이도록)
