@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS legends ( -- 레전드/유명 선수
     name VARCHAR(50) NOT NULL,
     position VARCHAR(20),
     era VARCHAR(30), -- 활약 시기
-    note TEXT
+    note TEXT,
+    jersey_no VARCHAR(10) -- 영구결번 번호(KBO 공식, 영구결번 선수만 채움). 2026-06-15 기준
 );
 
 CREATE TABLE IF NOT EXISTS team_personas (
