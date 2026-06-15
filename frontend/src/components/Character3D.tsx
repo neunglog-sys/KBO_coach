@@ -19,6 +19,7 @@ interface Character3DProps {
   /** 응원팀 코드(HT 등). 팀별 유니폼 색/로고 스킨 적용. 바뀌면 즉시 갱신. */
   teamCode?: string;
   className?: string;
+  onReady?: () => void;
 }
 
 /** 팀별 유니폼 색(헥사=sRGB 디자인값)·로고 스킨. 코드 없거나 미정의 팀은 모델 기본값 유지. */
@@ -45,8 +46,10 @@ const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
 
-export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, wieldSignal, teamCode, className }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, wieldSignal, teamCode, className, onReady }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   // 애니메이션 루프가 항상 최신 isSpeaking 값을 읽도록 ref로 보관
   const speakingRef = useRef(isSpeaking);
   speakingRef.current = isSpeaking;
@@ -71,6 +74,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     let width = mount.clientWidth || 400;
     let height = mount.clientHeight || 400;
     let disposed = false;
+    let notifiedReady = false;
 
     const scene = new THREE.Scene(); // 배경 투명 (alpha)
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 1000);
@@ -357,9 +361,21 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
           };
         }
         renderQuietUntil = performance.now() + 1500; // 로드 직후 모델 표시·입모양 정착 위해 잠깐 렌더
+        renderer.render(scene, camera);
+        requestAnimationFrame(() => {
+          if (disposed || notifiedReady) return;
+          notifiedReady = true;
+          onReadyRef.current?.();
+        });
       },
       undefined,
-      (err) => console.error("[Character3D] 모델 로드 실패", err)
+      (err) => {
+        console.error("[Character3D] 모델 로드 실패", err);
+        if (!disposed && !notifiedReady) {
+          notifiedReady = true;
+          onReadyRef.current?.();
+        }
+      }
     );
 
     let raf = 0;

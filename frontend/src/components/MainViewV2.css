@@ -31,6 +31,25 @@
   --stage-content-width: min(680px, 100%);
 }
 
+.stage-boot-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  background: #d9f2ff;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 260ms var(--app-ease-standard, ease),
+    visibility 0s linear 260ms;
+}
+
+.stage-view.is-booting .stage-boot-cover {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms var(--app-ease-standard, ease);
+}
+
 .stage-bg,
 .stage-white-fade {
   position: absolute;
@@ -611,8 +630,19 @@
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: #f4f6fb;
+  background: #f4f8ff;
+  animation: screen-cover-in 180ms ease both;
   pointer-events: none;
+}
+
+@keyframes screen-cover-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* iOS: 화면비 특성상 배경 흐름이 빨라 보임 — 절반 속도로 보정 (App.tsx가 plat-ios 클래스 부여) */

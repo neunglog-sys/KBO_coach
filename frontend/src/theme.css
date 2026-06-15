@@ -23,6 +23,10 @@
   --shadow-card: 0 8px 24px rgba(30, 91, 143, 0.1);
   --shadow-button: 0 8px 18px rgba(22, 119, 255, 0.22);
   --app-content-width: 960px;
+  --app-transition-fast: 160ms;
+  --app-transition-screen: 240ms;
+  --app-ease-standard: cubic-bezier(0.22, 0.8, 0.28, 1);
+  --app-ease-exit: cubic-bezier(0.4, 0, 0.7, 0.2);
 
   /* Existing screens can migrate to the shared names without breaking. */
   --ink: var(--color-text);
@@ -74,11 +78,25 @@ textarea::placeholder {
 
 button {
   transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    background-color var(--app-transition-fast) ease,
+    border-color var(--app-transition-fast) ease,
+    color var(--app-transition-fast) ease,
+    box-shadow var(--app-transition-fast) ease,
+    transform var(--app-transition-fast) ease;
+}
+
+:is(
+  .stage-chatlog,
+  .chat-log,
+  .records-view,
+  .settings-window,
+  .settings-app-screen,
+  .stadium-page-window,
+  .attendance-window
+) {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 button:focus-visible,
@@ -92,13 +110,17 @@ textarea:focus-visible {
 .attendance-window-backdrop,
 .stadium-page-backdrop,
 .settings-window-backdrop {
-  animation: app-overlay-fade-in 240ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  animation: app-overlay-fade-in var(--app-transition-screen) var(--app-ease-standard) both;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
 }
 
 .attendance-window,
 .stadium-page-window,
 .settings-window {
-  animation: app-screen-slide-in 280ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  animation: app-screen-slide-in var(--app-transition-screen) var(--app-ease-standard) both;
+  backface-visibility: hidden;
+  contain: paint;
   will-change: transform, opacity;
 }
 
@@ -106,13 +128,13 @@ textarea:focus-visible {
 .stadium-page-backdrop.is-closing,
 .settings-window-backdrop.is-closing {
   pointer-events: none;
-  animation: app-overlay-fade-out 260ms cubic-bezier(0.4, 0, 0.7, 0.2) both;
+  animation: app-overlay-fade-out var(--app-transition-screen) var(--app-ease-exit) both;
 }
 
 .attendance-window-backdrop.is-closing .attendance-window,
 .stadium-page-backdrop.is-closing .stadium-page-window,
 .settings-window-backdrop.is-closing .settings-window {
-  animation: app-screen-slide-out 260ms cubic-bezier(0.4, 0, 0.7, 0.2) both;
+  animation: app-screen-slide-out var(--app-transition-screen) var(--app-ease-exit) both;
 }
 
 @keyframes app-overlay-fade-in {
@@ -127,23 +149,23 @@ textarea:focus-visible {
 
 @keyframes app-screen-slide-in {
   from {
-    opacity: 0.45;
-    transform: translateX(8%);
+    opacity: 0.55;
+    transform: translate3d(6%, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes app-screen-slide-out {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
     opacity: 0;
-    transform: translateX(12%);
+    transform: translate3d(8%, 0, 0);
   }
 }
 

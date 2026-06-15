@@ -16,7 +16,9 @@
   color: #1c2536;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 24px);
-  animation: records-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  animation: records-enter var(--app-transition-screen, 240ms) var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
+  backface-visibility: hidden;
+  contain: paint;
   will-change: transform, opacity;
 }
 
@@ -25,30 +27,30 @@
 
 @keyframes records-enter {
   from {
-    opacity: 0.4;
-    transform: translateX(8%);
+    opacity: 0.55;
+    transform: translate3d(6%, 0, 0);
   }
 
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .records-view.closing {
-  animation: records-exit 0.3s ease-in-out both;
+  animation: records-exit var(--app-transition-screen, 240ms) var(--app-ease-exit, cubic-bezier(0.4, 0, 0.7, 0.2)) both;
   pointer-events: none;
 }
 
 @keyframes records-exit {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 
   to {
     opacity: 0;
-    transform: translateX(12%);
+    transform: translate3d(8%, 0, 0);
   }
 }
 
