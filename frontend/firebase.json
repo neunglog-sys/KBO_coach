@@ -48,6 +48,7 @@
       { "source": "/tamagotchi{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/push{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "/tts{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/internal{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
       { "source": "**", "destination": "/index.html" }
     ]
   }

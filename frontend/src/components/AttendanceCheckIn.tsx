@@ -19,6 +19,7 @@ import {
   DEFAULT_SPEECHES,
   initializeTamagotchiState,
   localDateKey,
+  normalizeSpeechText,
   randomSpeech,
   replaceSpeechAddressee,
   syncAttendance,
@@ -1548,7 +1549,7 @@ export default function AttendanceCheckIn({
         ) : null}
         {/* 말풍선: 가로 정중앙, 위아래 공백 대칭 지점 고정 (measureBubbleTop 참고), 꼬리 없음 */}
         <div ref={bubbleRef} style={speechBubbleStyle}>
-          {dailyState.speechText}
+          {normalizeSpeechText(dailyState.speechText)}
         </div>
         <img
           ref={charImgRef}
