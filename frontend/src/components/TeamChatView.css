@@ -29,7 +29,9 @@
   min-height: var(--chat-viewport-height, 100dvh);
   overflow: hidden;
   color: #1c2330;
-  animation: chat-enter 0.3s cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  animation: chat-enter var(--app-transition-screen, 240ms) var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
+  backface-visibility: hidden;
+  contain: paint;
   will-change: transform, opacity;
 
   --chat-header-x: 16px;
@@ -53,28 +55,28 @@
 
 @keyframes chat-enter {
   from {
-    opacity: 0.4;
-    transform: translateX(8%);
+    opacity: 0.55;
+    transform: translate3d(6%, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .chat-view.closing {
-  animation: chat-exit 0.3s ease-in-out both;
+  animation: chat-exit var(--app-transition-screen, 240ms) var(--app-ease-exit, cubic-bezier(0.4, 0, 0.7, 0.2)) both;
   pointer-events: none;
 }
 
 @keyframes chat-exit {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
     opacity: 0;
-    transform: translateX(12%);
+    transform: translate3d(8%, 0, 0);
   }
 }
 
@@ -307,7 +309,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scroll-padding-bottom: var(--chat-inputbar-space);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
@@ -334,7 +336,8 @@
   flex-direction: column;
   gap: 3px;
   max-width: 84%;
-  animation: chat-msg-in 0.26s ease both;
+  animation: chat-msg-in 0.2s var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
+  will-change: transform, opacity;
 }
 
 .chat-msg:not(.mine) {
@@ -344,11 +347,11 @@
 @keyframes chat-msg-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translate3d(0, 6px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 

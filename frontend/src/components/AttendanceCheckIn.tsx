@@ -95,6 +95,7 @@ const STORAGE_KEY = "baseballCoachAttendance";
 const BUDDY_NICKNAME_STORAGE_KEY = "baseballCoachBuddyNickname";
 const DEFAULT_BUDDY_NICKNAME = "야구짝꿍";
 const MAX_BUDDY_NICKNAME_LENGTH = 10;
+const TAMAGOTCHI_SETUP_TRANSITION_MS = 240;
 const GENDER_STORAGE_KEY = "baseballCoachGender"; // 성별 임시 저장(브라우저)
 const CHECKIN_XP = 20;
 const CHEER_XP = 5;
@@ -502,6 +503,7 @@ export default function AttendanceCheckIn({
   });
 
   const [isBuddyProfileSaving, setIsBuddyProfileSaving] = useState(false);
+  const [isSetupLeaving, setIsSetupLeaving] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [nickname, setNickname] = useState(initialNickname || "");
@@ -604,6 +606,7 @@ export default function AttendanceCheckIn({
   const charImgRef = useRef<HTMLImageElement | null>(null);
   const fieldCardRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const setupTransitionTimerRef = useRef<number | null>(null);
   const [bubbleTopPx, setBubbleTopPx] = useState<number | null>(null);
 
   // 현재 캐릭터 단계 (이미지 규칙과 동일한 분기)
@@ -747,6 +750,14 @@ export default function AttendanceCheckIn({
     setStatus(fallbackStatus(authToken));
   }, [authToken, initialBuddyNickname]);
 
+  useEffect(() => {
+    return () => {
+      if (setupTransitionTimerRef.current != null) {
+        window.clearTimeout(setupTransitionTimerRef.current);
+      }
+    };
+  }, []);
+
   const prevLevelRef = useRef<number | null>(null);
   useEffect(() => {
     if (SHOW_TEST_PANEL) {
@@ -818,8 +829,6 @@ export default function AttendanceCheckIn({
         }
       }
 
-      setGender(pendingGender);
-      setBuddyNickname(nextBuddyNickname);
       saveGender(authToken, pendingGender);
       saveBuddyNickname(authToken, nextBuddyNickname);
       onBuddyNicknameChange?.(nextBuddyNickname);
@@ -827,6 +836,13 @@ export default function AttendanceCheckIn({
         ...current,
         speechText: randomSpeech(DEFAULT_SPEECHES, nickname),
       }));
+      setIsSetupLeaving(true);
+      setupTransitionTimerRef.current = window.setTimeout(() => {
+        setGender(pendingGender);
+        setBuddyNickname(nextBuddyNickname);
+        setIsSetupLeaving(false);
+        setupTransitionTimerRef.current = null;
+      }, TAMAGOTCHI_SETUP_TRANSITION_MS);
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
     } finally {
@@ -1341,7 +1357,7 @@ export default function AttendanceCheckIn({
   if (!profileChecked) {
     return (
       <section
-        className="attendance-panel tamagotchi-setup-panel"
+        className={`attendance-panel tamagotchi-setup-panel ${isSetupLeaving ? "is-leaving" : ""}`}
         aria-label="야구짝꿍 불러오는 중"
         aria-busy="true"
         style={{ fontFamily: TAMAGOTCHI_FONT }}
@@ -1353,7 +1369,7 @@ export default function AttendanceCheckIn({
   if (!gender || !buddyNickname.trim()) {
     return (
       <section
-        className="attendance-panel tamagotchi-setup-panel"
+        className={`attendance-panel tamagotchi-setup-panel ${isSetupLeaving ? "is-leaving" : ""}`}
         aria-label="야구짝꿍 초기 설정"
         style={{
           fontFamily: TAMAGOTCHI_FONT,
@@ -1414,7 +1430,7 @@ export default function AttendanceCheckIn({
           <button
             type="button"
             className="tamagotchi-setup-submit"
-            disabled={isBuddyProfileSaving}
+            disabled={isBuddyProfileSaving || isSetupLeaving}
             onClick={() => void handleSaveBuddyProfile()}
           >
             {isBuddyProfileSaving ? "저장 중..." : "시작하기"}

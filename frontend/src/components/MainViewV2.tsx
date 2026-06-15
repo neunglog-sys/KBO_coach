@@ -62,6 +62,7 @@ const TEAM_HOME_STADIUM: Record<string, string> = {
 
 // 응원팀별 보내기 버튼 색상. 응원팀이 없으면 기본 주황색(SEND_COLOR_DEFAULT)을 쓴다.
 const SEND_COLOR_DEFAULT = "#ff7a18";
+const SCREEN_TRANSITION_MS = 240;
 const TEAM_SEND_COLOR: Record<string, string> = {
   OB: "#131230",
   LT: "#041E42",
@@ -222,6 +223,7 @@ export function MainViewV2({
   // 캐릭터 유니폼/로고 스킨 팀. 디버그/QA용으로 URL ?team=HT 강제 지원(없으면 응원팀).
   const skinTeamCode =
     new URLSearchParams(window.location.search).get("team") || favTeamCode;
+  const [stageReady, setStageReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
@@ -257,6 +259,11 @@ export function MainViewV2({
   // 챗 연결 예열 — 진입 시 더미 호출로 Gemini 연결을 데워 첫 질문 콜드 지연을 줄임
   useEffect(() => {
     fetch(apiUrl("/chat/warmup"), { method: "POST" }).catch(() => { });
+  }, []);
+
+  useEffect(() => {
+    const fallback = window.setTimeout(() => setStageReady(true), 2400);
+    return () => window.clearTimeout(fallback);
   }, []);
 
   useEffect(() => {
@@ -526,7 +533,7 @@ export function MainViewV2({
     }
 
     setClosingOverlay(overlay);
-    overlayCloseTimerRef.current = window.setTimeout(finish, 300);
+    overlayCloseTimerRef.current = window.setTimeout(finish, SCREEN_TRANSITION_MS);
   }
 
   function openMenuTarget(key: TopMenuTarget) {
@@ -1461,7 +1468,7 @@ export function MainViewV2({
   anyOverlayOpenRef.current = stageHidden;
 
   return (
-    <section className={`stage-view ${stageHidden ? "stage-paused" : ""}`.trim()} aria-label="메인 화면">
+    <section className={`stage-view ${stageHidden ? "stage-paused" : ""} ${stageReady ? "is-ready" : "is-booting"}`.trim()} aria-label="메인 화면">
       <div className="stage-bg" aria-hidden="true">
         {/* 하늘 레이어 (뒤, 느리게) — 같은 이미지 2번이라 끊김 없이 루프 */}
         <div className="stage-bg-track stage-bg-sky">
@@ -1523,10 +1530,21 @@ export function MainViewV2({
       </button>
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} wieldSignal={wieldSignal} teamCode={skinTeamCode} className="stage-character-canvas" />
+        <Character3D
+          isSpeaking={isSpeaking}
+          greetSignal={greetSignal}
+          runSignal={runSignal}
+          throwSignal={throwSignal}
+          wieldSignal={wieldSignal}
+          teamCode={skinTeamCode}
+          className="stage-character-canvas"
+          onReady={() => setStageReady(true)}
+        />
       </div>
 
       <WeatherFx condition={weatherCondition} />
+
+      <div className="stage-boot-cover" aria-hidden="true" />
 
       <section
         ref={chatSectionRef}
