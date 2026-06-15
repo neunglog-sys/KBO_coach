@@ -188,14 +188,15 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
     const root = rootRef.current;
     if (!root) return;
 
+    const isKeyboardOpen = document.documentElement.classList.contains("kb-open");
     const visualViewport = window.visualViewport;
-    const viewportTop = visualViewport?.offsetTop ?? 0;
-    const rawViewportHeight = visualViewport?.height ?? window.innerHeight;
+    const viewportTop = isKeyboardOpen ? visualViewport?.offsetTop ?? 0 : 0;
+    const rawViewportHeight = isKeyboardOpen ? visualViewport?.height ?? window.innerHeight : window.innerHeight;
     const keyboardInsetValue = window
       .getComputedStyle(document.documentElement)
       .getPropertyValue("--keyboard-inset");
-    const keyboardInset = Number.parseFloat(keyboardInsetValue) || 0;
-    const viewportHeight = keyboardInset > 0
+    const keyboardInset = isKeyboardOpen ? Number.parseFloat(keyboardInsetValue) || 0 : 0;
+    const viewportHeight = isKeyboardOpen && keyboardInset > 0
       ? Math.min(rawViewportHeight, Math.max(280, window.innerHeight - keyboardInset - viewportTop))
       : rawViewportHeight;
 
@@ -250,8 +251,19 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
 
   function handleInputBlur() {
     focusRunRef.current += 1;
+    const run = focusRunRef.current;
     clearFocusTimers();
-    window.requestAnimationFrame(updateChatLayout);
+    const settleAfterBlur = () => {
+      if (focusRunRef.current !== run) return;
+      updateChatLayout();
+      scrollToBottom("auto");
+    };
+
+    window.requestAnimationFrame(settleAfterBlur);
+    [100, 240, 420, 640].forEach((delay) => {
+      const id = window.setTimeout(settleAfterBlur, delay);
+      focusTimersRef.current.push(id);
+    });
   }
 
   useEffect(() => {
