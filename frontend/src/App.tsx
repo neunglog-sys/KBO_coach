@@ -20,6 +20,12 @@ const DEMO_AUTH = {
 };
 
 const AUTH_SESSION_KEY = "baseballCoachAuth";
+const APP_ROUTE_TRANSITION_MS = 220;
+const MAIN_STAGE_ASSETS = ["/img/sky.png", "/img/background1.2.png"];
+
+type RouteTransitionOptions = {
+  beforeEnter?: () => Promise<void>;
+};
 
 type AuthSession = {
   isLoggedIn: boolean;
@@ -36,6 +42,33 @@ const EMPTY_AUTH_SESSION: AuthSession = {
   nickname: "",
   buddyNickname: "",
 };
+
+let mainStageAssetsPromise: Promise<void> | null = null;
+
+function preloadImage(src: string) {
+  return new Promise<void>((resolve) => {
+    const image = new Image();
+    const finish = () => {
+      const decode = image.decode?.();
+      if (decode) {
+        void decode.catch(() => {}).finally(resolve);
+        return;
+      }
+      resolve();
+    };
+
+    image.onload = finish;
+    image.onerror = () => resolve();
+    image.src = src;
+  });
+}
+
+function preloadMainStageAssets() {
+  if (!mainStageAssetsPromise) {
+    mainStageAssetsPromise = Promise.all(MAIN_STAGE_ASSETS.map(preloadImage)).then(() => {});
+  }
+  return mainStageAssetsPromise;
+}
 
 function parseAuthSession(saved: string | null): AuthSession | null {
   if (!saved) {
@@ -159,15 +192,54 @@ export function App() {
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
   const [showExitHint, setShowExitHint] = useState(false);
+  const [routeTransitionKey, setRouteTransitionKey] = useState(0);
+  const [isRouteLeaving, setIsRouteLeaving] = useState(false);
+  const routeTransitionTimerRef = useRef<number | null>(null);
+  const routeTransitionIdRef = useRef(0);
   const lastLoginBackPressRef = useRef(0);
   const exitHintTimerRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      void preloadMainStageAssets();
+    }
+  }, [isLoggedIn]);
+
+  function runRouteTransition(update: () => void, options: RouteTransitionOptions = {}) {
+    const transitionId = routeTransitionIdRef.current + 1;
+    routeTransitionIdRef.current = transitionId;
+    if (routeTransitionTimerRef.current != null) {
+      window.clearTimeout(routeTransitionTimerRef.current);
+    }
+    const finishTransition = async () => {
+      await options.beforeEnter?.().catch(() => {});
+      if (routeTransitionIdRef.current !== transitionId) {
+        return;
+      }
+      update();
+      setRouteTransitionKey((key) => key + 1);
+      setIsRouteLeaving(false);
+      routeTransitionTimerRef.current = null;
+    };
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      void finishTransition();
+      return;
+    }
+    setIsRouteLeaving(true);
+    routeTransitionTimerRef.current = window.setTimeout(() => {
+      void finishTransition();
+    }, APP_ROUTE_TRANSITION_MS);
+  }
+
   function applyKakaoSession(kakaoSession: AuthSession) {
-    setAuthToken(kakaoSession.authToken);
-    setFavTeamCode(kakaoSession.favTeamCode);
-    setNickname(kakaoSession.nickname);
-    setBuddyNickname(kakaoSession.buddyNickname);
-    setIsLoggedIn(true);
+    runRouteTransition(() => {
+      setAuthToken(kakaoSession.authToken);
+      setFavTeamCode(kakaoSession.favTeamCode);
+      setNickname(kakaoSession.nickname);
+      setBuddyNickname(kakaoSession.buddyNickname);
+      setIsLoggedIn(true);
+    }, { beforeEnter: preloadMainStageAssets });
     saveAuthSession(
       kakaoSession.authToken,
       kakaoSession.favTeamCode,
@@ -182,6 +254,14 @@ export function App() {
     const kakaoSession = readKakaoAuthSession();
     if (!kakaoSession) return;
     applyKakaoSession(kakaoSession);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (routeTransitionTimerRef.current != null) {
+        window.clearTimeout(routeTransitionTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -353,11 +433,13 @@ export function App() {
         const teamCode = data.user?.fav_team_code || ""; // 로그인 응답의 응원팀
         const userNickname = data.user?.nickname || "";
         const userBuddyNickname = data.user?.buddy_nickname || "";
-        setAuthToken(token);
-        setFavTeamCode(teamCode);
-        setNickname(userNickname);
-        setBuddyNickname(userBuddyNickname);
-        setIsLoggedIn(true);
+        runRouteTransition(() => {
+          setAuthToken(token);
+          setFavTeamCode(teamCode);
+          setNickname(userNickname);
+          setBuddyNickname(userBuddyNickname);
+          setIsLoggedIn(true);
+        }, { beforeEnter: preloadMainStageAssets });
         saveAuthSession(token, teamCode, userNickname, userBuddyNickname, remember);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
@@ -367,11 +449,13 @@ export function App() {
     }
 
     if (id === DEMO_AUTH.id && password === DEMO_AUTH.pw) {
-      setAuthToken("");
-      setFavTeamCode("");
-      setNickname("야구팬");
-      setBuddyNickname("");
-      setIsLoggedIn(true);
+      runRouteTransition(() => {
+        setAuthToken("");
+        setFavTeamCode("");
+        setNickname("야구팬");
+        setBuddyNickname("");
+        setIsLoggedIn(true);
+      }, { beforeEnter: preloadMainStageAssets });
       saveAuthSession("", "", "야구팬", "", remember);
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
@@ -430,11 +514,13 @@ export function App() {
       const teamCode = data.user?.fav_team_code || "";
       const userNickname = data.user?.nickname || "";
       const userBuddyNickname = data.user?.buddy_nickname || "";
-      setAuthToken(token);
-      setFavTeamCode(teamCode);
-      setNickname(userNickname);
-      setBuddyNickname(userBuddyNickname);
-      setIsLoggedIn(true);
+      runRouteTransition(() => {
+        setAuthToken(token);
+        setFavTeamCode(teamCode);
+        setNickname(userNickname);
+        setBuddyNickname(userBuddyNickname);
+        setIsLoggedIn(true);
+      }, { beforeEnter: preloadMainStageAssets });
       saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
       window.scrollTo({ top: 0, behavior: "auto" });
     } catch (error) {
@@ -484,9 +570,11 @@ export function App() {
       const data = await response.json().catch(() => null);
 
       if (response.ok) {
-        setAuthMode("login");
-        setLoginNotice("회원가입이 완료되었습니다. 로그인해주세요.");
-        setRegisterError("");
+        runRouteTransition(() => {
+          setAuthMode("login");
+          setLoginNotice("회원가입이 완료되었습니다. 로그인해주세요.");
+          setRegisterError("");
+        });
         return;
       }
 
@@ -503,22 +591,24 @@ export function App() {
     localStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem("myTeamCode");
     clearTamagotchiLocalState();
-    setAuthToken("");
-    setFavTeamCode("");
-    setNickname("");
-    setBuddyNickname("");
-    setIsLoggedIn(false);
-    setLoginError("");
-    setLoginNotice("");
-    setRegisterError("");
-    setAuthMode("login");
+    runRouteTransition(() => {
+      setAuthToken("");
+      setFavTeamCode("");
+      setNickname("");
+      setBuddyNickname("");
+      setIsLoggedIn(false);
+      setLoginError("");
+      setLoginNotice("");
+      setRegisterError("");
+      setAuthMode("login");
+    });
     window.history.replaceState(null, "", window.location.pathname);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   // 응원구단 변경: 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗이 같은 팀 값을 봄
   function handleFavTeamChange(code: string) {
-    setFavTeamCode(code);
+    runRouteTransition(() => setFavTeamCode(code), { beforeEnter: preloadMainStageAssets });
     saveAuthSession(authToken, code, nickname, buddyNickname);
   }
 
@@ -532,10 +622,17 @@ export function App() {
     saveAuthSession(authToken, favTeamCode, nextNickname, buddyNickname);
   }
 
+  const needsTeamOnboarding = FORCE_SHOW_TEAM_ONBOARDING || Boolean(authToken && !favTeamCode);
+
   return (
     <main className="app-shell">
-      {isLoggedIn ? (
-        <>
+      <div
+        key={`${isLoggedIn ? "app" : authMode}-${routeTransitionKey}`}
+        className={`app-route-transition ${isRouteLeaving ? "is-leaving" : ""}`}
+      >
+        {isLoggedIn ? (
+          <>
+          {!needsTeamOnboarding ? (
           <MainViewV2
             authToken={authToken}
             favTeamCode={favTeamCode}
@@ -550,26 +647,27 @@ export function App() {
             onBuddyNicknameChange={handleBuddyNicknameChange}
             onLogout={handleLogout}
           />
+          ) : null}
           {/* 최초 1회 응원구단 선택 — favTeamCode 없을 때만. FORCE 플래그는 개발용 */}
-          {FORCE_SHOW_TEAM_ONBOARDING || (authToken && !favTeamCode) ? (
+          {needsTeamOnboarding ? (
             <TeamSelectOnboarding
               authToken={authToken}
               onComplete={handleFavTeamChange}
               onBack={handleLogout}
             />
           ) : null}
-        </>
-      ) : authMode === "register" ? (
-        <RegisterView
+          </>
+        ) : authMode === "register" ? (
+          <RegisterView
           error={registerError}
           onRegister={handleRegister}
           onShowLogin={() => {
             setRegisterError("");
-            setAuthMode("login");
+            runRouteTransition(() => setAuthMode("login"));
           }}
-        />
-      ) : (
-        <LoginView
+          />
+        ) : (
+          <LoginView
           error={loginError}
           notice={loginNotice}
           showExitHint={showExitHint}
@@ -580,10 +678,11 @@ export function App() {
           onShowRegister={() => {
             setLoginError("");
             setLoginNotice("");
-            setAuthMode("register");
+            runRouteTransition(() => setAuthMode("register"));
           }}
-        />
-      )}
+          />
+        )}
+      </div>
     </main>
   );
 }

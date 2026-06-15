@@ -84,6 +84,7 @@ export function TeamSelectOnboarding({
 
   return (
     <section
+      className="team-onboarding-screen"
       aria-label="응원구단 선택"
       style={{
         position: "fixed",

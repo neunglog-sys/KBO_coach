@@ -177,6 +177,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   const inputBarRef = useRef<HTMLFormElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
+  const layoutFrameRef = useRef<number | null>(null);
 
   const teamObj = teamByCode(team);
   const chatSideSpace = 12;
@@ -217,30 +218,37 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   useEffect(() => {
     updateChatLayout();
 
-    function handleViewportChange() {
-      updateChatLayout();
-      scrollToBottom("auto");
+    function scheduleViewportUpdate() {
+      if (layoutFrameRef.current != null) return;
+      layoutFrameRef.current = window.requestAnimationFrame(() => {
+        layoutFrameRef.current = null;
+        updateChatLayout();
+        scrollToBottom("auto");
+      });
     }
 
     const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleViewportChange) : null;
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleViewportUpdate) : null;
 
     [headerRef.current, switchRef.current, inputBarRef.current]
       .filter(Boolean)
       .forEach((el) => resizeObserver?.observe(el as Element));
 
-    const frameId = window.requestAnimationFrame(handleViewportChange);
+    scheduleViewportUpdate();
 
-    window.addEventListener("resize", handleViewportChange);
-    window.visualViewport?.addEventListener("resize", handleViewportChange);
-    window.visualViewport?.addEventListener("scroll", handleViewportChange);
+    window.addEventListener("resize", scheduleViewportUpdate);
+    window.visualViewport?.addEventListener("resize", scheduleViewportUpdate);
+    window.visualViewport?.addEventListener("scroll", scheduleViewportUpdate);
 
     return () => {
-      window.cancelAnimationFrame(frameId);
+      if (layoutFrameRef.current != null) {
+        window.cancelAnimationFrame(layoutFrameRef.current);
+        layoutFrameRef.current = null;
+      }
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", handleViewportChange);
-      window.visualViewport?.removeEventListener("resize", handleViewportChange);
-      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+      window.removeEventListener("resize", scheduleViewportUpdate);
+      window.visualViewport?.removeEventListener("resize", scheduleViewportUpdate);
+      window.visualViewport?.removeEventListener("scroll", scheduleViewportUpdate);
     };
   }, [switchOpen, notice, team]);
 
@@ -306,7 +314,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   }, [team, authToken]);
 
   useEffect(() => {
-    scrollToBottom("smooth");
+    scrollToBottom("auto");
   }, [messages]);
 
   async function send() {
