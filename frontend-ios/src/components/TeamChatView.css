@@ -55,8 +55,8 @@
 
 @keyframes chat-enter {
   from {
-    opacity: 0.55;
-    transform: translate3d(6%, 0, 0);
+    opacity: 0.92;
+    transform: translate3d(3%, 0, 0);
   }
   to {
     opacity: 1;
@@ -75,8 +75,8 @@
     transform: translate3d(0, 0, 0);
   }
   to {
-    opacity: 0;
-    transform: translate3d(8%, 0, 0);
+    opacity: 0.92;
+    transform: translate3d(3%, 0, 0);
   }
 }
 
@@ -344,8 +344,7 @@
   flex-direction: column;
   gap: 3px;
   max-width: 84%;
-  animation: chat-msg-in 0.2s var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
-  will-change: transform, opacity;
+  animation: chat-msg-in 0.14s var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
 }
 
 .chat-msg:not(.mine) {

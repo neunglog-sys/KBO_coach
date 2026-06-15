@@ -27,8 +27,8 @@
 
 @keyframes records-enter {
   from {
-    opacity: 0.55;
-    transform: translate3d(6%, 0, 0);
+    opacity: 0.92;
+    transform: translate3d(3%, 0, 0);
   }
 
   to {
@@ -49,8 +49,8 @@
   }
 
   to {
-    opacity: 0;
-    transform: translate3d(8%, 0, 0);
+    opacity: 0.92;
+    transform: translate3d(3%, 0, 0);
   }
 }
 
@@ -1194,4 +1194,20 @@
   color: #6b7280;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.plat-ios.kb-open .rec-backdrop {
+  align-items: flex-start;
+  padding-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 14px);
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 14px);
+}
+
+.plat-ios.kb-open .rec-modal {
+  max-height: calc(100dvh - var(--keyboard-inset, 0px) - max(env(safe-area-inset-top, 0px), var(--sat, 0px)) - 28px);
+  scroll-padding-bottom: 18px;
+}
+
+.plat-ios.kb-open .rec-input {
+  scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 64px);
+  scroll-margin-bottom: 18px;
 }

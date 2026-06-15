@@ -447,6 +447,13 @@ export function MainViewV2({
   useEffect(() => {
     const closeCurrentScreen = () => {
       if (screenTransitionLockRef.current) return;
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLElement &&
+        ["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName)
+      ) {
+        activeElement.blur();
+      }
       stopSpeaking();
       const activeScreen = activeScreenRef.current;
       if (activeScreen === "tamagotchi") closeOverlay("tamagotchi");
@@ -1429,9 +1436,7 @@ export function MainViewV2({
 
   const handleMainInputFocus = () => {
     setInputFocused(true);
-    [0, 120, 320, 560].forEach((delay) => {
-      window.setTimeout(() => clampChatHeightToBounds(), delay);
-    });
+    clampChatHeightToBounds();
   };
 
   const handleMainInputBlur = () => {
@@ -1597,7 +1602,16 @@ export function MainViewV2({
           aria-live="polite"
           style={
             chatHeight != null
-              ? { height: `${chatHeight}px`, maxHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
+              ? inputFocused
+                ? {
+                    maxHeight: `min(${chatHeight}px, var(--stage-keyboard-chat-limit))`,
+                    transition: isResizingChat ? "none" : undefined,
+                  }
+                : {
+                    height: `${chatHeight}px`,
+                    maxHeight: `${chatHeight}px`,
+                    transition: isResizingChat ? "none" : undefined,
+                  }
               : undefined
           }
         >

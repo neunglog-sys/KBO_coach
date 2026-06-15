@@ -3990,3 +3990,49 @@ html.theme-dark .app-shell {
   color: #dce9fb;
   background: linear-gradient(180deg, #1d2d45, #152238);
 }
+
+/* iOS keyboard: keep form surfaces below the top chrome and scroll inside the available space. */
+.plat-ios.kb-open .attendance-window:has(.tamagotchi-setup-panel) {
+  height: calc(100dvh - var(--keyboard-inset, 0px));
+  max-height: calc(100dvh - var(--keyboard-inset, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-padding-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 82px);
+  scroll-padding-bottom: 24px;
+}
+
+.plat-ios.kb-open .attendance-window:has(.tamagotchi-setup-panel) .attendance-panel {
+  height: auto;
+  min-height: 0;
+  align-items: start;
+  padding-bottom: 24px;
+}
+
+.plat-ios.kb-open .attendance-window:has(.tamagotchi-setup-panel) .tamagotchi-setup-card {
+  min-height: 0;
+  align-content: start;
+  padding-bottom: 28px;
+}
+
+.plat-ios.kb-open .tamagotchi-nickname-field {
+  scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 94px);
+  scroll-margin-bottom: 24px;
+}
+
+.plat-ios.kb-open .login-view.auth-login-screen {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  justify-content: start;
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 20px);
+}
+
+.plat-ios.kb-open .auth-login-card {
+  min-height: auto;
+  overflow: visible;
+}
+
+.plat-ios.kb-open .auth-register-card {
+  scroll-padding-bottom: calc(var(--keyboard-inset, 0px) + 28px);
+}

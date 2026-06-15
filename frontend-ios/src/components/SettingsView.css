@@ -1162,8 +1162,8 @@
 
 @keyframes settings-screen-in {
   from {
-    opacity: 0;
-    transform: translateX(7%);
+    opacity: 0.88;
+    transform: translateX(3%);
   }
 
   to {
@@ -1668,4 +1668,23 @@
   .settings-nickname-fields button {
     font-size: 0.64rem;
   }
+}
+
+.plat-ios.kb-open .settings-confirm-backdrop {
+  align-items: flex-start;
+  overflow-y: auto;
+  padding-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px);
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 16px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.plat-ios.kb-open .settings-confirm-modal {
+  max-height: calc(100dvh - var(--keyboard-inset, 0px) - max(env(safe-area-inset-top, 0px), var(--sat, 0px)) - 32px);
+  overflow-y: auto;
+  scroll-padding-bottom: 16px;
+}
+
+.plat-ios.kb-open .settings-confirm-input {
+  scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 56px);
+  scroll-margin-bottom: 16px;
 }

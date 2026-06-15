@@ -178,6 +178,8 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastIdRef = useRef(0);
   const layoutFrameRef = useRef<number | null>(null);
+  const focusTimersRef = useRef<number[]>([]);
+  const focusRunRef = useRef(0);
 
   const teamObj = teamByCode(team);
   const chatSideSpace = 12;
@@ -225,15 +227,31 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
     });
   }
 
+  function clearFocusTimers() {
+    focusTimersRef.current.forEach((id) => window.clearTimeout(id));
+    focusTimersRef.current = [];
+  }
+
   function handleInputFocus() {
+    clearFocusTimers();
+    focusRunRef.current += 1;
+    const run = focusRunRef.current;
     updateChatLayout();
     scrollToBottom("auto");
-    [120, 320, 560, 820].forEach((delay) => {
-      window.setTimeout(() => {
+    [120, 280, 480].forEach((delay) => {
+      const id = window.setTimeout(() => {
+        if (focusRunRef.current !== run) return;
         updateChatLayout();
         scrollToBottom("auto");
       }, delay);
+      focusTimersRef.current.push(id);
     });
+  }
+
+  function handleInputBlur() {
+    focusRunRef.current += 1;
+    clearFocusTimers();
+    window.requestAnimationFrame(updateChatLayout);
   }
 
   useEffect(() => {
@@ -262,6 +280,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
     window.visualViewport?.addEventListener("scroll", scheduleViewportUpdate);
 
     return () => {
+      clearFocusTimers();
       if (layoutFrameRef.current != null) {
         window.cancelAnimationFrame(layoutFrameRef.current);
         layoutFrameRef.current = null;
@@ -537,6 +556,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
           placeholder={authToken ? "응원 메시지 입력" : "로그인 후 이용해주세요"}
           disabled={!authToken || !team}
           aria-label="메시지 입력"

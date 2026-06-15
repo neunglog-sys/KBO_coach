@@ -28,6 +28,7 @@
      캐릭터 발이 지면에 닿도록 이 값으로 맞춘다. */
   --stage-ground-height: 80%;
   --stage-chat-limit: clamp(150px, 22vh, 220px);
+  --stage-keyboard-chat-limit: clamp(80px, calc(100dvh - var(--keyboard-inset, 0px) - 250px), var(--stage-chat-limit));
   --stage-content-width: min(680px, 100%);
 }
 
@@ -330,7 +331,9 @@
   /* iOS: 시트를 위로 띄우는 대신 키보드 높이만큼 안쪽 패딩을 늘림 —
      흰 카드가 키보드 뒤까지 채워져 배경 틈이 안 보이고, 입력줄은 키보드 위로 올라옴 */
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 14px + var(--keyboard-inset, 0px)) !important;
-  transition: padding-bottom 0.25s ease;
+  transition:
+    bottom 0.22s var(--app-ease-standard, ease),
+    padding-bottom 0.22s var(--app-ease-standard, ease);
   z-index: 6;
   display: flex;
   flex-direction: column;
@@ -375,7 +378,10 @@
 
 /* 접힘: 메시지 로그를 부드럽게 접음(손잡이+입력바만 남음) */
 .stage-chatlog {
-  transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
+  transition:
+    height 0.22s var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)),
+    max-height 0.22s var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)),
+    opacity 0.18s ease;
 }
 
 .stage-chat.is-collapsed .stage-chatlog {
@@ -632,7 +638,8 @@
   inset: 0;
   z-index: 40;
   background: #f4f8ff;
-  animation: screen-cover-in 180ms ease both;
+  opacity: 1;
+  animation: none;
   pointer-events: none;
 }
 
@@ -670,7 +677,9 @@
   /* 시트를 키보드 '위까지만' 올림 — 키보드 뒤로 흰 패널을 깔지 않아 스크린샷에 비치지 않음 */
   bottom: var(--keyboard-inset, 0px);
   padding-bottom: 12px !important;
-  transition: bottom 0.25s ease;
+  transition:
+    bottom 0.22s var(--app-ease-standard, ease),
+    padding-bottom 0.22s var(--app-ease-standard, ease);
 }
 
 .plat-android.kb-open .stage-chat {
@@ -686,7 +695,7 @@
 
 /* 키보드 열림: 채팅 로그 높이 제한 확대 — 키보드 위 좁은 공간에서도 대화가 여러 줄 보이게 */
 .kb-open .stage-chatlog {
-  max-height: min(32vh, calc(100dvh - var(--keyboard-inset, 0px) - 380px));
+  max-height: var(--stage-keyboard-chat-limit);
 }
 
 

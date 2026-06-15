@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BookOpenCheck,
@@ -795,6 +795,15 @@ export default function AttendanceCheckIn({
     setImgFailed(false);
   }
 
+  function handleSetupInputFocus(event: FocusEvent<HTMLInputElement>) {
+    const target = event.currentTarget;
+    const keepVisible = () => {
+      target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    };
+    window.requestAnimationFrame(() => window.requestAnimationFrame(keepVisible));
+    window.setTimeout(keepVisible, 240);
+  }
+
   async function handleSaveBuddyProfile() {
     const nextBuddyNickname = buddyNicknameInput.trim();
     setBuddyProfileError("");
@@ -1421,6 +1430,7 @@ export default function AttendanceCheckIn({
               maxLength={MAX_BUDDY_NICKNAME_LENGTH}
               placeholder="예: 야꿍"
               onChange={(event) => setBuddyNicknameInput(event.target.value)}
+              onFocus={handleSetupInputFocus}
             />
             <small>{buddyNicknameInput.trim().length} / {MAX_BUDDY_NICKNAME_LENGTH}</small>
           </label>
