@@ -354,7 +354,7 @@ select:focus {
 .login-view.auth-login-screen {
   background: #cae4f9;
   align-items: start;   /* 카드를 세로 중앙이 아닌 상단 쪽으로 — 공복이 위 빈 공간 축소 */
-  padding-top: 32px;
+  padding-top: 12px;
   /* 하단 약관 문구가 안드 네비게이션 바(3버튼/제스처)와 겹치지 않게 회피 — --sab는 MainActivity 주입 */
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 24px);
 }
@@ -389,12 +389,10 @@ select:focus {
    border-radius 없이 — 둥근 모서리가 가장자리의 손/글러브를 잘라먹는다. */
 .auth-hero-img {
   display: block;
-  width: 315px;
-  height: 315px;
+  width: 280px;
+  height: 280px;
   margin: 0 auto;
   object-fit: contain;
-  position: relative;
-  top: 1.5cm;
 }
 
 .auth-line-field {
