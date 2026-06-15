@@ -600,7 +600,7 @@ _LEGEND_RE = re.compile(r"영구\s*결번|레전드|전설(?:적|의)?|프랜차
 def _team_legends(cur, question: str, team_code: str | None) -> list:
     if not team_code or not _LEGEND_RE.search(question):
         return []
-    cur.execute("SELECT name, position, era, note FROM legends WHERE team_code = %s", (team_code,))
+    cur.execute("SELECT name, position, era, note, jersey_no FROM legends WHERE team_code = %s", (team_code,))
     rows = cur.fetchall()
     if not rows:
         return []
@@ -610,12 +610,14 @@ def _team_legends(cur, question: str, team_code: str | None) -> list:
         meta = ", ".join(x for x in (r.get("position"), r.get("era")) if x)
         if meta:
             s += f"({meta})"
+        if r.get("jersey_no"):
+            s += f" [영구결번 {r['jersey_no']}번]"
         if r.get("note"):
             s += f" — {r['note']}"
         items.append(s)
     return [{"topic": "구단 대표/레전드 선수(DB 근거)",
-             "content": "다음은 DB에 등록된 구단 대표 선수다. 등번호(영구결번 번호) 정보는 DB에 없으니 "
-                        "번호를 임의로 단정하지 않는다: " + "; ".join(items)}]
+             "content": "다음은 DB에 등록된 구단 대표 선수다. '영구결번 N번'이 표기된 선수만 영구결번이며, "
+                        "그 외 선수의 등번호·영구결번 여부는 DB에 없으니 임의로 단정하지 않는다: " + "; ".join(items)}]
 
 
 # 일정(내일/다음 경기) 질문 → Mongo schedule 부착. (과거 결과는 _game_results가 담당)
