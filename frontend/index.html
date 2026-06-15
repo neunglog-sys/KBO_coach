@@ -7,7 +7,29 @@
     <script src="/live2dcubismcore.min.js"></script>
   </head>
   <body>
+    <div id="app-startup-cover" aria-hidden="true"></div>
     <div id="root"></div>
+    <style>
+      #app-startup-cover {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: linear-gradient(180deg, #dceeff 0%, #eef7ff 55%, #ffffff 100%);
+        opacity: 1;
+        pointer-events: all;
+        transition: opacity 120ms ease;
+      }
+
+      #app-startup-cover.is-ready {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    <script>
+      window.addEventListener("beforeunload", function () {
+        document.getElementById("app-startup-cover")?.classList.remove("is-ready");
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -9,3 +9,10 @@ createRoot(document.getElementById("root") as HTMLElement).render(
     <App />
   </React.StrictMode>,
 );
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    document.getElementById("app-startup-cover")?.classList.add("is-ready");
+    window.dispatchEvent(new Event("app:first-paint"));
+  });
+});
