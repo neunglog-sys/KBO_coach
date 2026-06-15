@@ -23,10 +23,6 @@ const AUTH_SESSION_KEY = "baseballCoachAuth";
 const APP_ROUTE_TRANSITION_MS = 220;
 const MAIN_STAGE_ASSETS = ["/img/sky.png", "/img/background1.2.png"];
 
-type RouteTransitionOptions = {
-  beforeEnter?: () => Promise<void>;
-};
-
 type AuthSession = {
   isLoggedIn: boolean;
   authToken: string;
@@ -205,14 +201,13 @@ export function App() {
     }
   }, [isLoggedIn]);
 
-  function runRouteTransition(update: () => void, options: RouteTransitionOptions = {}) {
+  function runRouteTransition(update: () => void) {
     const transitionId = routeTransitionIdRef.current + 1;
     routeTransitionIdRef.current = transitionId;
     if (routeTransitionTimerRef.current != null) {
       window.clearTimeout(routeTransitionTimerRef.current);
     }
-    const finishTransition = async () => {
-      await options.beforeEnter?.().catch(() => {});
+    const finishTransition = () => {
       if (routeTransitionIdRef.current !== transitionId) {
         return;
       }
@@ -223,12 +218,12 @@ export function App() {
     };
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) {
-      void finishTransition();
+      finishTransition();
       return;
     }
     setIsRouteLeaving(true);
     routeTransitionTimerRef.current = window.setTimeout(() => {
-      void finishTransition();
+      finishTransition();
     }, APP_ROUTE_TRANSITION_MS);
   }
 
@@ -239,7 +234,7 @@ export function App() {
       setNickname(kakaoSession.nickname);
       setBuddyNickname(kakaoSession.buddyNickname);
       setIsLoggedIn(true);
-    }, { beforeEnter: preloadMainStageAssets });
+    });
     saveAuthSession(
       kakaoSession.authToken,
       kakaoSession.favTeamCode,
@@ -295,10 +290,12 @@ export function App() {
         .then(({ SplashScreen }) => SplashScreen.hide())
         .catch(() => {});
     };
-    // 첫 페인트 직후(더블 rAF) 숨김 + 혹시 실패할 경우를 대비한 안전망 타이머.
-    requestAnimationFrame(() => requestAnimationFrame(hide));
+    window.addEventListener("app:first-paint", hide, { once: true });
     const t = window.setTimeout(hide, 2500);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.removeEventListener("app:first-paint", hide);
+      window.clearTimeout(t);
+    };
   }, []);
 
   // 플랫폼별 CSS 분기용 클래스 (예: .plat-ios — 배경 스크롤 속도 등)
@@ -439,7 +436,7 @@ export function App() {
           setNickname(userNickname);
           setBuddyNickname(userBuddyNickname);
           setIsLoggedIn(true);
-        }, { beforeEnter: preloadMainStageAssets });
+        });
         saveAuthSession(token, teamCode, userNickname, userBuddyNickname, remember);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
@@ -455,7 +452,7 @@ export function App() {
         setNickname("야구팬");
         setBuddyNickname("");
         setIsLoggedIn(true);
-      }, { beforeEnter: preloadMainStageAssets });
+      });
       saveAuthSession("", "", "야구팬", "", remember);
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
@@ -520,7 +517,7 @@ export function App() {
         setNickname(userNickname);
         setBuddyNickname(userBuddyNickname);
         setIsLoggedIn(true);
-      }, { beforeEnter: preloadMainStageAssets });
+      });
       saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
       window.scrollTo({ top: 0, behavior: "auto" });
     } catch (error) {
@@ -608,7 +605,7 @@ export function App() {
 
   // 응원구단 변경: 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗이 같은 팀 값을 봄
   function handleFavTeamChange(code: string) {
-    runRouteTransition(() => setFavTeamCode(code), { beforeEnter: preloadMainStageAssets });
+    runRouteTransition(() => setFavTeamCode(code));
     saveAuthSession(authToken, code, nickname, buddyNickname);
   }
 
