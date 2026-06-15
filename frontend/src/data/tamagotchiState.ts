@@ -75,6 +75,10 @@ function validTimestamp(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
+export function normalizeSpeechText(value: string): string {
+  return value.split("한아디").join("한마디");
+}
+
 function clampCheerPower(value: unknown): number {
   const number = Number(value);
   return Number.isFinite(number)
@@ -169,7 +173,7 @@ export function initializeTamagotchiState(
       lastEvaluatedDate: today,
       moodBase: "보통",
       cheerPower: initialCheerPower(saved),
-      speechText: saved?.speechText?.trim() || defaultSpeech,
+      speechText: normalizeSpeechText(saved?.speechText?.trim() || defaultSpeech),
     }, today);
   }
 
@@ -184,7 +188,7 @@ export function initializeTamagotchiState(
     lastEvaluatedDate: saved.lastEvaluatedDate,
     moodBase: saved.moodBase === "나쁨" ? "나쁨" : "보통",
     cheerPower: initialCheerPower(saved),
-    speechText: saved.speechText?.trim() || defaultSpeech,
+    speechText: normalizeSpeechText(saved.speechText?.trim() || defaultSpeech),
   };
 
   if (state.lastEvaluatedDate >= today) {
