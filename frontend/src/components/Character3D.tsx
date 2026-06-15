@@ -198,7 +198,7 @@ const SWING_NAME = "swing"; // 배트 스윙 클립 — swingSignal 시 1회 재
 const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
-const MODEL_FRAME_HEIGHT = 1.8;
+const MODEL_FRAME_HEIGHT = 2.3;
 const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
@@ -310,12 +310,27 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
           }
         });
 
-        // 중앙 정렬 + 크기 정규화
+        // 크기 정규화: 전체(배트 포함) bbox로 스케일 — 화면에 다 들어오도록.
+        model.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
         const scale = MODEL_FRAME_HEIGHT / maxDim;
+
+        // 중앙 정렬 기준: 배트(Material_0)는 한쪽으로 튀어나와 bbox를 비대칭으로 만들어
+        // 몸통이 치우쳐 보인다 → 배트를 제외한 '몸통' bbox 중심으로 정렬한다.
+        const bodyBox = new THREE.Box3();
+        let hasBody = false;
+        model.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          if (mats.some((m) => (m as THREE.Material)?.name === "Material_0")) return; // 배트 제외
+          bodyBox.expandByObject(mesh);
+          hasBody = true;
+        });
+        const center = (hasBody ? bodyBox : box).getCenter(new THREE.Vector3());
+
         model.scale.setScalar(scale);
         model.position.sub(center.multiplyScalar(scale));
         model.position.y += MODEL_VERTICAL_OFFSET;

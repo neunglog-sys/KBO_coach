@@ -313,7 +313,8 @@
   z-index: 2;
   width: var(--stage-character-size);
   height: var(--stage-character-size);
-  transform: translateX(-50%);
+  /* 가운데에서 왼쪽으로 10px 보정 */
+  transform: translateX(calc(-50% - 10px));
 }
 
 .stage-character-canvas {
@@ -655,11 +656,8 @@
 }
 
 
-/* 키보드 열림(kb-open): 공복이를 남은 화면 띠로 올려 계속 보이게 */
-.kb-open .stage-character {
-  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -0.1)) scale(0.8);
-  transition: transform 0.25s ease;
-}
+/* (제거됨) 키보드 열림 시 캐릭터 축소(scale 0.8) 반응형 — 요청에 따라 삭제.
+   채팅창이 올라가도 캐릭터는 기본 위치·크기를 유지한다. */
 
 
 /* iOS: 상단 메뉴 3px 위로 (디자인 보정 요청) */
