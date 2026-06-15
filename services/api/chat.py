@@ -109,6 +109,16 @@ class ChatIn(BaseModel):
     personal_context: str | None = None   # 앱이 로컬 SQLite에서 꺼낸 개인기록(서버 미저장, 답변 생성에만 일시 사용)
 
 
+import datetime as _dt
+
+_KST = _dt.timezone(_dt.timedelta(hours=9))
+
+
+def _kst_today() -> _dt.date:
+    """서버가 UTC라 date.today()는 최대 9시간 밀려 날짜가 어긋난다 → KST 기준 '오늘' 날짜."""
+    return _dt.datetime.now(_KST).date()
+
+
 def _build_system_prompt(persona: dict | None) -> str:
     base_rules = (
         "\n[공통 규칙]\n"
@@ -216,6 +226,13 @@ def _build_system_prompt(persona: dict | None) -> str:
         "- 아래 [참고자료]가 주어지면 그 내용을 우선해서 답한다.\n"
     )
 
+    base_rules += (
+        f"\n[오늘 날짜]\n"
+        f"- 오늘은 {_kst_today():%Y-%m-%d}(KST)이다.\n"
+        "- 사용자가 '오늘/어제 이겼다'처럼 단정해도, [참고자료]의 경기 날짜가 그날과 다르면 "
+        "그 경기를 그날 일처럼 말하지 않는다. 해당 날짜의 경기 데이터가 없으면 결과를 지어내지 말고 모른다고 안내한다.\n"
+    )
+
     if not persona:
         return "너는 KBO 야구 초보 관람객을 돕는 친절한 야구 도우미야." + base_rules
 
@@ -303,14 +320,13 @@ def _today_lineups(question: str, team_code: str | None) -> list:
         return []
     try:
         from db import db as _mongo
-        import datetime as _dt
-        today = _dt.date.today().isoformat()
+        today = _kst_today().isoformat()
         docs = list(_mongo["lineups"].find({"date": today}))
     except Exception:
         return []
     if not docs:
         return [{"topic": "오늘 선발 라인업",
-                 "content": f"오늘({_dt.date.today():%m월 %d일}) 라인업 데이터가 아직 없다. "
+                 "content": f"오늘({_kst_today():%m월 %d일}) 라인업 데이터가 아직 없다. "
                             "보통 경기 1시간 전에 확정되니, 지어내지 말고 경기 가까워지면 다시 물어봐 달라고 안내한다."}]
     # 질문에 언급됐거나 페르소나 팀의 경기는 타순까지, 나머지는 선발투수만
     q = question
@@ -395,7 +411,15 @@ def _game_results(question: str, team_code: str | None) -> list:
     if not rows:
         return []
     lines = [f"{r['원정팀']} {r['원정점수']}:{r['홈점수']} {r['홈팀']} ({r['구장']}, {r['상태']})" for r in rows]
-    out = [{"topic": f"가장 최근 경기 결과({d})", "content": "\n".join(lines)}]
+    today = _kst_today().isoformat()
+    if str(d) == today:
+        out = [{"topic": f"오늘({d}) 경기 결과", "content": "\n".join(lines)}]
+    else:
+        # 오늘 경기 데이터가 없을 때 과거 경기를 '오늘'로 단정하지 않도록 명시(할루시네이션 방지).
+        out = [{"topic": "주의: 오늘 경기 결과 없음",
+                "content": f"오늘은 {today}이고 오늘 경기 결과 데이터는 없다. 아래는 가장 최근 경기({d})로 과거 경기다. "
+                           "사용자가 '오늘 이겼다'처럼 말해도 이 경기를 오늘 일로 단정하지 말고, 물어보면 실제 날짜를 알려준다."},
+               {"topic": f"가장 최근 경기 결과({d})", "content": "\n".join(lines)}]
     # 페르소나 팀 경기는 주요 타자 기록까지
     pname = _CODE2NAME.get(team_code or "", "")
     target = next((r for r in rows if pname and pname in (r["홈팀"], r["원정팀"])), None)
