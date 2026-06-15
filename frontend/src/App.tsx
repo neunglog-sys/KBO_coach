@@ -21,7 +21,6 @@ const DEMO_AUTH = {
 };
 
 const AUTH_SESSION_KEY = "baseballCoachAuth";
-const APP_ROUTE_TRANSITION_MS = 220;
 const MAIN_STAGE_ASSETS = ["/img/sky.png", "/img/background1.2.png"];
 
 type AuthSession = {
@@ -189,10 +188,6 @@ export function App() {
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
   const [showExitHint, setShowExitHint] = useState(false);
-  const [routeTransitionKey, setRouteTransitionKey] = useState(0);
-  const [isRouteLeaving, setIsRouteLeaving] = useState(false);
-  const routeTransitionTimerRef = useRef<number | null>(null);
-  const routeTransitionIdRef = useRef(0);
   const lastLoginBackPressRef = useRef(0);
   const exitHintTimerRef = useRef<number | null>(null);
 
@@ -203,29 +198,7 @@ export function App() {
   }, [isLoggedIn]);
 
   function runRouteTransition(update: () => void) {
-    const transitionId = routeTransitionIdRef.current + 1;
-    routeTransitionIdRef.current = transitionId;
-    if (routeTransitionTimerRef.current != null) {
-      window.clearTimeout(routeTransitionTimerRef.current);
-    }
-    const finishTransition = () => {
-      if (routeTransitionIdRef.current !== transitionId) {
-        return;
-      }
-      update();
-      setRouteTransitionKey((key) => key + 1);
-      setIsRouteLeaving(false);
-      routeTransitionTimerRef.current = null;
-    };
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      finishTransition();
-      return;
-    }
-    setIsRouteLeaving(true);
-    routeTransitionTimerRef.current = window.setTimeout(() => {
-      finishTransition();
-    }, APP_ROUTE_TRANSITION_MS);
+    update();
   }
 
   function applyKakaoSession(kakaoSession: AuthSession) {
@@ -250,14 +223,6 @@ export function App() {
     const kakaoSession = readKakaoAuthSession();
     if (!kakaoSession) return;
     applyKakaoSession(kakaoSession);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (routeTransitionTimerRef.current != null) {
-        window.clearTimeout(routeTransitionTimerRef.current);
-      }
-    };
   }, []);
 
   useEffect(() => {
@@ -626,8 +591,8 @@ export function App() {
     <main className="app-shell">
       <FpsOverlay enabled={new URLSearchParams(window.location.search).has("fps")} />
       <div
-        key={`${isLoggedIn ? "app" : authMode}-${routeTransitionKey}`}
-        className={`app-route-transition ${isRouteLeaving ? "is-leaving" : ""}`}
+        key={isLoggedIn ? "app" : authMode}
+        className="app-route-transition"
       >
         {isLoggedIn ? (
           <>
