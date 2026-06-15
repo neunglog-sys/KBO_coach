@@ -1401,7 +1401,14 @@ export function MainViewV2({
     if (!section || !log) return computeMaxChatHeight();
 
     const viewport = window.visualViewport;
-    const viewportBottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
+    const rawViewportBottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
+    const keyboardInsetValue = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue("--keyboard-inset");
+    const keyboardInset = Number.parseFloat(keyboardInsetValue) || 0;
+    const viewportBottom = keyboardInset > 0
+      ? Math.min(rawViewportBottom, window.innerHeight - keyboardInset)
+      : rawViewportBottom;
     const navRect = topNavRef.current?.getBoundingClientRect();
     const handleRect = navHandleRef.current?.getBoundingClientRect();
     const topLimit = navHiddenRef.current
@@ -1410,6 +1417,25 @@ export function MainViewV2({
     const chrome = section.offsetHeight - log.offsetHeight;
 
     return Math.max(80, viewportBottom - topLimit - 8 - chrome);
+  };
+
+  const clampChatHeightToBounds = () => {
+    setChatHeight((height) => {
+      if (height == null) return height;
+      const maxH = computeBoundedMaxChatHeight();
+      return Math.min(Math.max(80, height), maxH);
+    });
+  };
+
+  const handleMainInputFocus = () => {
+    setInputFocused(true);
+    [0, 120, 320, 560].forEach((delay) => {
+      window.setTimeout(() => clampChatHeightToBounds(), delay);
+    });
+  };
+
+  const handleMainInputBlur = () => {
+    setInputFocused(false);
   };
 
   const handleChatHandleDown = (e: ReactPointerEvent) => {
@@ -1599,8 +1625,8 @@ export function MainViewV2({
             type="text"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
+            onFocus={handleMainInputFocus}
+            onBlur={handleMainInputBlur}
             placeholder="텍스트 입력 창"
             aria-label="질문 입력"
           />
