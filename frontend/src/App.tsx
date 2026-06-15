@@ -11,6 +11,7 @@ import { MainViewV2 } from "./components/MainViewV2";
 import { RegisterView } from "./components/RegisterView";
 import { TeamSelectOnboarding } from "./components/TeamSelectOnboarding";
 import { FpsOverlay } from "./components/FpsOverlay";
+import { KbDebugOverlay } from "./components/KbDebugOverlay";
 
 // 팀 선택 온보딩 강제 표시 (개발용 — 배포/발표 전 반드시 false!)
 const FORCE_SHOW_TEAM_ONBOARDING = false;
@@ -590,6 +591,7 @@ export function App() {
   return (
     <main className="app-shell">
       <FpsOverlay enabled={new URLSearchParams(window.location.search).has("fps")} />
+      <KbDebugOverlay enabled={new URLSearchParams(window.location.search).has("kbdebug")} />
       <div
         key={isLoggedIn ? "app" : authMode}
         className="app-route-transition"
