@@ -49,19 +49,19 @@
 | VIEW | 1 | 2 | 3 |
 |---|---|---|---|
 | 로그인 및 시작하기 | 회원가입 | 로그인 | 응원구단 선택 |
-|  | [🎥 보기](./docs/rd/demo/signup.mp4) | [🎥 보기](./docs/rd/demo/login.mp4) | [🎥 보기](./docs/rd/demo/team-select.mp4) |
+|  | <video src="./docs/rd/demo/signup.mp4" width="220" controls></video> | <video src="./docs/rd/demo/login.mp4" width="220" controls></video> | <video src="./docs/rd/demo/team-select.mp4" width="220" controls></video> |
 | 메인 서비스 | 홈 화면 | AI 도우미 | - |
-|  | [🎥 보기](./docs/rd/demo/home.mp4) | [🎥 보기](./docs/rd/demo/ai-chat.mp4) | - |
+|  | <video src="./docs/rd/demo/home.mp4" width="220" controls></video> | <video src="./docs/rd/demo/ai-chat.mp4" width="220" controls></video> | - |
 | 채팅방 | 채팅방 메인 | - | - |
-|  | [🎥 보기](./docs/rd/demo/team-chat.mp4) | - | - |
+|  | <video src="./docs/rd/demo/team-chat.mp4" width="220" controls></video> | - | - |
 | 나만의 기록 | 연속 기록 도전 | 직관 기록 캘린더 | 경기 기록 조회 |
-|  | [🎥 보기](./docs/rd/demo/record-challenge.mp4) | [🎥 보기](./docs/rd/demo/record-calendar.mp4) | [🎥 보기](./docs/rd/demo/game-record.mp4) |
+|  | <video src="./docs/rd/demo/record-challenge.mp4" width="220" controls></video> | <video src="./docs/rd/demo/record-calendar.mp4" width="220" controls></video> | <video src="./docs/rd/demo/game-record.mp4" width="220" controls></video> |
 | 야구짝꿍 | 성별 · 닉네임 설정 | 야구짝꿍 메인화면 | 꾸미기 |
-|  | [🎥 보기](./docs/rd/demo/mate-setup.mp4) | [🎥 보기](./docs/rd/demo/mate-home.mp4) | [🎥 보기](./docs/rd/demo/mate-custom.mp4) |
+|  | <video src="./docs/rd/demo/mate-setup.mp4" width="220" controls></video> | <video src="./docs/rd/demo/mate-home.mp4" width="220" controls></video> | <video src="./docs/rd/demo/mate-custom.mp4" width="220" controls></video> |
 | 구장정보 | 구장 안내 | 먹거리 정보 | 지역 정보 |
-|  | [🎥 보기](./docs/rd/demo/stadium-info.mp4) | [🎥 보기](./docs/rd/demo/stadium-food.mp4) | [🎥 보기](./docs/rd/demo/stadium-area.mp4) |
+|  | <video src="./docs/rd/demo/stadium-info.mp4" width="220" controls></video> | <video src="./docs/rd/demo/stadium-food.mp4" width="220" controls></video> | <video src="./docs/rd/demo/stadium-area.mp4" width="220" controls></video> |
 | 환경설정 | 환경설정 | 내 정보 | 응원구단 변경 |
-|  | [🎥 보기](./docs/rd/demo/settings.mp4) | [🎥 보기](./docs/rd/demo/profile.mp4) | [🎥 보기](./docs/rd/demo/change-team.mp4) |
+|  | <video src="./docs/rd/demo/settings.mp4" width="220" controls></video> | <video src="./docs/rd/demo/profile.mp4" width="220" controls></video> | <video src="./docs/rd/demo/change-team.mp4" width="220" controls></video> |
 
 ---
 
