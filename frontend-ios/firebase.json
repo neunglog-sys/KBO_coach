@@ -1,0 +1,55 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        "source": "/firebase-messaging-sw.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "source": "**/*.glb",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+      }
+    ],
+    "rewrites": [
+      { "source": "/auth{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/chat{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/weather{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/standings{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/hitters{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/pitchers{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/players{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/games{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/scoreboards{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/lineups{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/schedule{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/teams{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/glossary{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/stadiums{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/rules{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/cheering{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/umpire_signals{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/visits{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/favorites{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/recommendations{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/board{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/my-records{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/attendance{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/quiz{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/tamagotchi{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/push{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/tts{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "/internal{,/**}", "run": { "serviceId": "kbo-api", "region": "asia-northeast3" } },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}

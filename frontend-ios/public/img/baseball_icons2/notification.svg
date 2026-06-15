@@ -1,0 +1,25 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="notification">
+  <defs>
+    <linearGradient id="bg_notification" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd24d"/><stop offset="1" stop-color="#f5a623"/>
+    </linearGradient>
+    <linearGradient id="gloss_notification" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="ds_notification" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="30" fill="url(#bg_notification)" filter="url(#ds_notification)"/>
+  <rect x="8" y="8" width="104" height="60" rx="30" fill="url(#gloss_notification)"/>
+  <g transform="translate(60,60)">
+  <g transform="translate(0,5)">
+    <path d="M0,-26 a14,14 0 0 1 14,14 v8 l6,8 h-40 l6,-8 v-8 a14,14 0 0 1 14,-14 z" fill="#ffffff"/>
+    <path d="M-6,12 a6,6 0 0 0 12,0 z" fill="#ffffff"/>
+    <circle cx="0" cy="-26" r="4" fill="#ffffff"/>
+  </g>
+  <circle cx="16" cy="-13" r="6" fill="#ff5c5c"/>
+</g>
+</svg>
