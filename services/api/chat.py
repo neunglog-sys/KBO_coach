@@ -429,7 +429,43 @@ def _game_results(question: str, team_code: str | None) -> list:
         if hits:
             hl = ", ".join(f"{h['선수명']}({h['팀']}) {h['타수']}타수{h['안타']}안타 {h['타점']}타점" for h in hits)
             out.append({"topic": f"{pname} 최근 경기 주요 타자", "content": hl})
+        # 페르소나 팀 경기별 투수 기록(선발 우선, 박스스코어 순서대로 상위 3명)
+        pits = list(m["game_pitchers"].find({"gameId": target["gameId"], "팀": pname}, {"_id": 0}).limit(3))
+        if pits:
+            pl = ", ".join(
+                f"{p.get('선수명','')}({p.get('결과','')}) {p.get('이닝','')}이닝 {p.get('자책','')}자책"
+                for p in pits)
+            out.append({"topic": f"{pname} 최근 경기 투수", "content": pl})
     return out
+
+
+# 이닝별 점수(스코어보드) 질문 → Mongo game_scoreboards 부착. (최종 점수만은 _game_results 담당)
+_SCOREBOARD_RE = re.compile(r"이닝별|회별|이닝\s*(점수|별|득점)|스코어\s*?보드|스코어보드|회초|회말|몇\s*회")
+
+
+def _game_scoreboard(question: str, team_code: str | None) -> list:
+    if not _SCOREBOARD_RE.search(question):
+        return []
+    m = _mongo_kbo()
+    d = _latest("game_scoreboards", m)
+    if not d:
+        return []
+    rows = list(m["game_scoreboards"].find({"date": d}, {"_id": 0}))
+    if not rows:
+        return []
+    pname = _CODE2NAME.get(team_code or "", "")
+    target = next((r for r in rows if pname and pname in (r.get("home", ""), r.get("away", ""))), rows[0])
+    aw, hm = target.get("away", ""), target.get("home", "")
+
+    def line(side):
+        s = side or {}
+        sc = " ".join(str(x) for x in s.get("inning_scores", []))
+        return f"{sc}  (R{s.get('R','')} H{s.get('H','')} E{s.get('E','')})"
+
+    content = (f"{target.get('date','')} {aw} vs {hm} 이닝별 득점\n"
+               f"{aw}: {line(target.get('away_line'))}\n"
+               f"{hm}: {line(target.get('home_line'))}")
+    return [{"topic": f"이닝별 스코어보드({target.get('date','')})", "content": content}]
 
 
 def _stat_leaders(question: str) -> list:
@@ -557,6 +593,81 @@ def _fuzzy_terms(cur, question: str, already: set) -> list:
     return hits
 
 
+# 구단 레전드/영구결번 질문 → legends 테이블(Postgres) 부착. (등번호 컬럼은 DB에 없음)
+_LEGEND_RE = re.compile(r"영구\s*결번|레전드|전설(?:적|의)?|프랜차이즈\s*스타|원\s*클럽")
+
+
+def _team_legends(cur, question: str, team_code: str | None) -> list:
+    if not team_code or not _LEGEND_RE.search(question):
+        return []
+    cur.execute("SELECT name, position, era, note, jersey_no FROM legends WHERE team_code = %s", (team_code,))
+    rows = cur.fetchall()
+    if not rows:
+        return []
+    items = []
+    for r in rows:
+        s = r["name"]
+        meta = ", ".join(x for x in (r.get("position"), r.get("era")) if x)
+        if meta:
+            s += f"({meta})"
+        if r.get("jersey_no"):
+            s += f" [영구결번 {r['jersey_no']}번]"
+        if r.get("note"):
+            s += f" — {r['note']}"
+        items.append(s)
+    return [{"topic": "구단 대표/레전드 선수(DB 근거)",
+             "content": "다음은 DB에 등록된 구단 대표 선수다. '영구결번 N번'이 표기된 선수만 영구결번이며, "
+                        "그 외 선수의 등번호·영구결번 여부는 DB에 없으니 임의로 단정하지 않는다: " + "; ".join(items)}]
+
+
+# 일정(내일/다음 경기) 질문 → Mongo schedule 부착. (과거 결과는 _game_results가 담당)
+_SCHEDULE_RE = re.compile(r"(내일|모레|다음|이번\s*주|이번주|다음\s*주)\s*.{0,6}경기"
+                          r"|경기\s*(일정|언제|시간|몇\s*시)|언제\s*(경기|뛰|해)|다음\s*상대")
+
+
+def _schedule_games(question: str, team_code: str | None) -> list:
+    if not _SCHEDULE_RE.search(question):
+        return []
+    m = _mongo_kbo()
+    pname = _CODE2NAME.get(team_code or "", "")
+    today = _kst_today()
+    today_s = today.isoformat()
+
+    def belongs(r):
+        return (not pname) or pname in (r.get("홈팀", ""), r.get("원정팀", ""))
+
+    if re.search(r"이번\s*주|이번주|다음\s*주", question):
+        end = (today + _dt.timedelta(days=7)).isoformat()
+        rows = list(m["schedule"].find({"date": {"$gte": today_s, "$lte": end}}, {"_id": 0}).sort("date", 1))
+        label = "다가오는 일주일 경기 일정"
+    elif "내일" in question or "모레" in question:
+        target = (today + _dt.timedelta(days=2 if "모레" in question else 1)).isoformat()
+        rows = list(m["schedule"].find({"date": target}, {"_id": 0}))
+        label = f"{target} 경기 일정"
+    else:   # 다음 경기 / 언제 / 다음 상대 → 오늘 이후 가장 가까운 경기
+        rows = list(m["schedule"].find({"date": {"$gt": today_s}}, {"_id": 0}).sort("date", 1).limit(30))
+        label = "다음 경기 일정"
+
+    rows = [r for r in rows if belongs(r)]
+    if not rows:
+        return [{"topic": label,
+                 "content": "해당 일정 데이터가 없다. 결과를 지어내지 말고, 아직 일정이 안 나왔거나 "
+                            "경기가 없을 수 있다고 안내한다."}]
+    if label == "다음 경기 일정" and pname:
+        rows = rows[:1]   # 페르소나 팀의 가장 가까운 1경기
+
+    def fmt(r):
+        base = f"{r.get('date','')} {r.get('원정팀','')} vs {r.get('홈팀','')}"
+        if r.get("time"):
+            base += f" {r['time']}"
+        stadium = r.get("stadium") or r.get("구장")
+        if stadium:
+            base += f" @{stadium}"
+        return base
+
+    return [{"topic": label, "content": "\n".join(fmt(r) for r in rows)}]
+
+
 def _retrieve(cur, question: str, team_code: str | None):
     """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색) + 구단 기본팩트(teams)."""
     cur.execute("SELECT term, definition FROM glossary "
@@ -574,7 +685,8 @@ def _retrieve(cur, question: str, team_code: str | None):
                 "WHERE %s ILIKE '%%' || topic || '%%' LIMIT 3", (question,))
     rules = cur.fetchall()
     try:
-        rules = rules + _umpire_signals(cur, question) + _fielder_number_rule(cur, question)
+        rules = rules + _umpire_signals(cur, question) + _fielder_number_rule(cur, question) \
+            + _team_legends(cur, question, team_code)
     except Exception:
         pass   # 트리거 조회 실패 비치명
     try:
@@ -582,7 +694,9 @@ def _retrieve(cur, question: str, team_code: str | None):
     except Exception:
         pass   # 라인업 조회 실패 비치명
     for fn in (lambda: _standings(question), lambda: _game_results(question, team_code),
-               lambda: _stat_leaders(question), lambda: _player_lookup(question)):
+               lambda: _stat_leaders(question), lambda: _player_lookup(question),
+               lambda: _schedule_games(question, team_code),
+               lambda: _game_scoreboard(question, team_code)):
         try:
             rules = rules + fn()
         except Exception:

@@ -28,7 +28,7 @@ def team_detail(team_code: str):
             team = cur.fetchone()
             if not team:
                 raise HTTPException(status_code=404, detail="구단 없음")
-            cur.execute("SELECT name, position, era, note FROM legends WHERE team_code = %s", (team_code,))
+            cur.execute("SELECT name, position, era, note, jersey_no FROM legends WHERE team_code = %s", (team_code,))
             legends = cur.fetchall()
         return {"team": team, "legends": legends}
     finally:
