@@ -221,10 +221,12 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   function handleInputFocus() {
     updateChatLayout();
     scrollToBottom("auto");
-    window.setTimeout(() => {
-      updateChatLayout();
-      scrollToBottom("auto");
-    }, 360);
+    [120, 320, 560, 820].forEach((delay) => {
+      window.setTimeout(() => {
+        updateChatLayout();
+        scrollToBottom("auto");
+      }, delay);
+    });
   }
 
   useEffect(() => {
