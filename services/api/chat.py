@@ -27,6 +27,7 @@ import pcache
 import tts
 from attendance import _user_key
 from personalization import record_answer, record_question
+import session_metrics
 
 router = APIRouter(tags=["chat"])
 
@@ -669,6 +670,14 @@ def _prepare(body: ChatIn):
 
 @router.post("/chat")
 def chat(body: ChatIn, authorization: str | None = Header(default=None)):
+    """완료율 계측 wrapper — 정상 반환 시에만 complete 기록(예외 발생 시 미완료로 남음)."""
+    session_metrics.record("chat", "start")
+    result = _chat_impl(body, authorization)
+    session_metrics.record("chat", "complete")
+    return result
+
+
+def _chat_impl(body: ChatIn, authorization: str | None):
     _record_authenticated_question(authorization, body.question)
     # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
     cache_key = None
@@ -733,12 +742,14 @@ def chat_stream(body: ChatIn, authorization: str | None = Header(default=None)):
                                  media_type="text/plain; charset=utf-8")
 
     def gen():
+        session_metrics.record("chat_stream", "start")
         try:
             for t in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
                 if t:
                     yield t
         except Exception:
             return   # 실패 시 스트림 종료 → 프론트가 빈 응답 감지하고 폴백
+        session_metrics.record("chat_stream", "complete")   # 끝까지 소비됨 = 정상종료
 
     return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
 
@@ -826,14 +837,17 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
         cached = _voice_cache_get(cache_key)
         if cached is not None:   # 캐시 적중 → 저장된 문장 음성 즉시 흘림
             def replay():
+                session_metrics.record("voice_stream", "start")
                 for ev in cached:
                     yield f"data: {json.dumps({**ev, 'cached': True}, ensure_ascii=False)}\n\n"
                 yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+                session_metrics.record("voice_stream", "complete")
             return StreamingResponse(replay(), media_type="text/event-stream")
 
     system, user, _ = _prepare(body)
 
     def gen():
+        session_metrics.record("voice_stream", "start")
         # 생산자 스레드: Gemini를 계속 생성하며 완성된 문장을 큐에 넣음
         # 소비자(본 제너레이터): 큐에서 문장을 꺼내 TTS → SSE. 생성과 합성이 겹쳐 전체 시간↓
         q: "queue.Queue" = queue.Queue()
@@ -862,6 +876,7 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
         threading.Thread(target=produce, daemon=True).start()
 
         events: list[dict] = []
+        ok = True
         while True:
             item = q.get()
             if item is SENTINEL:
@@ -869,6 +884,7 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
             if isinstance(item, tuple) and item and item[0] == "__error__":
                 # 생성 단계 에러 → 에러 알리고 종료(프론트가 폴백)
                 yield f"data: {json.dumps({'error': item[1]}, ensure_ascii=False)}\n\n"
+                ok = False
                 break
             try:
                 ev = _synth_event(item, body.team_code)
@@ -881,5 +897,7 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
         if cache_key is not None and events:
             _voice_cache_put(cache_key, events)
         yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+        if ok:
+            session_metrics.record("voice_stream", "complete")   # 정상 끝까지 = 완료
 
     return StreamingResponse(gen(), media_type="text/event-stream")
