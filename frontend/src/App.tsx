@@ -591,7 +591,7 @@ export function App() {
   return (
     <main className="app-shell">
       <FpsOverlay enabled={new URLSearchParams(window.location.search).has("fps")} />
-      <KbDebugOverlay enabled={new URLSearchParams(window.location.search).has("kbdebug")} />
+      <KbDebugOverlay enabled={new URLSearchParams(window.location.search).has("kbdebug") || Capacitor.getPlatform() === "ios"} />
       <div
         key={isLoggedIn ? "app" : authMode}
         className="app-route-transition"
