@@ -1,189 +1,162 @@
-# Baseball Rookie Coach Frontend
+# iOS Frontend README
 
-야구 초보자를 위한 음성 기반 React 프론트엔드입니다. 사용자가 STT로 질문하면 프론트가 FastAPI 백엔드의 LLM 챗봇 API에 질문을 보내고, 응답을 화면과 TTS로 출력합니다.
+이 폴더는 iOS TestFlight 배포용 프론트엔드입니다. 기존 `frontend`를 기반으로 복제했지만, 현재 iOS TestFlight workflow는 `frontend-ios`만 빌드합니다.
 
-## 기술 스택
+## 결론
 
-- Vite
-- React
-- TypeScript
-- TSX 컴포넌트 구조
-- Web Speech API 기반 STT/TTS
+- 웹/Firebase Hosting 배포 기준 폴더: `frontend`
+- 기존 Android 앱 기준 폴더: `frontend`
+- iOS TestFlight 배포 기준 폴더: `frontend-ios`
+- `frontend/ios`는 기존 Android 앱에 직접 영향 없음
+- `frontend-ios/android`는 iOS TestFlight 앱에 직접 영향이 없어 삭제했습니다
 
-## 실행 방법
+## 왜 iOS 폴더를 분리했는가
 
-```powershell
-cd "C:\Users\82102_asozp43\OneDrive\바탕 화면\project2\project\frontend"
-npm install
-npm run dev
-```
+처음에는 하나의 `frontend` 폴더에서 웹, Android, iOS를 같이 관리했습니다. 이 방식은 코드 중복이 적다는 장점은 있지만, 모바일 WebView에서는 문제가 컸습니다.
 
-브라우저에서 아래 주소를 엽니다.
+Android WebView와 iOS WKWebView가 같은 CSS/JavaScript를 다르게 처리했기 때문입니다. 특히 아래 영역에서 차이가 컸습니다.
 
-```text
-http://127.0.0.1:5000
-```
+- 키보드가 올라올 때 WebView 높이가 줄어드는 방식
+- `100vh`, `100dvh`, `position: fixed` 계산 방식
+- `visualViewport` 값이 바뀌는 타이밍
+- iPhone safe-area, 홈 인디케이터, 키보드 accessory bar 처리
+- Capacitor Keyboard `resize` 설정의 플랫폼별 동작 차이
+- Kakao Maps 같은 외부 SDK가 보는 WebView origin/scheme 차이
 
-`file://.../frontend/index.html`로 직접 열면 Vite 프록시와 React 개발 서버가 동작하지 않습니다. 반드시 `npm run dev`로 실행한 뒤 `http://127.0.0.1:5000`에서 확인하세요.
+Android에서 이미 정상 동작하도록 맞춘 상태에서 iOS 문제를 고치려고 같은 `frontend` 코드를 수정하면 Android UI가 흔들릴 위험이 컸습니다. 반대로 Android 기준으로 둔 코드는 iOS에서 입력창, 스크롤, 화면 높이, 지도 로딩 문제가 계속 발생했습니다.
 
-## 주요 명령어
+그래서 Android/Web 안정본은 `frontend`에 두고, iOS TestFlight용 수정은 `frontend-ios`에만 누적하는 방식으로 분리했습니다.
 
-```powershell
-npm run dev
-npm run typecheck
+## 분리 전 실제 문제
+
+하나의 `frontend`에서 같이 관리할 때 발생한 대표 문제입니다.
+
+- 팀 채팅방에서 iOS 키보드가 올라오면 입력창 또는 최신 채팅이 가려짐
+- 키보드가 닫힌 뒤에도 iOS viewport 높이가 늦게 복구되어 빈 공간이 생김
+- 메인 채팅창이 iOS에서 너무 위로 튀거나 헤더 영역을 침범함
+- 로그인 화면 배경 비율이 iPhone 화면에서 Android와 다르게 보임
+- 회원가입 화면이 iOS에서 스크롤되지 않음
+- 야구짝꿍 설정 같은 입력 폼에서 키보드가 입력창을 가림
+- Kakao 지도 SDK가 iOS WebView origin/scheme 문제로 로딩되지 않음
+
+이 문제들은 단순히 CSS 하나가 틀린 문제가 아니라, Android와 iOS WebView의 viewport/keyboard/safe-area 동작 차이에서 나온 문제입니다.
+
+## 분리 후 수정 방식
+
+현재 iOS 쪽 수정은 `frontend-ios` 내부에서만 진행합니다.
+
+주요 iOS 보정 내용은 다음 파일들에 들어 있습니다.
+
+- `src/App.tsx`
+  - 플랫폼 클래스를 `html`에 부여합니다. 예: `plat-ios`, `plat-android`
+  - iOS 키보드 상태를 `kb-open` 클래스로 관리합니다.
+  - `--keyboard-inset` CSS 변수를 설정해 입력창과 채팅창을 키보드 위로 올립니다.
+
+- `src/components/MainViewV2.tsx`, `src/components/MainViewV2.css`
+  - 메인 채팅창 높이 제한과 키보드 대응을 iOS에 맞게 조정합니다.
+  - 채팅창을 위로 키운 상태에서 입력해도 헤더를 침범하지 않게 제한합니다.
+
+- `src/components/TeamChatView.tsx`, `src/components/TeamChatView.css`
+  - 팀 채팅방에서 키보드가 올라와도 입력창과 최신 채팅이 같이 보이도록 조정합니다.
+  - 키보드를 입력 없이 닫아도 줄어든 viewport 높이가 남지 않도록 복구합니다.
+
+- `styles.css`
+  - 로그인/회원가입/야구짝꿍 설정 등 iOS 입력 폼에서 키보드가 입력창을 가리지 않도록 보정합니다.
+
+- `src/components/StadiumMap.tsx`
+  - iOS WebView에서 Kakao Maps SDK를 불러올 때 필요한 origin/scheme 대응을 포함합니다.
+
+## 실제 빌드 경로
+
+### 웹 배포
+
+`.github/workflows/deploy.yml`은 `frontend`를 빌드하고 Firebase Hosting에 배포합니다.
+
+```yml
+working-directory: frontend
 npm run build
-npm run preview
 ```
 
-- `dev`: 5000번 포트에서 개발 서버 실행
-- `typecheck`: TypeScript 타입 검사
-- `build`: 배포용 빌드
-- `preview`: 빌드 결과 미리보기
+### iOS TestFlight 배포
 
-## TSX 전환 구조
+`.github/workflows/ios-testflight.yml`은 `frontend-ios`를 빌드하고, 그 안의 iOS 프로젝트를 archive합니다.
 
-기존 순수 HTML/CSS/JS 구조를 React + TypeScript 구조로 전환했습니다.
-
-```text
-frontend/
-  index.html
-  styles.css
-  vite.config.js
-  tsconfig.json
-  package.json
-  src/
-    main.tsx
-    App.tsx
-    components/
-      LoginView.tsx
-      MainView.tsx
-    data/
-      baseballBasics.ts
-    types/
-      speech-recognition.d.ts
-    vite-env.d.ts
-  public/
-    img/
-      character.png
-      ...
-  assets/
-    stadium-background.svg
+```yml
+working-directory: frontend-ios
+npm run build
+npx cap sync ios
+xcodebuild -project ios/App/App.xcodeproj -scheme App ...
 ```
 
-역할은 다음과 같습니다.
+따라서 TestFlight에 반영하려면 `frontend-ios`를 수정해야 합니다. `frontend/src` 또는 `frontend/ios`만 수정하면 현재 TestFlight 빌드에는 반영되지 않습니다.
 
-- `src/main.tsx`: React 앱 진입점
-- `src/App.tsx`: 로그인 상태와 인증 토큰 관리
-- `src/components/LoginView.tsx`: 로그인 화면
-- `src/components/MainView.tsx`: 메인 화면, 야구 10단 팀 선택, STT, TTS, 챗봇 UI, 야구 기초 목록
-- `src/data/baseballBasics.ts`: 야구 기초 이미지 목록과 임시 fallback 답변
-- `src/data/kboTeams.ts`: KBO 10개 구단 선택 목록
-- `src/types/speech-recognition.d.ts`: 브라우저 STT 타입 선언
-- `styles.css`: 전체 반응형 UI와 배경 스타일
+### iOS Simulator 빌드
 
-## 백엔드 아키텍처 연동
+`.github/workflows/ios-build.yml`은 현재 `frontend`의 iOS 프로젝트를 봅니다.
 
-백엔드는 `services/api`의 FastAPI 서버를 기준으로 맞춥니다.
-
-```text
-Frontend(Vite + React)  http://127.0.0.1:5000
-        |
-        | Vite proxy
-        v
-FastAPI Backend         http://127.0.0.1:8000
-        |
-        |-- MongoDB Atlas: KBO 동적 기록
-        |-- PostgreSQL: 정적 야구 정보, 사용자, RAG 데이터
-        |-- LLM API: 질문 답변 생성
+```yml
+working-directory: frontend
+paths:
+  - "frontend/ios/**"
 ```
 
-프론트는 DB나 LLM API에 직접 접근하지 않습니다. 모든 요청은 FastAPI 백엔드를 거칩니다.
+이 workflow는 TestFlight 업로드가 아니라 시뮬레이터 검증용입니다. 현재 실제 TestFlight 기준은 `frontend-ios`입니다.
 
-## 프록시 설정
+## 폴더 영향 관계 확인
 
-`vite.config.js`에서 프론트 포트와 백엔드 프록시를 설정합니다.
+### `frontend/ios`가 Android 앱에 영향 주는가?
 
-- 프론트 개발 서버: `http://127.0.0.1:5000`
-- FastAPI 백엔드: `http://127.0.0.1:8000`
-- 인증 API: `POST /auth/login`
-- 챗봇 API: `POST /chat`
+직접 영향 없습니다.
 
-프론트 코드에서는 백엔드 주소를 직접 쓰지 않고 같은 도메인 경로처럼 호출합니다.
+Android 앱은 `frontend/src`, `frontend/styles.css`, `frontend/capacitor.config.ts`, `frontend/android`, `frontend/dist`를 사용합니다. `frontend/ios` 자체는 Android Gradle 빌드나 `cap sync android` 경로에 포함되지 않습니다.
 
-```ts
-fetch("/auth/login", ...)
-fetch("/chat", ...)
-```
+영향 관계는 다음과 같습니다.
 
-Vite가 이 요청을 `http://127.0.0.1:8000`으로 넘겨줍니다.
+- `frontend/ios`만 수정: Android 앱 직접 영향 없음
+- `frontend/android` 수정: Android 앱 영향 있음
+- `frontend/src` 수정: Android 앱 영향 있음
+- `frontend/styles.css` 수정: Android 앱 영향 있음
+- `frontend/capacitor.config.ts` 수정: Android/iOS 공통 설정 영향 가능
 
-## 로그인 흐름
+### `frontend-ios/android`가 iOS TestFlight 앱에 영향 주는가?
 
-1. `LoginView.tsx`에서 아이디와 비밀번호를 입력합니다.
-2. `App.tsx`가 `POST /auth/login`으로 로그인 요청을 보냅니다.
-3. 백엔드가 JWT를 반환하면 프론트가 토큰을 저장합니다.
-4. 이후 `/chat` 요청에는 `Authorization: Bearer <token>` 헤더를 붙입니다.
-5. 백엔드가 아직 없으면 데모용 `admin / admin1234` 로그인으로 fallback 동작합니다.
+직접 영향 없습니다.
 
-예상 백엔드 응답 예시:
+현재 TestFlight workflow는 `frontend-ios`에서 `npm run build` 후 `npx cap sync ios`만 실행합니다. 이후 `frontend-ios/ios/App/App.xcodeproj`를 archive합니다. 이 과정에서 `frontend-ios/android`는 참조되지 않습니다.
 
-```json
-{
-  "access_token": "jwt-token",
-  "token_type": "bearer"
-}
-```
+영향 관계는 다음과 같습니다.
 
-## 챗봇 연동 흐름
+- `frontend-ios/android`만 수정: iOS TestFlight 직접 영향 없음
+- `frontend-ios/ios` 수정: iOS TestFlight 영향 있음
+- `frontend-ios/src` 수정: iOS TestFlight 영향 있음
+- `frontend-ios/styles.css` 수정: iOS TestFlight 영향 있음
+- `frontend-ios/capacitor.config.ts` 수정: iOS TestFlight 영향 있음
 
-`MainView.tsx`는 사용자의 질문을 `POST /chat`으로 보냅니다.
+## 정리 가능 여부
 
-요청 예시:
+아래 기준으로 팀에서 합의하면 정리할 수 있습니다.
 
-```json
-{
-  "question": "볼넷이 뭐야?",
-  "teamId": "lg",
-  "sessionId": "frontend-demo"
-}
-```
+- Android/Web은 앞으로 `frontend`만 사용한다.
+- iOS TestFlight는 앞으로 `frontend-ios`만 사용한다.
 
-백엔드는 아키텍처 문서 기준으로 다음 흐름을 수행합니다.
+이 기준에 따라 `frontend-ios/android`는 삭제했습니다. iOS TestFlight workflow는 `frontend-ios/ios`만 사용합니다.
 
-1. 질문 분석
-2. MongoDB에서 KBO 동적 기록 조회
-3. PostgreSQL에서 규칙, 용어, 구단 정보, persona, RAG chunk 조회
-4. LLM API 호출
-5. `{ answer, persona, sources }` 형태로 응답
+`frontend/ios`는 Android 앱에는 직접 영향이 없지만, `.github/workflows/ios-build.yml`이 아직 참조하고 있습니다. 이 시뮬레이터 workflow를 더 이상 쓰지 않을 거라면 삭제 후보가 될 수 있습니다. 유지할 거라면 삭제하지 말고 “구형/시뮬레이터 검증용”으로 명시하는 편이 안전합니다.
 
-프론트는 우선 `answer` 값을 화면에 출력하고 TTS로 읽습니다.
+## 작업 원칙
 
-응답 예시:
+- Android/Web 안정본 수정: `frontend`
+- iOS TestFlight UI/키보드/지도 수정: `frontend-ios`
+- iOS TestFlight 업로드: `ios-tf-*` 태그 push
+- Android가 이미 픽스된 상태라면 iOS 문제를 해결할 때 `frontend`를 건드리지 않습니다.
 
-```json
-{
-  "answer": "볼넷은 투수가 스트라이크존 밖으로 던진 공이 4개가 되었을 때 타자가 1루로 나가는 상황이에요.",
-  "persona": "rookie_coach",
-  "sources": []
-}
-```
+## 확인한 근거
 
-## 음성 기능
+확인한 실제 참조 관계입니다.
 
-- STT: 브라우저 `SpeechRecognition` 또는 `webkitSpeechRecognition`
-- TTS: 브라우저 `speechSynthesis`
-- 현재 TTS는 어린 목소리에 가깝게 `pitch`와 `rate`를 높여 설정했습니다.
-
-브라우저 지원 여부에 따라 STT/TTS가 제한될 수 있습니다. Chrome 또는 Edge에서 테스트하는 것을 권장합니다.
-
-## 이미지와 에셋
-
-- 캐릭터 이미지: `public/img/character.png`
-- 야구 기초 이미지: `public/img/*.png`
-- 배경 이미지: `assets/stadium-background.svg`
-
-Vite에서 `public/img` 안의 파일은 브라우저에서 `/img/...` 경로로 제공됩니다. 그래서 TSX에서는 다음처럼 참조합니다.
-
-```tsx
-<img src="img/character.png" alt="야구 초보자를 안내하는 야구공 캐릭터" />
-```
+- `.github/workflows/deploy.yml`: `working-directory: frontend`
+- `.github/workflows/ios-testflight.yml`: `working-directory: frontend-ios`
+- `.github/workflows/ios-testflight.yml`: `npx cap sync ios`, `xcodebuild -project ios/App/App.xcodeproj`
+- `.github/workflows/ios-build.yml`: `working-directory: frontend`, `paths: frontend/ios/**`
+- `frontend/package.json`: Android sync는 `cap sync android`, iOS sync는 `cap sync ios`
+- `frontend-ios/package.json`: Android sync/open script는 제거했고, TestFlight workflow에서는 iOS script만 사용함

@@ -11,9 +11,6 @@
     "verify:tamagotchi": "esbuild ./scripts/verify-tamagotchi.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-tamagotchi.cjs && node node_modules/.cache/verify-tamagotchi.cjs",
     "verify:quiz-personalization": "esbuild ./scripts/verify-quiz-personalization.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-quiz-personalization.cjs && node node_modules/.cache/verify-quiz-personalization.cjs",
     "verify:settings": "esbuild ./scripts/verify-app-settings.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-app-settings.cjs && node node_modules/.cache/verify-app-settings.cjs",
-    "build:android": "vite build --mode android",
-    "android:sync": "npm run build:android && cap sync android",
-    "android:open": "npm run android:sync && cap open android",
     "ios:sync": "npm run build && cap sync ios",
     "ios:open": "npm run ios:sync && cap open ios",
     "preview": "vite preview --host 127.0.0.1 --port 5000"
