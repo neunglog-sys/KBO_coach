@@ -187,8 +187,15 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
     if (!root) return;
 
     const visualViewport = window.visualViewport;
-    const viewportHeight = visualViewport?.height ?? window.innerHeight;
     const viewportTop = visualViewport?.offsetTop ?? 0;
+    const rawViewportHeight = visualViewport?.height ?? window.innerHeight;
+    const keyboardInsetValue = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue("--keyboard-inset");
+    const keyboardInset = Number.parseFloat(keyboardInsetValue) || 0;
+    const viewportHeight = keyboardInset > 0
+      ? Math.min(rawViewportHeight, Math.max(280, window.innerHeight - keyboardInset - viewportTop))
+      : rawViewportHeight;
 
     const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
     const switchHeight = switchRef.current?.getBoundingClientRect().height ?? 0;
