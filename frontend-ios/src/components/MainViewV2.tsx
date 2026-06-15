@@ -1413,7 +1413,7 @@ export function MainViewV2({
   };
 
   const handleChatHandleDown = (e: ReactPointerEvent) => {
-    const startHeight = chatCollapsed ? 0 : (chatLogRef.current?.offsetHeight ?? 0);
+    const startHeight = chatCollapsed ? 80 : (chatLogRef.current?.offsetHeight ?? 80);
     chatResizeRef.current = { startY: e.clientY, startHeight, lastHeight: startHeight, moved: false };
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsResizingChat(true);
@@ -1426,7 +1426,7 @@ export function MainViewV2({
     const dy = e.clientY - d.startY;
     if (Math.abs(dy) > 3) d.moved = true;
     const maxH = computeBoundedMaxChatHeight();
-    const next = Math.min(maxH, Math.max(0, d.startHeight - dy));
+    const next = Math.min(maxH, Math.max(80, d.startHeight - dy));
     d.lastHeight = next;
     if (chatCollapsed && next > 8) setChatCollapsed(false);
     setChatHeight(next);
@@ -1444,10 +1444,8 @@ export function MainViewV2({
       setChatAtNavLimit(false);
       return;
     }
-    if (d.lastHeight < 40) {
-      setChatCollapsed(true);
-      setChatHeight(null); // 접을 땐 기본 높이로 리셋(다시 펼치면 기본 크기부터)
-    }
+    setChatCollapsed(false);
+    setChatHeight(Math.max(80, d.lastHeight));
   };
 
   // 메인이 다른 화면에 가려져 있으면 배경 애니메이션을 멈춰 GPU 부하를 줄인다
@@ -1573,7 +1571,7 @@ export function MainViewV2({
           aria-live="polite"
           style={
             chatHeight != null
-              ? { maxHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
+              ? { height: `${chatHeight}px`, maxHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
               : undefined
           }
         >

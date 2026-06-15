@@ -455,33 +455,27 @@
 }
 
 .plat-ios .chat-inputbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 12px);
 }
 
-.plat-ios .chat-panel {
-  margin-bottom: var(--chat-inputbar-space);
-}
-
 .plat-ios.kb-open .chat-inputbar {
-  bottom: var(--keyboard-inset, 0px);
+  bottom: auto;
   padding-bottom: 8px;
-  transition: bottom 0.25s ease;
-}
-
-.plat-ios.kb-open .chat-panel {
-  margin-bottom: var(--chat-inputbar-space);
+  transition: none;
 }
 
 .plat-ios .chat-log {
-  padding-bottom: calc(var(--chat-inputbar-space) + 12px);
+  padding-bottom: 10px;
+  scroll-padding-bottom: 10px;
 }
 
 .plat-ios.kb-open .chat-log {
-  padding-bottom: calc(var(--chat-inputbar-space) + 18px);
+  padding-bottom: 10px;
+  scroll-padding-bottom: 10px;
 }
 
 .chat-inputbar input {
