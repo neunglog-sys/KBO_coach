@@ -454,6 +454,16 @@
   padding-bottom: 8px;
 }
 
+.plat-ios .chat-panel {
+  flex: 1 1 0;
+}
+
+.plat-ios .chat-log {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+}
+
 .plat-ios .chat-inputbar {
   position: relative;
   left: auto;
