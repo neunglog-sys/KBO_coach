@@ -80,26 +80,6 @@ button {
 .app-route-transition {
   min-height: 100vh;
   min-height: 100dvh;
-  animation: app-route-enter var(--app-transition-screen, 240ms) var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
-  backface-visibility: hidden;
-  will-change: transform, opacity;
-}
-
-.app-route-transition.is-leaving {
-  pointer-events: none;
-  animation: app-route-exit 220ms var(--app-ease-exit, cubic-bezier(0.4, 0, 0.7, 0.2)) both;
-}
-
-@keyframes app-route-enter {
-  from {
-    opacity: 0.58;
-    transform: translate3d(4%, 0, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
 }
 
 .hidden {
@@ -1625,42 +1605,7 @@ select:focus {
 .auth-login-screen,
 .auth-register-screen,
 .team-onboarding-screen {
-  animation: auth-screen-enter var(--app-transition-screen, 240ms) var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
-  backface-visibility: hidden;
-}
-
-@keyframes auth-screen-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes app-route-exit {
-  from {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-
-  to {
-    opacity: 0;
-    transform: translate3d(-3%, 0, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-route-transition,
-  .app-route-transition.is-leaving,
-  .auth-login-screen,
-  .auth-register-screen,
-  .team-onboarding-screen {
-    animation: none;
-  }
+  opacity: 1;
 }
 
 .attendance-window-backdrop.is-closing {
