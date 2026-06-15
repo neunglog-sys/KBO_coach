@@ -355,7 +355,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
   const lotteBubbleColor = saturateHex("#C8102E", 1.25);
 
   const headerColor = team === "LT" ? lotteHeaderColor : saturateHex(rawHeaderColor, 1.45);
-  const bubbleBaseColor = team === "LT" ? lotteBubbleColor : headerColor;
+  const bubbleBaseColor = team === "LT" || team === "KT" ? lotteBubbleColor : headerColor;
   const inputAccentColor = team === "LT" ? lotteHeaderColor : bubbleBaseColor;
   const headerGradientStart = mixWithWhite(headerColor, 0.18);
 
