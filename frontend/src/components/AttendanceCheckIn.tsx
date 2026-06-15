@@ -1297,6 +1297,10 @@ export default function AttendanceCheckIn({
     setCurrentQuizIdx((index) => index + 1);
   }
 
+  function handleFinishQuiz() {
+    setShowingResult(false);
+  }
+
   async function handleCheer() {
     if (dailyState.cheerCooldownActive) return;
     const speech = randomSpeech(CHEER_SPEECHES, nickname);
@@ -1746,7 +1750,7 @@ export default function AttendanceCheckIn({
             </span>
           </div>
 
-          {allDone ? (
+          {allDone && !showingResult ? (
             <div className="quiz-done-message">
               <p>오늘 퀴즈 완료!</p>
             </div>
@@ -1808,7 +1812,11 @@ export default function AttendanceCheckIn({
                     <button className="quiz-next-btn" type="button" onClick={handleNextQuiz}>
                       다음 문제
                     </button>
-                  ) : null}
+                  ) : (
+                    <button className="quiz-next-btn" type="button" onClick={handleFinishQuiz}>
+                      퀴즈 완료
+                    </button>
+                  )}
                 </div>
               ) : null}
             </>
