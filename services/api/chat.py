@@ -429,7 +429,43 @@ def _game_results(question: str, team_code: str | None) -> list:
         if hits:
             hl = ", ".join(f"{h['선수명']}({h['팀']}) {h['타수']}타수{h['안타']}안타 {h['타점']}타점" for h in hits)
             out.append({"topic": f"{pname} 최근 경기 주요 타자", "content": hl})
+        # 페르소나 팀 경기별 투수 기록(선발 우선, 박스스코어 순서대로 상위 3명)
+        pits = list(m["game_pitchers"].find({"gameId": target["gameId"], "팀": pname}, {"_id": 0}).limit(3))
+        if pits:
+            pl = ", ".join(
+                f"{p.get('선수명','')}({p.get('결과','')}) {p.get('이닝','')}이닝 {p.get('자책','')}자책"
+                for p in pits)
+            out.append({"topic": f"{pname} 최근 경기 투수", "content": pl})
     return out
+
+
+# 이닝별 점수(스코어보드) 질문 → Mongo game_scoreboards 부착. (최종 점수만은 _game_results 담당)
+_SCOREBOARD_RE = re.compile(r"이닝별|회별|이닝\s*(점수|별|득점)|스코어\s*?보드|스코어보드|회초|회말|몇\s*회")
+
+
+def _game_scoreboard(question: str, team_code: str | None) -> list:
+    if not _SCOREBOARD_RE.search(question):
+        return []
+    m = _mongo_kbo()
+    d = _latest("game_scoreboards", m)
+    if not d:
+        return []
+    rows = list(m["game_scoreboards"].find({"date": d}, {"_id": 0}))
+    if not rows:
+        return []
+    pname = _CODE2NAME.get(team_code or "", "")
+    target = next((r for r in rows if pname and pname in (r.get("home", ""), r.get("away", ""))), rows[0])
+    aw, hm = target.get("away", ""), target.get("home", "")
+
+    def line(side):
+        s = side or {}
+        sc = " ".join(str(x) for x in s.get("inning_scores", []))
+        return f"{sc}  (R{s.get('R','')} H{s.get('H','')} E{s.get('E','')})"
+
+    content = (f"{target.get('date','')} {aw} vs {hm} 이닝별 득점\n"
+               f"{aw}: {line(target.get('away_line'))}\n"
+               f"{hm}: {line(target.get('home_line'))}")
+    return [{"topic": f"이닝별 스코어보드({target.get('date','')})", "content": content}]
 
 
 def _stat_leaders(question: str) -> list:
@@ -657,7 +693,8 @@ def _retrieve(cur, question: str, team_code: str | None):
         pass   # 라인업 조회 실패 비치명
     for fn in (lambda: _standings(question), lambda: _game_results(question, team_code),
                lambda: _stat_leaders(question), lambda: _player_lookup(question),
-               lambda: _schedule_games(question, team_code)):
+               lambda: _schedule_games(question, team_code),
+               lambda: _game_scoreboard(question, team_code)):
         try:
             rules = rules + fn()
         except Exception:
