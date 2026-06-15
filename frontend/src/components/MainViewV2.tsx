@@ -24,11 +24,14 @@ const GREET_RE = /(안녕|안뇽|하이|헬로|hello|\bhi\b|\bhey\b|반가|반�
 const RUN_RE = /(도루|걷다|걷는|걷고|걷자|걸어|걸으|뛴다|뛰어|뛰는|뛰자|뛰며|달린다|달려|달리|달릴|질주|내달)/;
 // 던지기 감지용 — 답변/질문에 이 단어가 있으면 캐릭터가 던지기 모션을 1회 재생한다.
 const THROW_RE = /(던지다|던져|던지는|던지고|던질|던졌|투구|피칭|송구|throw|pitch)/i;
+// 배트 휘두르기 감지용 — 홈런/안타/파울/배트 등 '치다/휘두르다' 맥락이면 배트 스윙(wield) 1회 재생.
+// (안타깝다 오탐 방지: 안타 뒤 '깝' 제외)
+const WIELD_RE = /(홈런|안타(?!깝)|파울|배트|방망이|스윙|휘둘|휘두르|타격|장타|루타|쳤|hit|swing|home\s?run)/i;
 
 // 음성(TTS)에서 키워드가 "발음되는 순간"에 모션을 발동하기 위한 큐.
 // at = 원본 텍스트에서 그 키워드가 다 읽힌 글자 위치(=시작+길이). 재생 중 발음된 글자 수가
 // 이 값을 넘으면 해당 모션을 1회 발동한다. (텍스트 등장 시점이 아니라 음성 타이밍 기준)
-type MotionKind = "greet" | "run" | "throw";
+type MotionKind = "greet" | "run" | "throw" | "wield";
 function buildMotionCues(text: string): Array<{ at: number; kind: MotionKind }> {
   const cues: Array<{ at: number; kind: MotionKind }> = [];
   const lower = text.toLowerCase();
@@ -38,6 +41,8 @@ function buildMotionCues(text: string): Array<{ at: number; kind: MotionKind }> 
   if (r && r.index != null) cues.push({ at: r.index + r[0].length, kind: "run" });
   const t = text.match(THROW_RE);
   if (t && t.index != null) cues.push({ at: t.index + t[0].length, kind: "throw" });
+  const w = text.match(WIELD_RE);
+  if (w && w.index != null) cues.push({ at: w.index + w[0].length, kind: "wield" });
   return cues;
 }
 
@@ -233,6 +238,8 @@ export function MainViewV2({
   const [runSignal, setRunSignal] = useState(0);
   // 값이 증가할 때마다 캐릭터가 던지기 모션을 1회 재생.
   const [throwSignal, setThrowSignal] = useState(0);
+  // 값이 증가할 때마다 캐릭터가 배트 휘두르기(wield) 모션을 1회 재생.
+  const [wieldSignal, setWieldSignal] = useState(0);
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStadiumPageOpen, setIsStadiumPageOpen] = useState(false);
@@ -330,6 +337,7 @@ export function MainViewV2({
   const pendingGreetRef = useRef(false);
   const pendingRunRef = useRef(false);
   const pendingThrowRef = useRef(false);
+  const pendingWieldRef = useRef(false);
   // isSpeaking false→true 전환(=TTS 시작)을 감지하기 위한 직전 값.
   const prevSpeakingRef = useRef(false);
   // 음성인식 리스너는 mount 때 1회 바인딩되므로, 최신 submitQuestion(=최신 favTeamCode)을
@@ -604,6 +612,7 @@ export function MainViewV2({
           fired.add(c.kind);
           if (c.kind === "run") setRunSignal((n) => n + 1);
           else if (c.kind === "throw") setThrowSignal((n) => n + 1);
+          else if (c.kind === "wield") setWieldSignal((n) => n + 1);
           else setGreetSignal((n) => n + 1);
         }
       }
@@ -667,6 +676,7 @@ export function MainViewV2({
         for (const c of cues) {
           if (c.kind === "run") pendingRunRef.current = false;
           else if (c.kind === "throw") pendingThrowRef.current = false;
+          else if (c.kind === "wield") pendingWieldRef.current = false;
           else pendingGreetRef.current = false;
         }
         setIsSpeaking(true);
@@ -720,6 +730,7 @@ export function MainViewV2({
             fired.add(c.kind);
             if (c.kind === "run") setRunSignal((n) => n + 1);
             else if (c.kind === "throw") setThrowSignal((n) => n + 1);
+            else if (c.kind === "wield") setWieldSignal((n) => n + 1);
             else setGreetSignal((n) => n + 1);
           }
         }
@@ -823,6 +834,7 @@ export function MainViewV2({
           for (const c of cues) {
             if (c.kind === "run") pendingRunRef.current = false;
             else if (c.kind === "throw") pendingThrowRef.current = false;
+            else if (c.kind === "wield") pendingWieldRef.current = false;
             else pendingGreetRef.current = false;
           }
           setIsSpeaking(true);
@@ -1227,6 +1239,7 @@ export function MainViewV2({
     pendingGreetRef.current = GREET_RE.test(answer) || GREET_RE.test(question);
     pendingRunRef.current = RUN_RE.test(answer) || RUN_RE.test(question);
     pendingThrowRef.current = THROW_RE.test(answer) || THROW_RE.test(question);
+    pendingWieldRef.current = WIELD_RE.test(answer) || WIELD_RE.test(question);
     await speakAnswer(answer, setBot);
     setBot(answer);
   }
@@ -1257,6 +1270,10 @@ export function MainViewV2({
       if (pendingThrowRef.current) {
         pendingThrowRef.current = false;
         setThrowSignal((n) => n + 1);
+      }
+      if (pendingWieldRef.current) {
+        pendingWieldRef.current = false;
+        setWieldSignal((n) => n + 1);
       }
     }
     prevSpeakingRef.current = isSpeaking;
@@ -1506,7 +1523,7 @@ export function MainViewV2({
       </button>
 
       <div className="stage-character" aria-hidden="false">
-        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} teamCode={skinTeamCode} className="stage-character-canvas" />
+        <Character3D isSpeaking={isSpeaking} greetSignal={greetSignal} runSignal={runSignal} throwSignal={throwSignal} wieldSignal={wieldSignal} teamCode={skinTeamCode} className="stage-character-canvas" />
       </div>
 
       <WeatherFx condition={weatherCondition} />
