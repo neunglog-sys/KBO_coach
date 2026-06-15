@@ -14,8 +14,8 @@ interface Character3DProps {
   runSignal?: number;
   /** 값이 바뀔 때마다(증가) 던지기(throw) 모션을 1회 재생한다. */
   throwSignal?: number;
-  /** 값이 바뀔 때마다(증가) 배트 휘두르기(wield) 모션을 1회 재생한다. */
-  wieldSignal?: number;
+  /** 값이 바뀔 때마다(증가) 배트 스윙(swing) 모션을 1회 재생한다. */
+  swingSignal?: number;
   /** 응원팀 코드(HT 등). 팀별 유니폼 색/로고 스킨 적용. 바뀌면 즉시 갱신. */
   teamCode?: string;
   className?: string;
@@ -23,13 +23,170 @@ interface Character3DProps {
 }
 
 /** 팀별 유니폼 색(헥사=sRGB 디자인값)·로고 스킨. 코드 없거나 미정의 팀은 모델 기본값 유지. */
-const TEAM_SKINS: Record<string, { uniformMain: string; uniformSt: string; logo?: string }> = {
-  HT: { uniformMain: "#CE0116", uniformSt: "#000000", logo: "/img/team_logo_HT.png" },
+type TeamSkin = {
+  materials: Record<string, string>;
+  marking: string;
+  logo: string;
+};
+
+const texturePath = (folder: "logo" | "marking", file: string) => `/img/${folder}/${file}`;
+
+const TEAM_SKINS: Record<string, TeamSkin> = {
+  HH: {
+    materials: {
+      M_uniform_main: "#FC4E00FF",
+      M_uniform_st: "#FFFFFFFF",
+      M_uniform_arm: "#FC4E00FF",
+      M_uniform_arm_st: "#FFFFFFFF",
+      M_hat: "#FC4E00FF",
+      M_hat_brim: "#FC4E00FF",
+      M_hat_tours: "#FC4E00FF",
+      M_hat_button: "#FC4E00FF",
+    },
+    marking: texturePath("marking", "HH.png"),
+    logo: texturePath("logo", "deajeon.png"),
+  },
+  HT: {
+    materials: {
+      M_uniform_main: "#E10822FF",
+      M_uniform_st: "#000000FF",
+      M_uniform_arm: "#E10822FF",
+      M_uniform_arm_st: "#000000FF",
+      M_uniform_button: "#E10822FF",
+      M_hat: "#E10822FF",
+      M_hat_brim: "#E10822FF",
+      M_hat_tours: "#E10822FF",
+      M_hat_button: "#E10822FF",
+    },
+    marking: texturePath("marking", "KIA.png"),
+    logo: texturePath("logo", "gwangju.png"),
+  },
+  OB: {
+    materials: {
+      M_uniform_main: "#010036FF",
+      M_uniform_st: "#FFFFFFFF",
+      M_uniform_arm: "#010036FF",
+      M_uniform_arm_st: "#FFFFFFFF",
+      M_uniform_button: "#FFFFFFFF",
+      M_hat: "#010036FF",
+      M_hat_brim: "#010036FF",
+      M_hat_tours: "#FFFFFFFF",
+      M_hat_button: "#FFFFFFFF",
+    },
+    marking: texturePath("marking", "DS.png"),
+    logo: texturePath("logo", "dosan.png"),
+  },
+  WO: {
+    materials: {
+      M_uniform_main: "#820024FF",
+      M_uniform_st: "#F145ACFF",
+      M_uniform_arm: "#820024FF",
+      M_uniform_arm_st: "#F145ACFF",
+      M_uniform_button: "#820024FF",
+      M_hat: "#820024FF",
+      M_hat_brim: "#820024FF",
+      M_hat_tours: "#F145ACFF",
+      M_hat_button: "#820024FF",
+    },
+    marking: texturePath("marking", "KH.png"),
+    logo: texturePath("logo", "heroes.png"),
+  },
+  LT: {
+    materials: {
+      M_uniform_main: "#60B1E4FF",
+      M_uniform_st: "#D20C30FF",
+      M_uniform_arm: "#60B1E4FF",
+      M_uniform_arm_st: "#D20C30FF",
+      M_uniform_button: "#D20C30FF",
+      M_hat: "#60B1E4FF",
+      M_hat_brim: "#D20C30FF",
+      M_hat_tours: "#D20C30FF",
+      M_hat_button: "#60B1E4FF",
+    },
+    marking: texturePath("marking", "LT.png"),
+    logo: texturePath("logo", "busan.png"),
+  },
+  NC: {
+    materials: {
+      M_uniform_main: "#18375EFF",
+      M_uniform_st: "#A77A4EFF",
+      M_uniform_arm: "#18375EFF",
+      M_uniform_arm_st: "#A77A4EFF",
+      M_uniform_button: "#18375EFF",
+      M_hat: "#18375EFF",
+      M_hat_brim: "#A77A4EFF",
+      M_hat_tours: "#A77A4EFF",
+      M_hat_button: "#18375EFF",
+    },
+    marking: texturePath("marking", "NC.png"),
+    logo: texturePath("logo", "changwon.png"),
+  },
+  SS: {
+    materials: {
+      M_uniform_main: "#005FA7FF",
+      M_uniform_st: "#9F9CA0FF",
+      M_uniform_arm: "#005FA7FF",
+      M_uniform_arm_st: "#9F9CA0FF",
+      M_uniform_button: "#005FA7FF",
+      M_hat: "#005FA7FF",
+      M_hat_brim: "#005FA7FF",
+      M_hat_tours: "#005FA7FF",
+      M_hat_button: "#005FA7FF",
+    },
+    marking: texturePath("marking", "SS.png"),
+    logo: texturePath("logo", "daegu.png"),
+  },
+  KT: {
+    materials: {
+      M_uniform_main: "#221E1FFF",
+      M_uniform_st: "#ED1B23FF",
+      M_uniform_arm: "#221E1FFF",
+      M_uniform_arm_st: "#ED1B23FF",
+      M_uniform_button: "#ED1B23FF",
+      M_hat: "#221E1FFF",
+      M_hat_brim: "#ED1B23FF",
+      M_hat_tours: "#ED1B23FF",
+      M_hat_button: "#ED1B23FF",
+    },
+    marking: texturePath("marking", "KT.png"),
+    logo: texturePath("logo", "suwon.png"),
+  },
+  SK: {
+    materials: {
+      M_uniform_main: "#C80021FF",
+      M_uniform_st: "#DA9A11FF",
+      M_uniform_arm: "#C80021FF",
+      M_uniform_arm_st: "#DA9A11FF",
+      M_uniform_button: "#C80021FF",
+      M_hat: "#C80021FF",
+      M_hat_brim: "#DA9A11FF",
+      M_hat_tours: "#DA9A11FF",
+      M_hat_button: "#C80021FF",
+    },
+    marking: texturePath("marking", "SSG.png"),
+    logo: texturePath("logo", "incheon.png"),
+  },
+  LG: {
+    materials: {
+      M_uniform_main: "#FFFFFFFF",
+      M_uniform_st: "#BE0737FF",
+      M_uniform_arm: "#FFFFFFFF",
+      M_uniform_arm_st: "#BE0737FF",
+      M_uniform_button: "#BE0737FF",
+      M_hat: "#000000FF",
+      M_hat_brim: "#BE0737FF",
+      M_hat_tours: "#BE0737FF",
+      M_hat_button: "#BE0737FF",
+    },
+    marking: texturePath("marking", "TW.png"),
+    logo: texturePath("logo", "lg.png"),
+  },
 };
 // 유니폼 본판 / 스티치(보조) 머티리얼 이름 (모델 머티리얼명과 일치)
-const UNIFORM_MAIN_MATS = ["M_uniform_main", "M_uniform_arm"];
-const UNIFORM_ST_MATS = ["M_uniform_st", "M_uniform_arm_st"];
-const LOGO_MAT = "M_logo";
+const SKIN_TEXTURE_MATS: Record<"marking" | "logo", string> = {
+  marking: "M_marking",
+  logo: "M_logo",
+};
 
 const MODEL_URL = "/model/3d/260615_opt.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
@@ -37,16 +194,16 @@ const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
 const WALK_NAME = "walk"; // 걷기 클립 — 기본 루프(항상 재생)
 const THROW_NAME = "throw"; // 던지기 클립 — throwSignal 시 1회 재생
-const WIELD_NAME = "wield"; // 배트 휘두르기 클립 — wieldSignal 시 1회 재생
+const SWING_NAME = "swing"; // 배트 스윙 클립 — swingSignal 시 1회 재생
 const MOUTH_LERP = 0.4; // 입모양 보간 속도(0~1, 클수록 빠름)
 const IDLE_SMILE = 0.0; // 말 안 할 때 기본 미소 정도(0=다문 입). 필요하면 0.3 등으로.
 const MOUTH_SHAPES: MouthShape[] = ["smile", "A", "E", "I", "O", "W"];
-const MODEL_FRAME_HEIGHT = 1.8;
+const MODEL_FRAME_HEIGHT = 2.3;
 const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
 
-export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, wieldSignal, teamCode, className, onReady }: Character3DProps) {
+export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, swingSignal, teamCode, className, onReady }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -64,8 +221,8 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
   const runRef = useRef<(() => void) | null>(null);
   // 모델 로드 후 채워지는 "던지기 모션 재생" 함수. throwSignal 변화 시 호출.
   const throwRef = useRef<(() => void) | null>(null);
-  // 모델 로드 후 채워지는 "배트 휘두르기 모션 재생" 함수. wieldSignal 변화 시 호출.
-  const wieldRef = useRef<(() => void) | null>(null);
+  // 모델 로드 후 채워지는 "배트 스윙 모션 재생" 함수. swingSignal 변화 시 호출.
+  const swingRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -126,7 +283,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     let runUntil = 0;               // 걷기/뛰기 종료 시각(>now면 재생 중)
     let hiUntil = 0;                // 인사 재생 중 종료 시각(이 동안 걷기 제어 정지)
     let throwUntil = 0;             // 던지기 재생 중 종료 시각(이 동안 걷기 제어 정지)
-    let wieldUntil = 0;            // 배트 휘두르기 재생 중 종료 시각(이 동안 걷기 제어 정지)
+    let swingUntil = 0;            // 배트 스윙 재생 중 종료 시각(이 동안 걷기 제어 정지)
     let walkStopPending = false;    // 시간 만료 후 '현재 걷기 사이클을 마치고' 정자세로 멈추기 위한 대기 플래그
     // 입모양 shape key(morph target)를 가진 메시들.
     // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
@@ -153,12 +310,27 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
           }
         });
 
-        // 중앙 정렬 + 크기 정규화
+        // 크기 정규화: 전체(배트 포함) bbox로 스케일 — 화면에 다 들어오도록.
+        model.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
         const scale = MODEL_FRAME_HEIGHT / maxDim;
+
+        // 중앙 정렬 기준: 배트(Material_0)는 한쪽으로 튀어나와 bbox를 비대칭으로 만들어
+        // 몸통이 치우쳐 보인다 → 배트를 제외한 '몸통' bbox 중심으로 정렬한다.
+        const bodyBox = new THREE.Box3();
+        let hasBody = false;
+        model.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          if (mats.some((m) => (m as THREE.Material)?.name === "Material_0")) return; // 배트 제외
+          bodyBox.expandByObject(mesh);
+          hasBody = true;
+        });
+        const center = (hasBody ? bodyBox : box).getCenter(new THREE.Vector3());
+
         model.scale.setScalar(scale);
         model.position.sub(center.multiplyScalar(scale));
         model.position.y += MODEL_VERTICAL_OFFSET;
@@ -167,40 +339,76 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
 
         // ===== 팀 스킨(유니폼 색/로고) =====
         // 유니폼/로고 머티리얼을 이름으로 수집 + 원본 색·로고맵 백업(다른 팀으로 바꾸면 복원).
-        const uniformMainMats: THREE.MeshStandardMaterial[] = [];
-        const uniformStMats: THREE.MeshStandardMaterial[] = [];
-        const logoMats: THREE.MeshStandardMaterial[] = [];
+        const skinMaterials = new Map<string, THREE.MeshStandardMaterial[]>();
         const originalColors = new Map<THREE.MeshStandardMaterial, THREE.Color>();
-        const originalLogoMaps = new Map<THREE.MeshStandardMaterial, THREE.Texture | null>();
+        const originalMaps = new Map<THREE.MeshStandardMaterial, THREE.Texture | null>();
         model.traverse((obj) => {
           const mesh = obj as THREE.Mesh;
           if (!mesh.isMesh) return;
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           for (const mm of mats) {
             const m = mm as THREE.MeshStandardMaterial;
-            if (UNIFORM_MAIN_MATS.includes(m.name)) {
-              uniformMainMats.push(m);
-              if (!originalColors.has(m)) originalColors.set(m, m.color.clone());
-            } else if (UNIFORM_ST_MATS.includes(m.name)) {
-              uniformStMats.push(m);
-              if (!originalColors.has(m)) originalColors.set(m, m.color.clone());
-            } else if (m.name === LOGO_MAT) {
-              logoMats.push(m);
-              if (!originalLogoMaps.has(m)) originalLogoMaps.set(m, m.map);
-            }
+            if (!m.name) continue;
+            const list = skinMaterials.get(m.name) ?? [];
+            list.push(m);
+            skinMaterials.set(m.name, list);
+            if (!originalColors.has(m)) originalColors.set(m, m.color.clone());
+            if (!originalMaps.has(m)) originalMaps.set(m, m.map);
           }
         });
 
         const texLoader = new THREE.TextureLoader();
-        const logoTexCache = new Map<string, THREE.Texture>();
+        const texCache = new Map<string, THREE.Texture>();
+        const logoMats = skinMaterials.get(SKIN_TEXTURE_MATS.logo) ?? [];
+        const originalLogoMaps = originalMaps;
+        const logoTexCache = texCache;
+        const normalizeColor = (color: string) => color.length === 9 ? color.slice(0, 7) : color;
+
+        const applyTexture = (materialName: string, url: string) => {
+          const mats = skinMaterials.get(materialName);
+          if (!mats?.length) return;
+
+          const finalize = (texture: THREE.Texture) => {
+            for (const material of mats) {
+              const old = originalMaps.get(material);
+              if (old) {
+                texture.flipY = old.flipY;
+                texture.wrapS = old.wrapS;
+                texture.wrapT = old.wrapT;
+                texture.channel = old.channel;
+              } else {
+                texture.flipY = false;
+              }
+              texture.colorSpace = THREE.SRGBColorSpace;
+              material.map = texture;
+              material.color.setRGB(1, 1, 1);
+              material.transparent = true;
+              material.needsUpdate = true;
+            }
+            renderQuietUntil = performance.now() + 500;
+          };
+
+          const cached = texCache.get(url);
+          if (cached) finalize(cached);
+          else {
+            const texture = texLoader.load(url, (loaded) => finalize(loaded));
+            texCache.set(url, texture);
+          }
+        };
 
         const applySkin = (code?: string) => {
           const skin = code ? TEAM_SKINS[code] : undefined;
           if (skin) {
-            const cMain = new THREE.Color().setStyle(skin.uniformMain);
-            const cSt = new THREE.Color().setStyle(skin.uniformSt);
-            for (const m of uniformMainMats) { m.color.copy(cMain); m.needsUpdate = true; }
-            for (const m of uniformStMats) { m.color.copy(cSt); m.needsUpdate = true; }
+            for (const [materialName, color] of Object.entries(skin.materials)) {
+              const mats = skinMaterials.get(materialName);
+              if (!mats?.length) continue;
+              const nextColor = new THREE.Color().setStyle(normalizeColor(color));
+              for (const material of mats) {
+                material.color.copy(nextColor);
+                material.needsUpdate = true;
+              }
+            }
+            applyTexture(SKIN_TEXTURE_MATS.marking, skin.marking);
             if (skin.logo && logoMats.length) {
               const url = skin.logo;
               const finalize = (t: THREE.Texture) => {
@@ -250,6 +458,42 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
           walkAction.paused = true;
           walkAction.time = 0;
 
+          // 모션 전환 크로스페이드(초). 하드 스위치 시 한 프레임 bind 포즈(배트+공 든 기본자세)가
+          // 깜빡이던 문제 → 걷기(정지)↔원샷 사이를 부드럽게 블렌딩해 깜빡임 제거.
+          const FADE = 0.18;
+          // 원샷 모션(인사/던지기/스윙) 1회 재생: 걷기에서 크로스페이드 인. 종료 시각 반환.
+          const playOnce = (
+            action: THREE.AnimationAction | null,
+            clip: THREE.AnimationClip | null | undefined,
+          ): number => {
+            if (!action || !clip || !walkAction) return 0;
+            runUntil = 0; hiUntil = 0; throwUntil = 0; swingUntil = 0;
+            walkStopPending = false;
+            walkAction.paused = true;
+            walkAction.time = 0;
+            walkAction.enabled = true;
+            walkAction.setEffectiveWeight(1);
+            walkAction.play();
+            action.reset();
+            action.enabled = true;
+            action.setEffectiveTimeScale(1);
+            action.clampWhenFinished = true; // 마지막 프레임 유지 → 종료 시 bind 포즈 스냅 방지
+            action.play();
+            action.crossFadeFrom(walkAction, FADE, false);
+            return performance.now() + clip.duration * 1000 + 400;
+          };
+          // 원샷 종료 → 걷기(정지 포즈)로 크로스페이드 백.
+          const returnToWalk = (from: THREE.AnimationAction | null) => {
+            if (!walkAction) return;
+            walkAction.paused = true;
+            walkAction.time = 0;
+            walkAction.enabled = true;
+            walkAction.play();
+            if (from) walkAction.crossFadeFrom(from, FADE, false);
+            else walkAction.setEffectiveWeight(1);
+            renderQuietUntil = performance.now() + FADE * 1000 + 250;
+          };
+
           let hiAction: THREE.AnimationAction | null = null;
           if (hiClip) {
             hiAction = mixer.clipAction(hiClip);
@@ -259,7 +503,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
             mixer.addEventListener("finished", (e) => {
               if (e.action === hiAction && walkAction) {
                 hiUntil = 0;
-                walkAction.setEffectiveWeight(1);
+                returnToWalk(hiAction);
               }
             });
           }
@@ -273,22 +517,22 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
             mixer.addEventListener("finished", (e) => {
               if (e.action === throwAction && walkAction) {
                 throwUntil = 0;
-                walkAction.setEffectiveWeight(1);
+                returnToWalk(throwAction);
               }
             });
           }
 
-          const wieldClip = THREE.AnimationClip.findByName(gltf.animations, WIELD_NAME);
-          let wieldAction: THREE.AnimationAction | null = null;
-          if (wieldClip) {
-            wieldAction = mixer.clipAction(wieldClip);
-            wieldAction.setLoop(THREE.LoopOnce, 1);
-            wieldAction.clampWhenFinished = false;
+          const swingClip = THREE.AnimationClip.findByName(gltf.animations, SWING_NAME);
+          let swingAction: THREE.AnimationAction | null = null;
+          if (swingClip) {
+            swingAction = mixer.clipAction(swingClip);
+            swingAction.setLoop(THREE.LoopOnce, 1);
+            swingAction.clampWhenFinished = false;
             // 배트 휘두르기 끝 → 걷기(정지 포즈)로 복귀
             mixer.addEventListener("finished", (e) => {
-              if (e.action === wieldAction && walkAction) {
-                wieldUntil = 0;
-                walkAction.setEffectiveWeight(1);
+              if (e.action === swingAction && walkAction) {
+                swingUntil = 0;
+                returnToWalk(swingAction);
               }
             });
           }
@@ -304,49 +548,25 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
             }
           });
 
-          // 인사 1회: 걷기 끄고(weight 0) 인사 재생 → 끝나면 정지 포즈 복귀.
+          // 인사 1회: 걷기→인사 크로스페이드 → 끝나면 정지 포즈로 크로스페이드 백.
           const playHi = () => {
-            if (!hiAction || !walkAction) return;
-            runUntil = 0;
-            walkStopPending = false;
-            walkAction.paused = true;
-            walkAction.time = 0;
-            walkAction.setEffectiveWeight(0);
-            hiAction.reset().setEffectiveWeight(1).play();
-            hiUntil = performance.now() + hiClip!.duration * 1000 + 400;
+            hiUntil = playOnce(hiAction, hiClip);
             renderQuietUntil = hiUntil;
           };
 
           if (hiAction) playHi(); // 등장 시 인사 1회 후 정지
           greetRef.current = playHi;
 
-          // 던지기 1회: 걷기 끄고(weight 0) throw 재생 → 끝나면 정지 포즈 복귀.
+          // 던지기 1회.
           throwRef.current = () => {
-            if (!throwAction || !throwClip || !walkAction) return;
-            runUntil = 0;
-            hiUntil = 0;
-            walkStopPending = false;
-            walkAction.paused = true;
-            walkAction.time = 0;
-            walkAction.setEffectiveWeight(0);
-            throwAction.reset().setEffectiveWeight(1).play();
-            throwUntil = performance.now() + throwClip.duration * 1000 + 400;
+            throwUntil = playOnce(throwAction, throwClip);
             renderQuietUntil = throwUntil;
           };
 
-          // 배트 휘두르기 1회: 걷기 끄고(weight 0) wield 재생 → 끝나면 정지 포즈 복귀.
-          wieldRef.current = () => {
-            if (!wieldAction || !wieldClip || !walkAction) return;
-            runUntil = 0;
-            hiUntil = 0;
-            throwUntil = 0;
-            walkStopPending = false;
-            walkAction.paused = true;
-            walkAction.time = 0;
-            walkAction.setEffectiveWeight(0);
-            wieldAction.reset().setEffectiveWeight(1).play();
-            wieldUntil = performance.now() + wieldClip.duration * 1000 + 400;
-            renderQuietUntil = wieldUntil;
+          // 배트 스윙 1회.
+          swingRef.current = () => {
+            swingUntil = playOnce(swingAction, swingClip);
+            renderQuietUntil = swingUntil;
           };
 
           // 걷기/뛰기: RUN_MS 동안 재생 후 정지(첫 프레임).
@@ -393,7 +613,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
       if (speakingRef.current) renderQuietUntil = now + 400;
       // 걷기/인사 모션이 진행 중(또는 사이클 마무리 대기 중)이면 TTS가 도중에 끊겨도 끝까지 돌려야
       // 정자세로 복귀한다. (이게 없으면 발화 중단 시 렌더가 멈춰 걷는 자세 그대로 얼어붙음)
-      const motionActive = walkAction != null && (now < runUntil || now < hiUntil || now < throwUntil || now < wieldUntil || walkStopPending);
+      const motionActive = walkAction != null && (now < runUntil || now < hiUntil || now < throwUntil || now < swingUntil || walkStopPending);
       // 모션 종료 직후 정자세 복귀 로직이 실행될 프레임을 보장(발화가 renderQuietUntil을 덮어써도 꼬리 유지).
       if (motionActive) renderQuietUntil = Math.max(renderQuietUntil, now + 300);
       // 걷기 루프(idleLooping) 중엔 항상 렌더. 그 외엔 발화/인트로/모션/정착 동안만.
@@ -402,7 +622,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
 
       // 걷기/뛰기 시간이 끝나면 즉시 끊지 않고 '현재 사이클을 마치고' 멈추도록 예약한다.
       // 실제 정지는 mixer의 'loop' 이벤트(사이클 경계=정자세)에서 수행 → 부자연스러운 스냅 방지.
-      if (walkAction && now >= hiUntil && now >= runUntil && now >= throwUntil && now >= wieldUntil && !walkAction.paused) {
+      if (walkAction && now >= hiUntil && now >= runUntil && now >= throwUntil && now >= swingUntil && !walkAction.paused) {
         walkStopPending = true;
       }
 
@@ -470,7 +690,7 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
       greetRef.current = null;
       runRef.current = null;
       throwRef.current = null;
-      wieldRef.current = null;
+      swingRef.current = null;
       applySkinRef.current = null;
       walkAction = null;
       if (renderer.domElement.parentNode) {
@@ -497,11 +717,11 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     throwRef.current?.();
   }, [throwSignal]);
 
-  // wieldSignal 이 바뀌면(0 제외) 배트 휘두르기 모션 1회 재생. 모델 로드 전이면 무시.
+  // swingSignal 이 바뀌면(0 제외) 배트 스윙 모션 1회 재생. 모델 로드 전이면 무시.
   useEffect(() => {
-    if (!wieldSignal) return;
-    wieldRef.current?.();
-  }, [wieldSignal]);
+    if (!swingSignal) return;
+    swingRef.current?.();
+  }, [swingSignal]);
 
   // teamCode 가 바뀌면 유니폼 색/로고 스킨 갱신(모델 재로드 없이). 로드 전이면 로드 콜백이 적용.
   useEffect(() => {
