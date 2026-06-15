@@ -13,6 +13,7 @@ import datetime
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from db_pg import get_conn
+from session_metrics import completion_rate
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -31,6 +32,13 @@ def _run(script: str, timeout: int, args: list[str] | None = None) -> dict:
                        cwd=str(_ROOT), capture_output=True, text=True, timeout=timeout)
     out = (p.stdout or "") + (("\n[stderr]\n" + p.stderr) if p.returncode else "")
     return {"script": script, "returncode": p.returncode, "tail": out[-1500:]}
+
+
+@router.get("/completion-rate")
+def get_completion_rate(x_internal_token: str = Header(default="")):
+    """세션 완료율(텍스트·음성 채팅) 집계 — session_metrics가 기록한 시작/정상종료 이벤트 기준."""
+    _auth(x_internal_token)
+    return completion_rate()
 
 
 @router.post("/notify")
