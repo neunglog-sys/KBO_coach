@@ -1,5 +1,157 @@
 # iOS Frontend README
 
+## 먼저 보는 요약: React Native가 아니라 Capacitor WebView 방식입니다
+
+우리 앱은 React Native 앱이 아니라 **React 웹앱을 Capacitor 네이티브 껍데기 안의 WebView에서 실행하는 구조**입니다.
+
+Capacitor 앱은 WebView를 사용하지만, 외부 웹사이트를 단순히 열어 보여주는 방식과는 다릅니다.
+
+WebView 기반이라는 점에서 맞는 부분:
+
+- UI는 React Native 네이티브 컴포넌트가 아니라 HTML/CSS/JavaScript로 렌더링됩니다.
+- iOS에서는 WKWebView, Android에서는 Android WebView 안에서 화면이 동작합니다.
+- 그래서 키보드, viewport, safe-area, `position: fixed`, `100vh` 같은 WebView 이슈를 직접 맞춰야 합니다.
+
+단순 웹사이트 래핑과 다른 부분:
+
+- 앱이 단순히 외부 웹사이트 URL 하나를 열어 보여주는 방식은 아닙니다.
+- `npm run build`로 만든 정적 파일(`dist`)을 Capacitor가 네이티브 프로젝트 안에 복사합니다.
+- 앱은 기기 안에 패키징된 로컬 웹 번들을 WebView로 실행합니다.
+- 로그인, 채팅, 지도, LLM 호출 같은 데이터 요청만 배포된 백엔드/API로 통신합니다.
+
+즉 구조는 다음에 가깝습니다.
+
+```text
+React/Vite source
+  -> npm run build
+  -> dist 정적 웹 번들 생성
+  -> Capacitor sync
+  -> iOS/Android 네이티브 프로젝트 안에 웹 번들 복사
+  -> 네이티브 앱의 WebView가 로컬 번들을 실행
+  -> 필요한 데이터만 백엔드 API로 요청
+```
+
+React Native는 React 코드가 네이티브 UI 컴포넌트로 변환되어 동작하는 방식에 가깝습니다. 반면 Capacitor는 웹앱을 네이티브 앱 안에 넣어 실행하는 방식입니다. 그래서 React Native 팀이 하나의 코드베이스로 잘 관리한다고 해서, Capacitor WebView 앱도 같은 방식으로 아무 보정 없이 동일하게 관리되는 것은 아닙니다.
+
+하나의 `frontend`로 Android/iOS를 모두 관리하는 것도 가능합니다. 다만 그 경우에는 코드 곳곳에 명확한 플랫폼 분기가 필요합니다.
+
+```ts
+if (Capacitor.getPlatform() === "ios") {
+  // iOS WKWebView keyboard / viewport / safe-area 보정
+}
+
+if (Capacitor.getPlatform() === "android") {
+  // Android WebView 기존 resize 흐름 유지
+}
+```
+
+```css
+.plat-ios.kb-open .chat-inputbar {
+  /* iOS 전용 키보드 보정 */
+}
+
+.plat-android.kb-open .chat-inputbar {
+  /* Android 전용 키보드 보정 */
+}
+```
+
+이번 프로젝트에서는 Android가 이미 정상 동작하도록 고정된 상태였고, iOS에서만 키보드/스크롤/지도/화면비 문제가 계속 발생했습니다. 그래서 Android 안정본을 건드리지 않기 위해 iOS TestFlight용 `frontend-ios`를 별도 폴더로 분리했습니다.
+
+## 현재 프론트 배포/빌드 파이프라인
+
+현재 프론트는 목적에 따라 두 폴더로 나뉩니다.
+
+```text
+repo root
+├─ frontend
+│  ├─ src / styles.css
+│  ├─ android
+│  └─ ios
+│
+└─ frontend-ios
+   ├─ src / styles.css
+   └─ ios
+```
+
+### 1. 웹 배포 파이프라인
+
+```text
+frontend
+  -> GitHub Actions: .github/workflows/deploy.yml
+  -> npm ci
+  -> npm run build
+  -> Firebase Hosting 배포
+```
+
+- 기준 폴더: `frontend`
+- workflow: `.github/workflows/deploy.yml`
+- `working-directory: frontend`
+- iOS TestFlight와 별개입니다.
+
+### 2. 기존 Android 앱 파이프라인
+
+```text
+frontend
+  -> npm run build:android
+  -> npx cap sync android
+  -> frontend/android 네이티브 프로젝트 갱신
+  -> Gradle/Android Studio로 APK 또는 AAB 빌드
+```
+
+- 기준 폴더: `frontend`
+- Android 네이티브 폴더: `frontend/android`
+- Android 앱을 수정할 때는 `frontend` 기준으로 봅니다.
+- `frontend/ios`만 수정하는 것은 Android 앱에 직접 영향 없습니다.
+
+### 3. iOS TestFlight 파이프라인
+
+```text
+frontend-ios
+  -> git tag ios-tf-N && git push origin ios-tf-N
+  -> GitHub Actions: .github/workflows/ios-testflight.yml
+  -> npm ci
+  -> npm run build
+  -> npx cap sync ios
+  -> frontend-ios/ios/App/App.xcodeproj archive
+  -> App Store Connect / TestFlight 업로드
+```
+
+- 기준 폴더: `frontend-ios`
+- workflow: `.github/workflows/ios-testflight.yml`
+- `working-directory: frontend-ios`
+- iOS 네이티브 폴더: `frontend-ios/ios`
+- `frontend-ios/android`는 iOS TestFlight에 쓰이지 않아 삭제했습니다.
+
+### 4. iOS 시뮬레이터 검증 파이프라인
+
+```text
+frontend
+  -> GitHub Actions: .github/workflows/ios-build.yml
+  -> npm ci
+  -> npm run build
+  -> npx cap sync ios
+  -> frontend/ios/App/App.xcodeproj simulator build
+```
+
+- 기준 폴더: `frontend`
+- workflow: `.github/workflows/ios-build.yml`
+- 이 workflow는 TestFlight 업로드용이 아니라 시뮬레이터 검증용입니다.
+- 그래서 `frontend/ios`는 아직 남겨둡니다.
+
+## 왜 하나의 폴더로 계속 관리하지 않았는가
+
+기술적으로 하나의 `frontend`로 Android/iOS를 모두 관리할 수는 있습니다. 하지만 현재 프로젝트에서는 그 방식이 위험했습니다.
+
+이유는 다음과 같습니다.
+
+- Android는 이미 정상 동작하도록 맞춰진 상태였습니다.
+- iOS WKWebView는 Android WebView와 키보드/viewport/safe-area 동작이 달랐습니다.
+- iOS에 맞춰 CSS와 Keyboard 설정을 바꾸면 Android에서 이미 맞춘 화면이 다시 깨질 수 있었습니다.
+- 하나의 폴더로 유지하려면 `plat-ios`, `plat-android` 분기를 넓게 설계해야 했는데, 현재 단계에서는 리팩터링 범위가 커졌습니다.
+- 포트폴리오/시연 목적상 장기 유지보수보다 Android 안정본 보존과 iOS 빠른 안정화가 더 중요했습니다.
+
+그래서 현재 선택은 “Capacitor라서 무조건 폴더를 나눠야 한다”가 아니라, **이미 안정화된 Android를 보호하면서 iOS WebView 문제를 따로 고치기 위한 프로젝트 운영 선택**입니다.
+
 이 폴더는 iOS TestFlight 배포용 프론트엔드입니다. 기존 `frontend`를 기반으로 복제했지만, 현재 iOS TestFlight workflow는 `frontend-ios`만 빌드합니다.
 
 ## 결론
