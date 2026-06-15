@@ -1088,6 +1088,26 @@ html.theme-dark .tamagotchi-nickname-field input:focus {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
 }
 
+html.theme-dark .tamagotchi-nickname-edit-button,
+html.theme-dark .tamagotchi-nickname-edit-form button:not([type="submit"]) {
+  border-color: #46658f;
+  color: #a8c9ff;
+  background: #182b45;
+}
+
+html.theme-dark .tamagotchi-nickname-edit-form input {
+  border-color: #46658f;
+  color: #eef4ff;
+  background: #0d192a;
+}
+
+.tamagotchi-nickname-edit-form input:focus-visible,
+html.theme-dark .tamagotchi-nickname-edit-form input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
 html.theme-dark .tamagotchi-setup-submit {
   color: #ffffff;
   background: var(--color-primary);

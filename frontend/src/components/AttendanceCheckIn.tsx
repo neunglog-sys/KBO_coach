@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BookOpenCheck,
@@ -487,6 +487,11 @@ export default function AttendanceCheckIn({
     loadBuddyNickname(authToken, initialBuddyNickname)
   );
   const [buddyProfileError, setBuddyProfileError] = useState("");
+  const [isBuddyNicknameEditing, setIsBuddyNicknameEditing] = useState(false);
+  const [buddyNicknameEditInput, setBuddyNicknameEditInput] = useState(() =>
+    loadBuddyNickname(authToken, initialBuddyNickname)
+  );
+  const [buddyNicknameEditError, setBuddyNicknameEditError] = useState("");
 
   // 프로필 판정 완료 여부 — 판정 전에는 설정 화면을 그리지 않음 (새 기기 로그인 시 0.3초 번쩍임 방지)
   // 비로그인이거나, 이 브라우저(localStorage)에 이미 성별+닉네임이 있으면 서버 응답을 기다릴 필요 없음 → 즉시 판정 완료
@@ -734,6 +739,9 @@ export default function AttendanceCheckIn({
     const nextBuddyNickname = loadBuddyNickname(authToken, initialBuddyNickname);
     setBuddyNickname(nextBuddyNickname);
     setBuddyNicknameInput(nextBuddyNickname);
+    setBuddyNicknameEditInput(nextBuddyNickname);
+    setIsBuddyNicknameEditing(false);
+    setBuddyNicknameEditError("");
     // 계정 바뀌면 출석 상태도 그 계정 기준으로 즉시 리셋(서버 응답 전까지 이전 계정값 노출 방지)
     setStatus(fallbackStatus(authToken));
   }, [authToken, initialBuddyNickname]);
@@ -820,6 +828,70 @@ export default function AttendanceCheckIn({
       }));
     } catch (error) {
       setBuddyProfileError(error instanceof Error ? error.message : "야구짝꿍 설정 저장에 실패했습니다.");
+    } finally {
+      setIsBuddyProfileSaving(false);
+    }
+  }
+
+  function handleStartBuddyNicknameEdit() {
+    setBuddyNicknameEditInput(displayBuddyNickname);
+    setBuddyNicknameEditError("");
+    setIsBuddyNicknameEditing(true);
+  }
+
+  function handleCancelBuddyNicknameEdit() {
+    setBuddyNicknameEditInput(displayBuddyNickname);
+    setBuddyNicknameEditError("");
+    setIsBuddyNicknameEditing(false);
+  }
+
+  async function handleBuddyNicknameEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextBuddyNickname = buddyNicknameEditInput.trim();
+    setBuddyNicknameEditError("");
+
+    if (!nextBuddyNickname) {
+      setBuddyNicknameEditError("닉네임을 입력해주세요.");
+      return;
+    }
+    if (nextBuddyNickname.length > MAX_BUDDY_NICKNAME_LENGTH) {
+      setBuddyNicknameEditError(
+        `닉네임은 ${MAX_BUDDY_NICKNAME_LENGTH}자 이하로 입력해주세요.`,
+      );
+      return;
+    }
+    if (nextBuddyNickname === buddyNickname.trim()) {
+      setIsBuddyNicknameEditing(false);
+      return;
+    }
+
+    setIsBuddyProfileSaving(true);
+    try {
+      if (authToken) {
+        const response = await fetch(apiUrl("/auth/me/buddy"), {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ buddy_nickname: nextBuddyNickname }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.detail || "닉네임 변경에 실패했습니다.");
+        }
+      }
+
+      setBuddyNickname(nextBuddyNickname);
+      setBuddyNicknameInput(nextBuddyNickname);
+      setBuddyNicknameEditInput(nextBuddyNickname);
+      saveBuddyNickname(authToken, nextBuddyNickname);
+      onBuddyNicknameChange?.(nextBuddyNickname);
+      setIsBuddyNicknameEditing(false);
+    } catch (error) {
+      setBuddyNicknameEditError(
+        error instanceof Error ? error.message : "닉네임 변경에 실패했습니다.",
+      );
     } finally {
       setIsBuddyProfileSaving(false);
     }
@@ -1381,10 +1453,52 @@ export default function AttendanceCheckIn({
       <section className="tamagotchi-dashboard">
       <section className="tamagotchi-status-card" aria-label="캐릭터 상태">
         <div className="tamagotchi-status-top">
-          <h2>
-            <span>Lv.{displayLevel}</span>
-            {displayBuddyNickname}
-          </h2>
+          <div className="tamagotchi-name-block">
+            {!isBuddyNicknameEditing ? (
+              <div className="tamagotchi-name-row">
+                <h2>
+                  <span>Lv.{displayLevel}</span>
+                  <strong title={displayBuddyNickname}>{displayBuddyNickname}</strong>
+                </h2>
+                <button
+                  className="tamagotchi-nickname-edit-button"
+                  type="button"
+                  onClick={handleStartBuddyNicknameEdit}
+                >
+                  변경
+                </button>
+              </div>
+            ) : (
+              <form
+                className="tamagotchi-nickname-edit-form"
+                onSubmit={handleBuddyNicknameEditSubmit}
+              >
+                <span className="tamagotchi-nickname-edit-level">Lv.{displayLevel}</span>
+                <input
+                  aria-label="야구짝꿍 닉네임"
+                  aria-invalid={Boolean(buddyNicknameEditError)}
+                  autoFocus
+                  value={buddyNicknameEditInput}
+                  maxLength={MAX_BUDDY_NICKNAME_LENGTH}
+                  title={buddyNicknameEditError || undefined}
+                  onChange={(event) => {
+                    setBuddyNicknameEditInput(event.target.value);
+                    setBuddyNicknameEditError("");
+                  }}
+                />
+                <button type="submit" disabled={isBuddyProfileSaving}>
+                  저장
+                </button>
+                <button
+                  type="button"
+                  disabled={isBuddyProfileSaving}
+                  onClick={handleCancelBuddyNicknameEdit}
+                >
+                  취소
+                </button>
+              </form>
+            )}
+          </div>
           <div className="tamagotchi-exp">
             <strong>EXP</strong>
             <div aria-label={`경험치 ${displayProgress}%`}>
