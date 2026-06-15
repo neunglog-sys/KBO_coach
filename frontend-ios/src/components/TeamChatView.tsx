@@ -207,9 +207,12 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
       updateChatLayout();
 
       window.requestAnimationFrame(() => {
-        bottomRef.current?.scrollIntoView({
+        const log = logRef.current;
+        if (!log) return;
+
+        log.scrollTo({
+          top: log.scrollHeight,
           behavior,
-          block: "end",
         });
       });
     });

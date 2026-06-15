@@ -313,6 +313,14 @@
   scroll-padding-bottom: var(--chat-inputbar-space);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-log::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .chat-log::after {
@@ -450,7 +458,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 0px);
+  bottom: 0;
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 12px);
 }
 
@@ -461,7 +469,11 @@
 }
 
 .plat-ios .chat-log {
-  padding-bottom: calc(var(--chat-inputbar-space) + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 10px);
+  padding-bottom: calc(var(--chat-inputbar-space) + 12px);
+}
+
+.plat-ios.kb-open .chat-log {
+  padding-bottom: calc(var(--chat-inputbar-space) + 18px);
 }
 
 .chat-inputbar input {

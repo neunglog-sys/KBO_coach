@@ -11,6 +11,7 @@ declare global {
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
 const KAKAO_LOAD_TIMEOUT_MS = 10_000;
 const KAKAO_READY_POLL_MS = 50;
+const KAKAO_SCRIPT_ID = "kakao-maps-sdk";
 
 let kakaoLoadPromise: Promise<void> | null = null;
 
@@ -31,7 +32,7 @@ function waitForKakaoMapsReady(): Promise<void> {
         return;
       }
       if (Date.now() - startedAt >= KAKAO_LOAD_TIMEOUT_MS) {
-        reject(new Error("Kakao Maps SDK 초기화 시간이 초과되었습니다."));
+        reject(new Error("Kakao Maps SDK initialization timed out."));
         return;
       }
       window.setTimeout(check, KAKAO_READY_POLL_MS);
@@ -46,28 +47,50 @@ function loadKakaoMaps(): Promise<void> {
 
   const promise = new Promise<void>((resolve, reject) => {
     if (!KAKAO_MAP_KEY) {
-      reject(new Error("Kakao Maps API 키가 설정되지 않았습니다."));
+      reject(new Error("Kakao Maps API key is missing."));
       return;
     }
-    const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false`;
-    script.async = true;
-    const timeout = window.setTimeout(() => {
-      reject(new Error("Kakao Maps SDK 응답 시간이 초과되었습니다."));
-    }, KAKAO_LOAD_TIMEOUT_MS);
-    script.onload = () => {
-      window.clearTimeout(timeout);
+
+    const onSdkLoaded = () => {
       if (!window.kakao?.maps?.load) {
-        reject(new Error("Kakao Maps SDK가 현재 앱 출처를 허용하지 않았습니다."));
+        reject(new Error("Kakao Maps SDK is unavailable for this app origin."));
         return;
       }
       window.kakao.maps.load(() => {
         void waitForKakaoMapsReady().then(resolve, reject);
       });
     };
+
+    const existingScript = document.getElementById(KAKAO_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existingScript) {
+      if (window.kakao?.maps?.load) {
+        onSdkLoaded();
+      } else {
+        existingScript.addEventListener("load", onSdkLoaded, { once: true });
+        existingScript.addEventListener("error", () => reject(new Error("Failed to load Kakao Maps SDK.")), {
+          once: true,
+        });
+      }
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = KAKAO_SCRIPT_ID;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KAKAO_MAP_KEY)}&autoload=false`;
+    script.async = true;
+    script.defer = true;
+
+    const timeout = window.setTimeout(() => {
+      reject(new Error("Kakao Maps SDK timed out."));
+    }, KAKAO_LOAD_TIMEOUT_MS);
+
+    script.onload = () => {
+      window.clearTimeout(timeout);
+      onSdkLoaded();
+    };
     script.onerror = () => {
       window.clearTimeout(timeout);
-      reject(new Error("Kakao Maps SDK를 불러오지 못했습니다."));
+      reject(new Error("Failed to load Kakao Maps SDK."));
     };
     document.head.appendChild(script);
   }).catch((error: unknown) => {
@@ -134,13 +157,15 @@ export function StadiumMap({
           markersRef.current[stadium.teamCode] = marker;
         }
 
+        window.requestAnimationFrame(() => {
+          map.relayout();
+          window.requestAnimationFrame(() => map.relayout());
+        });
         setIsReady(true);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setErrorMessage(
-            error instanceof Error ? error.message : "지도를 불러오지 못했습니다.",
-          );
+          setErrorMessage(error instanceof Error ? error.message : "Failed to load the map.");
           setHasError(true);
         }
       });
@@ -161,6 +186,7 @@ export function StadiumMap({
     const { kakao } = window;
     const position = new kakao.maps.LatLng(coord.lat, coord.lng);
     mapRef.current.setLevel(6);
+    mapRef.current.relayout();
     mapRef.current.panTo(position);
 
     infoWindowRef.current.setContent(buildInfoContent(stadium));
@@ -170,10 +196,10 @@ export function StadiumMap({
   if (hasError) {
     return (
       <div className="stadium-page-map stadium-page-map-error" role="alert">
-        {errorMessage || "지도를 불러오지 못했습니다."}
+        {errorMessage || "Failed to load the map."}
       </div>
     );
   }
 
-  return <div className="stadium-page-map" ref={containerRef} aria-label="구장 위치 지도" />;
+  return <div className="stadium-page-map" ref={containerRef} aria-label="Stadium location map" />;
 }
