@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.neunglog.baseballcoach",
-  appName: "공복이",
+  appName: "야구볼래",
   webDir: "dist",
   android: {
     // 앱을 http://localhost 로 서빙 → http LAN 백엔드 fetch가 mixed-content로 막히지 않음.
