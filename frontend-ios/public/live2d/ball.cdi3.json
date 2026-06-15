@@ -1,0 +1,188 @@
+{
+	"Version": 3,
+	"Parameters": [
+		{
+			"Id": "ParamBodyAngleX",
+			"GroupId": "ParamGroup",
+			"Name": "몸의 회전 X"
+		},
+		{
+			"Id": "ParamBodyAngleY",
+			"GroupId": "ParamGroup",
+			"Name": "몸의 회전　Y"
+		},
+		{
+			"Id": "ParamBodyAngleZ",
+			"GroupId": "ParamGroup",
+			"Name": "몸의 회전 Z"
+		},
+		{
+			"Id": "ParamAngleX",
+			"GroupId": "ParamGroup",
+			"Name": "각도 X"
+		},
+		{
+			"Id": "ParamAngleY",
+			"GroupId": "ParamGroup",
+			"Name": "각도 Y"
+		},
+		{
+			"Id": "ParamAngleZ",
+			"GroupId": "ParamGroup",
+			"Name": "각도 Z"
+		},
+		{
+			"Id": "AngleX",
+			"GroupId": "ParamGroup2",
+			"Name": "얼굴 각도 X"
+		},
+		{
+			"Id": "AngleY",
+			"GroupId": "ParamGroup2",
+			"Name": "얼굴 각도 Y"
+		},
+		{
+			"Id": "AngleZ",
+			"GroupId": "ParamGroup2",
+			"Name": "얼굴 각도 Z"
+		},
+		{
+			"Id": "ParamEyeBallX",
+			"GroupId": "ParamGroup3",
+			"Name": "눈 X"
+		},
+		{
+			"Id": "ParamEyeBallY",
+			"GroupId": "ParamGroup3",
+			"Name": "눈 Y"
+		},
+		{
+			"Id": "ParamEyeLOpen",
+			"GroupId": "ParamGroup3",
+			"Name": "왼쪽 눈 깜빡임"
+		},
+		{
+			"Id": "ParamEyeLSmile",
+			"GroupId": "ParamGroup3",
+			"Name": "왼쪽 눈 미소"
+		},
+		{
+			"Id": "ParamEyeROpen",
+			"GroupId": "ParamGroup3",
+			"Name": "오른쪽 눈 깜빡임"
+		},
+		{
+			"Id": "ParamEyeRSmile",
+			"GroupId": "ParamGroup3",
+			"Name": "오른쪽 눈 미소"
+		},
+		{
+			"Id": "ParamMouthForm",
+			"GroupId": "ParamGroup4",
+			"Name": "입 변형"
+		},
+		{
+			"Id": "ParamMouthOpenY",
+			"GroupId": "ParamGroup4",
+			"Name": "입 여닫기"
+		},
+		{
+			"Id": "Kiwoom",
+			"GroupId": "ParamGroup5",
+			"Name": "키움"
+		},
+		{
+			"Id": "Samsung",
+			"GroupId": "ParamGroup5",
+			"Name": "삼성"
+		},
+		{
+			"Id": "Kia",
+			"GroupId": "ParamGroup5",
+			"Name": "기아"
+		},
+		{
+			"Id": "Ssg",
+			"GroupId": "ParamGroup5",
+			"Name": "ssg"
+		},
+		{
+			"Id": "Nc",
+			"GroupId": "ParamGroup5",
+			"Name": "nc"
+		},
+		{
+			"Id": "Lg",
+			"GroupId": "ParamGroup5",
+			"Name": "lg"
+		},
+		{
+			"Id": "Kt",
+			"GroupId": "ParamGroup5",
+			"Name": "kt"
+		},
+		{
+			"Id": "Lotte",
+			"GroupId": "ParamGroup5",
+			"Name": "lotte"
+		},
+		{
+			"Id": "doosan",
+			"GroupId": "ParamGroup5",
+			"Name": "두산"
+		},
+		{
+			"Id": "Hanwha",
+			"GroupId": "ParamGroup5",
+			"Name": "한화"
+		},
+		{
+			"Id": "Bat",
+			"GroupId": "ParamGroup6",
+			"Name": "야구배트"
+		}
+	],
+	"ParameterGroups": [
+		{
+			"Id": "ParamGroup",
+			"GroupId": "",
+			"Name": "각도"
+		},
+		{
+			"Id": "ParamGroup2",
+			"GroupId": "",
+			"Name": "물리각도"
+		},
+		{
+			"Id": "ParamGroup3",
+			"GroupId": "",
+			"Name": "눈"
+		},
+		{
+			"Id": "ParamGroup4",
+			"GroupId": "",
+			"Name": "입"
+		},
+		{
+			"Id": "ParamGroup5",
+			"GroupId": "",
+			"Name": "유니폼"
+		},
+		{
+			"Id": "ParamGroup6",
+			"GroupId": "",
+			"Name": "소품"
+		}
+	],
+	"Parts": [],
+	"CombinedParameters": [
+		[
+			"ParamAngleX",
+			"ParamAngleY"
+		],
+		[
+			"ParamMouthForm",
+			"ParamMouthOpenY"
+		]
+	]
+}
