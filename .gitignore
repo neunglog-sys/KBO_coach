@@ -98,4 +98,11 @@ design_preview/
 .claude/settings.local.json
 
 #tts_samples
-/tts_samplessecrets_ios/
+/tts_samples
+secrets_ios/
+
+# iOS 서명 자료 — 절대 커밋 금지 (APNs 키·프로비저닝·인증서)
+*.p8
+*.mobileprovision
+*.b64.txt
+*.p12

@@ -1,6 +1,7 @@
 import UIKit
 import AVFAudio
 import Capacitor
+import FirebaseCore
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,6 +9,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Firebase 초기화 (FCM 푸시 — @capacitor-firebase/messaging이 APNs↔FCM 토큰 처리)
+        FirebaseApp.configure()
         // TTS 음성이 무음 스위치에 묻히지 않게 오디오 세션을 '재생' 카테고리로 선언
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
