@@ -429,7 +429,7 @@ export default function SettingsView({
   }
 
   return (
-    <section className="settings-app-screen">
+    <section className={`settings-app-screen settings-screen-${screen}`}>
       <div className="settings-screen-anim" key={screen}>
         {screen === "main" ? (
           <>
