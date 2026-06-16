@@ -16,6 +16,7 @@ import { StadiumPage } from "./StadiumPage";
 import { TeamChatView } from "./TeamChatView";
 import { TopMenu, type TopMenuTarget } from "./TopMenu";
 import { WeatherFx, type WeatherCondition } from "./WeatherFx";
+import { normalizeBaseballSttText } from "../data/sttBaseballNormalize";
 import "./MainViewV2.css";
 
 // 인사말 감지용 (안녕/안뇽/하이/헬로/hi/hello/hey/반가/반갑). 소문자로 매칭.
@@ -1370,10 +1371,11 @@ export function MainViewV2({
     }
 
     const transcript = nativeSttLastRef.current.trim();
+    const normalizedTranscript = normalizeBaseballSttText(transcript);
     const hadSpeech = nativeSttHadSpeechRef.current;
     nativeSttLastRef.current = "";
     nativeSttHadSpeechRef.current = false;
-    if (submit && hadSpeech && transcript) void submitQuestionRef.current(transcript);
+    if (submit && hadSpeech && normalizedTranscript) void submitQuestionRef.current(normalizedTranscript);
   }
 
   async function startNativeSTT() {
