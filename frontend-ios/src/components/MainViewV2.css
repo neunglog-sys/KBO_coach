@@ -314,8 +314,8 @@
   z-index: 2;
   width: var(--stage-character-size);
   height: var(--stage-character-size);
-  /* 가운데에서 왼쪽으로 10px 보정 */
-  transform: translateX(calc(-50% - 10px));
+  /* 모델 정렬을 '두 발 중심'으로 맞췄으므로(Character3D) 컨테이너는 화면 정중앙에 둔다. */
+  transform: translateX(-50%);
 }
 
 .stage-character-canvas {
@@ -443,6 +443,20 @@
   background: #d9f0ff;
 }
 
+.stage-voice-status {
+  align-self: center;
+  width: var(--stage-content-width);
+  min-height: 24px;
+  padding: 0 14px;
+  color: #5f6f82;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0;
+  text-align: center;
+  pointer-events: none;
+}
 .stage-inputbar {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
@@ -511,8 +525,8 @@
 }
 
 .stage-mic {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -610,11 +624,15 @@
     gap: 6px;
   }
 
-  .stage-mic,
   .stage-stop,
   .stage-send-arrow {
     width: 42px;
     height: 42px;
+  }
+
+  .stage-mic {
+    width: 48px;
+    height: 48px;
   }
 }
 
@@ -700,8 +718,9 @@
 
 
 .stage-mic {
+  min-height: 48px;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
