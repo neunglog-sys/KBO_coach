@@ -1690,6 +1690,12 @@
 }
 /* 응원구단 변경 화면: iPhone 화면 크기에 맞춰 목록 밀도를 조절한다. */
 .settings-app-screen.settings-screen-team {
+  background-attachment: fixed;
+  background-size: 100% 100dvh;
+  background-repeat: no-repeat;
+  background-color: #f7fcff;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   --settings-team-page-x: clamp(14px, 5vw, 30px);
   --settings-team-card-padding: clamp(14px, 4.4vw, 24px);
   --settings-team-card-gap: clamp(12px, 3.3vw, 18px);
@@ -1789,36 +1795,3 @@
   }
 }
 
-/* Keep the team picker screen fixed; only the team list scrolls on iOS. */
-.settings-app-screen.settings-screen-team {
-  height: 100dvh;
-  min-height: 100dvh;
-  overflow: hidden;
-  overscroll-behavior: none;
-  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-}
-
-.settings-app-screen.settings-screen-team .settings-screen-anim {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-}
-
-.settings-app-screen.settings-screen-team .settings-team-card {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.settings-app-screen.settings-screen-team .settings-team-card fieldset {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 2px;
-}
-
-.settings-app-screen.settings-screen-team .settings-primary-button.settings-blue-action-button {
-  flex: 0 0 auto;
-}
