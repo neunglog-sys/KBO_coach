@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { deleteToken, getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { apiUrl } from "./api";
@@ -89,8 +90,13 @@ export async function disablePush(authToken: string): Promise<void> {
 
   if (Capacitor.isNativePlatform()) {
     try {
-      await PushNotifications.unregister();
-      await PushNotifications.removeAllListeners();
+      if (Capacitor.getPlatform() === "ios") {
+        await FirebaseMessaging.deleteToken();
+        await FirebaseMessaging.removeAllListeners();
+      } else {
+        await PushNotifications.unregister();
+        await PushNotifications.removeAllListeners();
+      }
       nativeReady = false;
     } catch (error) {
       console.error("네이티브 푸시 해제 실패", error);
@@ -113,6 +119,27 @@ export async function disablePush(authToken: string): Promise<void> {
 async function registerNative(): Promise<void> {
   if (!isNotificationEnabled()) return;
 
+  // iOS: @capacitor-firebase/messaging로 APNs↔FCM 처리 → FCM 토큰을 직접 받아 백엔드 FCM 발송과 호환.
+  //      (@capacitor/push-notifications는 iOS에선 APNs 원시 토큰만 줘서 FCM 발송에 못 씀)
+  if (Capacitor.getPlatform() === "ios") {
+    if (!nativeReady) {
+      nativeReady = true;
+      await FirebaseMessaging.addListener("tokenReceived", (event) => {
+        if (event?.token && isNotificationEnabled()) void saveToken(event.token, "ios");
+      });
+      await FirebaseMessaging.addListener("notificationReceived", (event) => {
+        if (isNotificationEnabled()) console.log("푸시 수신", event);
+      });
+    }
+    let perm = await FirebaseMessaging.checkPermissions();
+    if (perm.receive === "prompt") perm = await FirebaseMessaging.requestPermissions();
+    if (perm.receive !== "granted" || !isNotificationEnabled()) return;
+    const { token } = await FirebaseMessaging.getToken();
+    if (token && isNotificationEnabled()) await saveToken(token, "ios");
+    return;
+  }
+
+  // Android: @capacitor/push-notifications (registration 이벤트가 FCM 토큰 반환)
   if (!nativeReady) {
     nativeReady = true;
     await PushNotifications.addListener("registration", (token) => {
