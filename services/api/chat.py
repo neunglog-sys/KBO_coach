@@ -72,6 +72,10 @@ def _record_authenticated_answer(
         conn.close()
 
 
+# 시스템 프롬프트(규칙) 버전 — 프롬프트를 바꾸면 이 값을 올린다 → 캐시 키가 달라져 옛 답이 자동 무효화.
+_PROMPT_VERSION = "p2-20260616"
+
+
 def _cache_key(body: "ChatIn"):
     q = " ".join((body.question or "").split())   # 공백 정규화
     return (body.team_code or "", q)
@@ -123,9 +127,10 @@ def _build_system_prompt(persona: dict | None) -> str:
     base_rules = (
         "\n[반드시 지킬 것 — 최우선]\n"
         "- 모르는 것은 지어내지 않고 '그건 잘 모르겠다'고 솔직히 말한다. 확인되지 않은 내용을 사실처럼 말하는 걸 금지한다.\n"
-        "- 너는 야구 안내 캐릭터다. 야구(규칙·용어·구단·선수·관람문화 등) 밖의 주제 — 앱·기기·서비스의 "
-        "기능·설정·사용법, 본인(공복이)의 동작 방식, 그 외 잘 모르는 분야 — 는 아는 척 답을 만들어내지 말고, "
-        "모른다고 짧게 인정한 뒤 야구 이야기로 돌아온다. 존재하지 않는 메뉴·버튼·기능·사실을 지어내지 않는다.\n"
+        "- 너는 야구 안내 캐릭터다. 야구(규칙·용어·구단·선수·관람문화) 밖의 앱·기기·서비스 기능·설정·사용법은 "
+        "아는 척 지어내지 말고(없는 메뉴·버튼·기능 창작 금지), 모른다고 짧게 인정한 뒤 야구 이야기로 돌아온다.\n"
+        "- 너의 답변은 음성(TTS)으로도 읽힌다. 그러니 '나는 소리가 안 나는 글자일 뿐'처럼 목소리가 없다고 부정하지 않는다. "
+        "'목소리 꺼줘/안 나오게 해' 같은 요청에는 끄는 방법은 잘 모르겠다고만 짧게 답하고(앱 설정·방법을 지어내지 않음) 자연스럽게 넘어간다.\n"
         "- 매 답변을 같은 말머리(예: '그게 말이여~', '~다 아이가')로 시작하지 않는다. 도입 문구를 답변마다 다르게 변주한다.\n"
         "- 직전 답변과 같은 내용·문장을 되풀이하지 않는다. 사용자가 다시 물으면 똑같이 반복하지 말고 다른 각도로 더 구체적으로 답한다.\n"
         "- 사용자 말의 의도를 잘못 짚었으면 엉뚱한 답을 지어내지 말고, 무슨 뜻인지 짧게 되묻는다.\n"
@@ -828,9 +833,10 @@ def _chat_impl(body: ChatIn, authorization: str | None):
     # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
     cache_key = None
     if not body.personal_context:
-        # 키에 페르소나 해시 포함 — 페르소나(DB) 수정 시 옛 답이 캐시에서 나오는 것 자동 방지
+        # 키에 페르소나 해시 + 프롬프트 버전 포함 — 페르소나(DB)나 시스템 프롬프트 수정 시
+        # 옛 답이 캐시에서 나오는 것 자동 방지(프롬프트 바꾸면 _PROMPT_VERSION만 올리면 캐시 자동 무효화).
         phash = pcache.persona_hash(body.team_code)
-        cache_key = _cache_key(body) + (phash,)
+        cache_key = _cache_key(body) + (phash, _PROMPT_VERSION)
         hit = _cache_get(cache_key)
         if hit is not None:   # 메모리 캐시 적중 → 즉시 응답
             _record_authenticated_answer(
