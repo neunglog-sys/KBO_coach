@@ -114,6 +114,13 @@ export function StadiumMap({
         if (cancelled || !containerRef.current) return;
         const { kakao } = window;
 
+        // Check these logs in the browser developer console or iOS WebView debugging
+        // console, not in the VSCode terminal.
+        console.log("현재 origin:", window.location.origin);
+        console.log("현재 href:", window.location.href);
+        console.log("카카오 키 존재 여부:", !!import.meta.env.VITE_KAKAO_MAP_KEY);
+        console.log("kakao 객체 존재 여부:", !!window.kakao);
+
         const map = new kakao.maps.Map(containerRef.current, {
           center: new kakao.maps.LatLng(36.4, 127.7),
           level: 13,
