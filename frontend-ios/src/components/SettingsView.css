@@ -92,9 +92,7 @@
   overflow-y: auto;
   padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 10px) 20px 78px;
   color: #101a36;
-  background:
-    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.26) 0 48px, transparent 49px),
-    linear-gradient(180deg, #8bd7ff 0%, #dff5ff 38%, #f7fcff 100%);
+  background: #f7fcff;
   font-family:
     Pretendard,
     "Noto Sans KR",
@@ -104,17 +102,28 @@
     sans-serif;
 }
 
-.settings-app-screen::before {
-  content: "";
-  position: absolute;
-  right: 28px;
-  top: 48px;
-  width: 84px;
-  height: 84px;
-  border: 7px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
+.settings-fixed-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.26) 0 48px, transparent 49px),
+    linear-gradient(180deg, #8bd7ff 0%, #dff5ff 38%, #f7fcff 100%);
+  transform: translateZ(0);
 }
 
+.settings-fixed-background::before {
+  content: "";
+  position: absolute;
+  right: clamp(22px, 7vw, 58px);
+  top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(34px, 8vh, 72px));
+  width: clamp(72px, 18vw, 116px);
+  height: clamp(72px, 18vw, 116px);
+  border: clamp(6px, 1.5vw, 9px) solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
 .settings-header {
   position: relative;
   z-index: 1;
@@ -973,7 +982,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 112px;
+  height: clamp(112px, 19vh, 180px);
   opacity: 0.62;
   pointer-events: none;
   background:
@@ -985,47 +994,47 @@
 .settings-stadium-decoration::after {
   content: "";
   position: absolute;
-  bottom: 14px;
+  bottom: clamp(14px, 2.4vh, 24px);
   width: 42%;
-  height: 44px;
-  border-top: 6px solid rgba(89, 171, 240, 0.5);
+  height: clamp(44px, 7vh, 70px);
+  border-top: clamp(6px, 1vh, 9px) solid rgba(89, 171, 240, 0.5);
   background: rgba(114, 184, 244, 0.28);
 }
 
 .settings-stadium-decoration::before {
-  left: -24px;
+  left: clamp(-34px, -4vw, -24px);
   transform: skewY(10deg);
 }
 
 .settings-stadium-decoration::after {
-  right: -24px;
+  right: clamp(-34px, -4vw, -24px);
   transform: skewY(-10deg);
 }
 
 .settings-stadium-decoration span {
   position: absolute;
-  bottom: 66px;
-  width: 34px;
-  height: 46px;
+  bottom: clamp(66px, 10vh, 108px);
+  width: clamp(34px, 7vw, 54px);
+  height: clamp(46px, 8vh, 72px);
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.45);
 }
 
 .settings-stadium-decoration span:first-child {
-  left: 42px;
+  left: clamp(42px, 12vw, 92px);
 }
 
 .settings-stadium-decoration span:last-child {
-  right: 42px;
+  right: clamp(42px, 12vw, 92px);
 }
 
 .settings-stadium-decoration span::after {
   content: "";
   position: absolute;
-  left: 14px;
-  top: 42px;
-  width: 6px;
-  height: 34px;
+  left: 42%;
+  top: 91%;
+  width: clamp(6px, 1.2vw, 9px);
+  height: clamp(34px, 6vh, 54px);
   background: rgba(255, 255, 255, 0.42);
 }
 
@@ -1690,10 +1699,6 @@
 }
 /* 응원구단 변경 화면: iPhone 화면 크기에 맞춰 목록 밀도를 조절한다. */
 .settings-app-screen.settings-screen-team {
-  background-attachment: fixed;
-  background-size: 100% 100dvh;
-  background-repeat: no-repeat;
-  background-color: #f7fcff;
   overscroll-behavior-x: none;
   touch-action: pan-y;
   --settings-team-page-x: clamp(14px, 5vw, 30px);
