@@ -1403,7 +1403,7 @@ export function MainViewV2({
       nativeSttActiveRef.current = false;
 
       stopSpeaking();
-      if (Capacitor.getPlatform() === "ios") await wait(180);
+      if (Capacitor.getPlatform() === "ios") await wait(320);
 
       await NativeSTT.removeAllListeners().catch(() => { });
       await NativeSTT.addListener("partialResults", (data: { matches?: string[] }) => {
@@ -1419,11 +1419,11 @@ export function MainViewV2({
           void finishNativeSTT(nativeSttHadSpeechRef.current);
         }
       });
-      nativeSttStartingRef.current = false;
       nativeSttActiveRef.current = true;
+      await NativeSTT.start({ language: "ko-KR", maxResults: 1, partialResults: true, popup: false });
+      nativeSttStartingRef.current = false;
       setIsMicStarting(false);
       setIsListening(true);
-      await NativeSTT.start({ language: "ko-KR", maxResults: 1, partialResults: true, popup: false });
       scheduleNativeMaxStop();
     } catch {
       clearNativeSttTimers();
@@ -1707,6 +1707,12 @@ export function MainViewV2({
           ))}
         </div>
 
+        {(isMicStarting || isListening) ? (
+          <div className="stage-voice-status" role="status" aria-live="polite">
+            {isMicStarting ? "음성 인식 준비중 ..." : "듣는 중..."}
+          </div>
+        ) : null}
+
         <form className="stage-inputbar" onSubmit={handleSubmit}>
           {/* 왼쪽: 음성 일시정지 (항상) */}
           <button
@@ -1758,13 +1764,13 @@ export function MainViewV2({
               onContextMenu={(e) => e.preventDefault()}
               disabled={!supportsSTT}
               aria-pressed={isListening || isMicStarting}
-              aria-label={isListening ? "듣는 중 — 다시 누르면 전송" : isMicStarting ? "음성 입력 준비 중" : "음성 입력 시작"}
+              aria-label={isListening ? "듣는 중 — 다시 누르면 전송" : isMicStarting ? "음성 인식 준비중" : "음성 입력 시작"}
               title={
                 supportsSTT
                   ? isListening
                     ? "다시 누르면 바로 전송합니다"
                     : isMicStarting
-                      ? "음성 입력을 준비하고 있습니다"
+                      ? "음성 인식 준비중 ..."
                       : "한 번 누르면 듣고, 말이 없으면 자동 전송합니다"
                   : "이 환경은 음성 인식을 지원하지 않습니다"
               }
