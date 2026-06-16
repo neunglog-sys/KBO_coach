@@ -1658,7 +1658,14 @@ export function MainViewV2({
 
       <WeatherFx condition={weatherCondition} />
 
-      <div className="stage-boot-cover" aria-hidden="true" />
+      <div className="stage-boot-cover" aria-hidden="true">
+        <div className="stage-loading-panel">
+          <p className="stage-loading-title">로딩 중</p>
+          <div className="stage-loading-bar">
+            <span />
+          </div>
+        </div>
+      </div>
 
       <section
         ref={chatSectionRef}

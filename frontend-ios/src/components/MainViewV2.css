@@ -36,8 +36,11 @@
   position: absolute;
   inset: 0;
   z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(22px, env(safe-area-inset-left, 0px));
   pointer-events: none;
-  background: #d9f2ff;
+  background: #cae4f9;
   opacity: 0;
   visibility: hidden;
   transition:
@@ -49,6 +52,57 @@
   opacity: 1;
   visibility: visible;
   transition: opacity 120ms var(--app-ease-standard, ease);
+}
+
+.stage-loading-panel {
+  display: grid;
+  justify-items: center;
+  gap: clamp(12px, 2.8vh, 18px);
+  width: min(260px, 68vw);
+  transform: translateY(clamp(-18px, -3vh, -8px));
+}
+
+.stage-loading-title {
+  margin: 0;
+  color: #143159;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-size: clamp(1rem, 4.2vw, 1.18rem);
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.stage-loading-bar {
+  position: relative;
+  width: 100%;
+  height: clamp(6px, 1.4vw, 8px);
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow:
+    inset 0 1px 2px rgba(49, 99, 142, 0.13),
+    0 6px 16px rgba(54, 120, 181, 0.16);
+}
+
+.stage-loading-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f8aff 0%, #5fb8ff 100%);
+  box-shadow: 0 0 14px rgba(47, 138, 255, 0.34);
+  animation: stage-loading-bar-slide 1.08s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+@keyframes stage-loading-bar-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(255%);
+  }
 }
 
 .stage-bg,
