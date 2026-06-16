@@ -375,7 +375,7 @@
 
 /* 접힘: 메시지 로그를 부드럽게 접음(손잡이+입력바만 남음) */
 .stage-chatlog {
-  transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
+  transition: max-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), min-height 0.28s cubic-bezier(0.22, 0.8, 0.28, 1), opacity 0.2s ease;
 }
 
 .stage-chat.is-collapsed .stage-chatlog {

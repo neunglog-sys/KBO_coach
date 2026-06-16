@@ -1440,7 +1440,9 @@ export function MainViewV2({
     setIsResizingChat(false);
     if (!d) return;
     if (!d.moved) {
+      const collapsing = !chatCollapsedRef.current;
       setChatCollapsed((v) => !v);
+      if (collapsing) setChatHeight(null);
       setChatAtNavLimit(false);
       return;
     }
@@ -1573,7 +1575,7 @@ export function MainViewV2({
           aria-live="polite"
           style={
             chatHeight != null
-              ? { maxHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
+              ? { maxHeight: `${chatHeight}px`, minHeight: `${chatHeight}px`, transition: isResizingChat ? "none" : undefined }
               : undefined
           }
         >
