@@ -3906,3 +3906,43 @@ html.theme-dark .app-shell {
   color: #dce9fb;
   background: linear-gradient(180deg, #1d2d45, #152238);
 }
+
+/* === 웹(데스크톱)에서 앱을 '폰 크기 iframe'으로 감싸 모바일처럼 표시 ==================
+   main.tsx가 데스크톱 웹(최상위 창, 600px 이상)에서만 #root에 iframe을 넣고 html에
+   is-web-frame을 단다. iframe 안의 앱은 폰 폭(≈430px) 뷰포트로 동작해 모든 화면·미디어쿼리·
+   오버레이가 모바일 레이아웃으로 정상 렌더된다(화면별 보정 불필요).
+   네이티브 앱·실제 모바일 웹·iframe 내부에는 적용되지 않는다. 양옆은 body 경기장 배경이 보인다. */
+html.is-web-frame,
+html.is-web-frame body,
+html.is-web-frame #root {
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html.is-web-frame body {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  overflow: hidden;
+}
+
+html.is-web-frame #root {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+}
+
+.device-frame-iframe {
+  display: block;
+  /* 반응형: 좁으면 채우고 넓어지면 폰 폭(430px)에서 멈춘다 */
+  width: min(100%, 430px);
+  height: 100vh;
+  height: 100dvh;
+  border: 0;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.18),
+    0 24px 70px rgba(0, 0, 0, 0.5);
+}
