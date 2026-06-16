@@ -1716,10 +1716,25 @@
   padding-left: max(var(--settings-team-page-x), env(safe-area-inset-left, 0px));
 }
 
+.settings-app-screen.settings-screen-team {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .settings-app-screen.settings-screen-team .settings-screen-anim {
+  box-sizing: border-box;
   width: 100%;
   max-width: 560px;
+  height: 100%;
+  max-height: 100%;
   margin: 0 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .settings-app-screen.settings-screen-team .settings-header {
