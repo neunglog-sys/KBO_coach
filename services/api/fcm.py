@@ -48,14 +48,19 @@ def send_to_tokens(tokens: list[str], title: str, body: str, data: dict | None =
     if not tokens:
         return {"sent": 0, "failed": 0, "invalid_tokens": []}
     _ensure_init()
+    # 소리·진동: iOS(APNs)는 payload에 sound가 없으면 무음 배너만 뜬다 → 명시 필수.
+    #           Android도 알림 사운드를 default로 지정.
+    android_kwargs = {"notification": messaging.AndroidNotification(sound="default")}
     extra = {}
     if ttl_seconds is not None:
-        extra["android"] = messaging.AndroidConfig(ttl=datetime.timedelta(seconds=ttl_seconds))
+        android_kwargs["ttl"] = datetime.timedelta(seconds=ttl_seconds)
         extra["webpush"] = messaging.WebpushConfig(headers={"TTL": str(ttl_seconds)})
     message = messaging.MulticastMessage(
         tokens=tokens,
         notification=messaging.Notification(title=title, body=body),
         data={k: str(v) for k, v in (data or {}).items()},
+        android=messaging.AndroidConfig(**android_kwargs),
+        apns=messaging.APNSConfig(payload=messaging.APNSPayload(aps=messaging.Aps(sound="default"))),
         **extra,
     )
     resp = messaging.send_each_for_multicast(message)
