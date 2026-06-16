@@ -226,6 +226,7 @@ export function MainViewV2({
   const [stageReady, setStageReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isMicStarting, setIsMicStarting] = useState(false);
   // 입력창 포커스(키보드 올라옴) 여부 → 오른쪽 버튼을 마이크↔보내기로 토글
   const [inputFocused, setInputFocused] = useState(false);
   // 채팅 시트 접힘 여부 — 손잡이를 아래로 끌면 메시지 영역을 접어 캐릭터를 더 보이게 한다.
@@ -329,6 +330,7 @@ export function MainViewV2({
   // 네이티브 음성인식 상태 (앱 전용 — 마지막 인식 텍스트와 활성 여부)
   const nativeSttLastRef = useRef("");
   const nativeSttActiveRef = useRef(false);
+  const nativeSttStartingRef = useRef(false);
   const nativeSttHadSpeechRef = useRef(false);
   const nativeSttSilenceTimerRef = useRef<number | null>(null);
   const nativeSttMaxTimerRef = useRef<number | null>(null);
@@ -1351,7 +1353,9 @@ export function MainViewV2({
   async function finishNativeSTT(submit: boolean) {
     const wasActive = nativeSttActiveRef.current;
     nativeSttActiveRef.current = false;
+    nativeSttStartingRef.current = false;
     clearNativeSttTimers();
+    setIsMicStarting(false);
     setIsListening(false);
 
     const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
@@ -1373,12 +1377,23 @@ export function MainViewV2({
   }
 
   async function startNativeSTT() {
+    if (nativeSttStartingRef.current || nativeSttActiveRef.current) return;
+    nativeSttStartingRef.current = true;
+    setIsMicStarting(true);
     try {
       const { SpeechRecognition: NativeSTT } = await import("@capgo/capacitor-speech-recognition");
       const { available } = await NativeSTT.available();
-      if (!available) return;
+      if (!available) {
+        nativeSttStartingRef.current = false;
+        setIsMicStarting(false);
+        return;
+      }
       const perm = await NativeSTT.requestPermissions();
-      if (perm.speechRecognition !== "granted") return;
+      if (perm.speechRecognition !== "granted") {
+        nativeSttStartingRef.current = false;
+        setIsMicStarting(false);
+        return;
+      }
 
       clearNativeSttTimers();
       nativeSttLastRef.current = "";
@@ -1386,7 +1401,7 @@ export function MainViewV2({
       nativeSttActiveRef.current = false;
 
       stopSpeaking();
-      if (Capacitor.getPlatform() === "ios") await wait(250);
+      if (Capacitor.getPlatform() === "ios") await wait(180);
 
       await NativeSTT.removeAllListeners().catch(() => { });
       await NativeSTT.addListener("partialResults", (data: { matches?: string[] }) => {
@@ -1402,14 +1417,18 @@ export function MainViewV2({
           void finishNativeSTT(nativeSttHadSpeechRef.current);
         }
       });
+      nativeSttStartingRef.current = false;
       nativeSttActiveRef.current = true;
+      setIsMicStarting(false);
       setIsListening(true);
       await NativeSTT.start({ language: "ko-KR", maxResults: 1, partialResults: true, popup: false });
       scheduleNativeMaxStop();
     } catch {
       clearNativeSttTimers();
+      nativeSttStartingRef.current = false;
       nativeSttActiveRef.current = false;
       nativeSttHadSpeechRef.current = false;
+      setIsMicStarting(false);
       setIsListening(false);
     }
   }
@@ -1417,6 +1436,7 @@ export function MainViewV2({
   function toggleMic() {
     // 앱(iOS·안드): 한 번 탭해서 듣기 시작, 듣는 중 다시 탭하면 지금까지 들은 내용 제출.
     if (Capacitor.isNativePlatform()) {
+      if (nativeSttStartingRef.current) return;
       if (isListening || nativeSttActiveRef.current) {
         void finishNativeSTT(true);
         return;
@@ -1725,18 +1745,25 @@ export function MainViewV2({
           ) : (
             <button
               type="button"
-              className={`stage-mic ${isListening ? "is-on" : ""}`}
-              // 앱: 탭해서 녹음 시작, 듣는 중 다시 탭하면 즉시 전송. 웹은 기존 토글 유지.
-              onClick={toggleMic}
+              className={`stage-mic ${isListening || isMicStarting ? "is-on" : ""}`}
+              // 앱: 손가락이 닿는 즉시 녹음 준비 시작. 웹은 기존 클릭 토글 유지.
+              onPointerDown={(event) => {
+                if (!Capacitor.isNativePlatform()) return;
+                event.preventDefault();
+                toggleMic();
+              }}
+              onClick={() => { if (!Capacitor.isNativePlatform()) toggleMic(); }}
               onContextMenu={(e) => e.preventDefault()}
               disabled={!supportsSTT}
-              aria-pressed={isListening}
-              aria-label={isListening ? "듣는 중 — 다시 누르면 전송" : "음성 입력 시작"}
+              aria-pressed={isListening || isMicStarting}
+              aria-label={isListening ? "듣는 중 — 다시 누르면 전송" : isMicStarting ? "음성 입력 준비 중" : "음성 입력 시작"}
               title={
                 supportsSTT
                   ? isListening
                     ? "다시 누르면 바로 전송합니다"
-                    : "한 번 누르면 듣고, 말이 없으면 자동 전송합니다"
+                    : isMicStarting
+                      ? "음성 입력을 준비하고 있습니다"
+                      : "한 번 누르면 듣고, 말이 없으면 자동 전송합니다"
                   : "이 환경은 음성 인식을 지원하지 않습니다"
               }
             >

@@ -511,8 +511,8 @@
 }
 
 .stage-mic {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -610,11 +610,15 @@
     gap: 6px;
   }
 
-  .stage-mic,
   .stage-stop,
   .stage-send-arrow {
     width: 42px;
     height: 42px;
+  }
+
+  .stage-mic {
+    width: 48px;
+    height: 48px;
   }
 }
 
@@ -700,6 +704,7 @@
 
 
 .stage-mic {
+  min-height: 48px;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
