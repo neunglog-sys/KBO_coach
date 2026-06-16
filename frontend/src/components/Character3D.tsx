@@ -202,6 +202,10 @@ const MODEL_FRAME_HEIGHT = 2.3;
 const MODEL_VERTICAL_OFFSET = 0.08;
 const RUN_MS = 3500;        // 한 번 트리거 시 걷기/뛰기 지속 시간
 const RUN_SPEED = 1.7;      // 재생 속도 배수(1=걷기, >1=뛰기 느낌)
+// 터치 드래그 회전: 캔버스 가로폭의 이 비율만큼 끌면 360° 회전(작을수록 민감).
+const DRAG_TURN_RATIO = 0.6;
+// 손을 떼면 정면으로 되돌아가는 보간 속도(0~1, 클수록 빠름).
+const ROTATE_RETURN_LERP = 0.18;
 
 export default function Character3D({ isSpeaking, greetSignal, runSignal, throwSignal, swingSignal, teamCode, className, onReady }: Character3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -289,6 +293,20 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     // body 메시가 여러 primitive(입술/입속 등)로 쪼개져 각각 morph를 갖기 때문에 전부 모아 동시에 구동한다.
     const mouthMeshes: THREE.Mesh[] = [];
 
+    // === 터치 드래그로 좌우 360° 회전 ===
+    let dragging = false;          // 손가락이 캐릭터를 끌고 있는 중
+    let dragPointerId = -1;        // 멀티터치 중 이 포인터만 추적
+    let dragStartX = 0;            // 드래그 시작 시 x좌표
+    let dragStartRotY = 0;        // 드래그 시작 시 root.rotation.y
+    let returnTarget: number | null = null; // 손 떼면 복귀할 정면 각도(rad). null이면 복귀 안 함.
+    const FRONT_RAD = THREE.MathUtils.degToRad(FRONT_ROTATION_DEG);
+    // LLM이 동작(발화 또는 모션 재생) 중이면 회전 입력을 막는다.
+    const isLocked = () => {
+      const t = performance.now();
+      return speakingRef.current
+        || (walkAction != null && (t < runUntil || t < hiUntil || t < throwUntil || t < swingUntil));
+    };
+
     const loader = new GLTFLoader();
     // Draco 압축 모델 디코딩용. 디코더는 public/draco/ 에 번들(오프라인 동작).
     const dracoLoader = new DRACOLoader();
@@ -330,6 +348,35 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
           hasBody = true;
         });
         const center = (hasBody ? bodyBox : box).getCenter(new THREE.Vector3());
+
+        // 화면 중앙 정렬·회전 축을 '두 발 사이 한가운데'에 맞춘다(채팅 손잡이와 좌우 대칭).
+        // bodyBox 중심은 배트를 든 팔이 한쪽으로 뻗어 X·Z가 치우치므로 →
+        // 모델 하단(발/다리) 정점들만 모아 그 중심(X·Z)을 정렬·회전축으로 쓴다.
+        // 정렬·회전축을 같은 값으로 쓰므로 멈춰있을 때 양발이 가운데에 오고, 그 자리에서 제자리 회전한다.
+        // (Y는 기존 세로 프레이밍 유지)
+        if (hasBody) {
+          const minY = bodyBox.min.y;
+          const footCeil = minY + (bodyBox.max.y - minY || 1) * 0.22; // 하단 22%(발/다리)
+          const footBox = new THREE.Box3();
+          const vtx = new THREE.Vector3();
+          model.traverse((obj) => {
+            const mesh = obj as THREE.Mesh;
+            if (!mesh.isMesh || !mesh.geometry) return;
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            if (mats.some((m) => (m as THREE.Material)?.name === "Material_0")) return; // 배트 제외
+            const posAttr = mesh.geometry.attributes.position as THREE.BufferAttribute | undefined;
+            if (!posAttr) return;
+            for (let i = 0; i < posAttr.count; i++) {
+              vtx.fromBufferAttribute(posAttr, i).applyMatrix4(mesh.matrixWorld);
+              if (vtx.y <= footCeil) footBox.expandByPoint(vtx); // 발/다리 정점만
+            }
+          });
+          if (!footBox.isEmpty()) {
+            const footCenter = footBox.getCenter(new THREE.Vector3());
+            center.x = footCenter.x;
+            center.z = footCenter.z;
+          }
+        }
 
         model.scale.setScalar(scale);
         model.position.sub(center.multiplyScalar(scale));
@@ -616,8 +663,25 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
       const motionActive = walkAction != null && (now < runUntil || now < hiUntil || now < throwUntil || now < swingUntil || walkStopPending);
       // 모션 종료 직후 정자세 복귀 로직이 실행될 프레임을 보장(발화가 renderQuietUntil을 덮어써도 꼬리 유지).
       if (motionActive) renderQuietUntil = Math.max(renderQuietUntil, now + 300);
-      // 걷기 루프(idleLooping) 중엔 항상 렌더. 그 외엔 발화/인트로/모션/정착 동안만.
-      const active = idleLooping || speakingRef.current || introRunning || motionActive || now < renderQuietUntil;
+      // 드래그 도중 LLM이 동작을 시작하면 즉시 드래그를 풀고 정면으로 복귀시킨다.
+      if (dragging && isLocked()) {
+        dragging = false;
+        dragPointerId = -1;
+        const twoPi = Math.PI * 2;
+        returnTarget = FRONT_RAD + Math.round((root.rotation.y - FRONT_RAD) / twoPi) * twoPi;
+      }
+      // 손을 뗀 뒤 정면으로 부드럽게 복귀.
+      if (returnTarget !== null && !dragging) {
+        root.rotation.y += (returnTarget - root.rotation.y) * ROTATE_RETURN_LERP;
+        if (Math.abs(returnTarget - root.rotation.y) < 0.001) {
+          root.rotation.y = FRONT_RAD; // 회전값이 무한정 커지지 않게 정면 기준으로 정규화
+          returnTarget = null;
+        }
+        renderQuietUntil = Math.max(renderQuietUntil, now + 100);
+      }
+      // 걷기 루프(idleLooping) 중엔 항상 렌더. 그 외엔 발화/인트로/모션/드래그/복귀/정착 동안만.
+      const active = idleLooping || speakingRef.current || introRunning || motionActive
+        || dragging || returnTarget !== null || now < renderQuietUntil;
       if (!active) return;
 
       // 걷기/뛰기 시간이 끝나면 즉시 끊지 않고 '현재 사이클을 마치고' 멈추도록 예약한다.
@@ -669,6 +733,45 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     };
     animate();
 
+    // === 터치/마우스 드래그로 좌우 360° 회전 ===
+    const canvas = renderer.domElement;
+    canvas.style.touchAction = "none"; // 드래그가 페이지 스크롤로 새지 않게
+    canvas.style.cursor = "grab";
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (isLocked()) return; // LLM 동작 중엔 회전 불가
+      dragging = true;
+      dragPointerId = e.pointerId;
+      dragStartX = e.clientX;
+      dragStartRotY = root.rotation.y;
+      returnTarget = null; // 진행 중이던 복귀 취소
+      canvas.style.cursor = "grabbing";
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* 캡처 미지원 무시 */ }
+      renderQuietUntil = performance.now() + 200;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging || e.pointerId !== dragPointerId) return;
+      const w = mount.clientWidth || width || 360;
+      const radPerPx = (Math.PI * 2) / (w * DRAG_TURN_RATIO);
+      root.rotation.y = dragStartRotY + (e.clientX - dragStartX) * radPerPx;
+      renderQuietUntil = performance.now() + 200;
+    };
+    const endDrag = (e: PointerEvent) => {
+      if (!dragging || e.pointerId !== dragPointerId) return;
+      dragging = false;
+      dragPointerId = -1;
+      canvas.style.cursor = "grab";
+      try { canvas.releasePointerCapture(e.pointerId); } catch { /* 무시 */ }
+      // 가장 가까운 정면(2π 배수)으로 복귀 → 한 바퀴 넘게 돌렸어도 짧게 되돌아온다.
+      const twoPi = Math.PI * 2;
+      returnTarget = FRONT_RAD + Math.round((root.rotation.y - FRONT_RAD) / twoPi) * twoPi;
+      renderQuietUntil = performance.now() + 1000;
+    };
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+
     const resizeObserver = new ResizeObserver(() => {
       width = mount.clientWidth || width;
       height = mount.clientHeight || height;
@@ -683,6 +786,10 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
       disposed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
       envTexture.dispose();
       pmrem.dispose();
       dracoLoader.dispose();

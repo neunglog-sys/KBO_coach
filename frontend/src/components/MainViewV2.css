@@ -313,8 +313,9 @@
   z-index: 2;
   width: var(--stage-character-size);
   height: var(--stage-character-size);
-  /* 가운데에서 왼쪽으로 10px 보정 */
-  transform: translateX(calc(-50% - 10px));
+  /* 모델 정렬을 '두 발 중심'으로 맞췄으므로(Character3D) 컨테이너는 화면 정중앙에 둔다.
+     발 중점이 채팅 손잡이(화면 중앙)와 좌우 대칭으로 맞는다. */
+  transform: translateX(-50%);
 }
 
 .stage-character-canvas {
