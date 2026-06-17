@@ -430,6 +430,12 @@ export default function SettingsView({
 
   return (
     <section className={`settings-app-screen settings-screen-${screen}`}>
+      <div className="settings-fixed-background" aria-hidden="true">
+        <div className="settings-stadium-decoration">
+          <span />
+          <span />
+        </div>
+      </div>
       <div className="settings-screen-anim" key={screen}>
         {screen === "main" ? (
           <>
@@ -591,11 +597,6 @@ export default function SettingsView({
         onNavigate={(target) => onNavigate?.(target)}
         onClose={() => setSideMenuOpen(false)}
       />
-
-      <div className="settings-stadium-decoration" aria-hidden="true">
-        <span />
-        <span />
-      </div>
 
       {confirmAction ? (
         <div className="settings-confirm-backdrop" role="presentation" onClick={closeConfirmModal}>
