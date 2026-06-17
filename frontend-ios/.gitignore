@@ -1,0 +1,3 @@
+# Capacitor가 생성하는 안드로이드 빌드 플랫폼 폴더 — 로컬 빌드 전용이라 추적하지 않는다.
+# (cap add android / vite build --mode android 로 언제든 재생성 가능)
+android/
