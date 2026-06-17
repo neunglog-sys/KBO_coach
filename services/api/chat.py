@@ -428,11 +428,23 @@ def _game_results(question: str, team_code: str | None) -> list:
     if str(d) == today:
         out = [{"topic": f"오늘({d}) 경기 결과", "content": "\n".join(lines)}]
     else:
-        # 오늘 경기 데이터가 없을 때 과거 경기를 '오늘'로 단정하지 않도록 명시(할루시네이션 방지).
-        out = [{"topic": "주의: 오늘 경기 결과 없음",
-                "content": f"오늘은 {today}이고 오늘 경기 결과 데이터는 없다. 아래는 가장 최근 경기({d})로 과거 경기다. "
-                           "사용자가 '오늘 이겼다'처럼 말해도 이 경기를 오늘 일로 단정하지 말고, 물어보면 실제 날짜를 알려준다."},
-               {"topic": f"가장 최근 경기 결과({d})", "content": "\n".join(lines)}]
+        # 결과 없음 ≠ 경기 없음. schedule(편성)을 확인해 오늘 경기가 있으면 '경기 없다'고 단정 못 하게 한다.
+        sched_today = list(m["schedule"].find({"date": today}, {"_id": 0}))
+        slines = [f"{g.get('원정팀','?')} vs {g.get('홈팀','?')} ({g.get('구장','')} {g.get('시간','')}, {g.get('상태','예정')})"
+                  for g in sched_today]
+        if slines:
+            out = [{"topic": f"오늘({today}) 경기 일정 — 결과 아직 없음",
+                    "content": "오늘 경기 결과 데이터는 아직 없다(경기 전이거나 미수집). 그러나 아래처럼 오늘 경기가 "
+                               "편성되어 있으니 절대 '오늘은 경기가 없다'고 말하지 말고, '경기는 예정/진행 중이며 아직 "
+                               "결과가 안 나왔다'고 안내한다.\n" + "\n".join(slines)},
+                   {"topic": f"가장 최근 완료 경기({d})", "content": "\n".join(lines)}]
+        else:
+            # 결과도 일정도 없을 때: '확인 못 함'으로 안내(있는데 못 봤을 수 있으니 '경기 없다' 단정 금지).
+            out = [{"topic": "주의: 오늘 경기 정보 없음",
+                    "content": f"오늘은 {today}이고 오늘 경기 결과·일정 데이터를 확인하지 못했다. 결과를 지어내지 말고 "
+                               "'오늘 경기 정보를 확인하지 못했다'고 안내한다('경기가 없다'고 단정하지 않는다). "
+                               f"아래는 가장 최근 경기({d})로 과거 경기다."},
+                   {"topic": f"가장 최근 경기 결과({d})", "content": "\n".join(lines)}]
     # 페르소나 팀 경기는 주요 타자 기록까지
     pname = _CODE2NAME.get(team_code or "", "")
     target = next((r for r in rows if pname and pname in (r["홈팀"], r["원정팀"])), None)
