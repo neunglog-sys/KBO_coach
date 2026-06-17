@@ -83,7 +83,7 @@
 | VIEW | 1 | 2 | 3 |
 |---|---|---|---|
 | 로그인 및 시작하기 | 회원가입 | 로그인 | 응원구단 선택 |
-|  | <img src="./zgif/Screen_Recording_20260617_1314461.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1328382.gif" width="220" controls></img> | <img src="./zgif/Screen_Recording_20260617_1331281.gif" width="220" controls></img> |
+|  | <img src="./zgif/Screen_Recording_20260617_1328382.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1314461.gif" width="220" controls></img> | <img src="./zgif/Screen_Recording_20260617_1331281.gif" width="220" controls></img> |
 | 메인 서비스 | 홈 화면 | AI 도우미 | - |
 |  | <img src="./zgif/Screen_Recording_20260617_1336331.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1339031.gif" width="220"> | - |
 | 채팅방 | 채팅방 메인 | - | - |
