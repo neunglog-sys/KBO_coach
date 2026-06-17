@@ -1697,53 +1697,46 @@
   scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 56px);
   scroll-margin-bottom: 16px;
 }
-/* 응원구단 변경 화면: iPhone 화면 크기에 맞춰 목록 밀도를 조절한다. */
-.settings-app-screen.settings-screen-team {
-  overscroll-behavior-x: none;
-  touch-action: pan-y;
-  --settings-team-page-x: clamp(14px, 5vw, 30px);
-  --settings-team-card-padding: clamp(14px, 4.4vw, 24px);
-  --settings-team-card-gap: clamp(12px, 3.3vw, 18px);
-  --settings-team-row-gap: clamp(7px, 2.2vw, 12px);
-  --settings-team-row-height: clamp(42px, 11.5vw, 54px);
-  --settings-team-row-radius: clamp(12px, 3.5vw, 16px);
-  --settings-team-row-x: clamp(10px, 3.8vw, 17px);
-  --settings-team-radio-size: clamp(18px, 4.8vw, 23px);
-  --settings-team-dot-size: clamp(9px, 2.7vw, 12px);
-  --settings-team-font-size: clamp(0.9rem, 3.6vw, 1.06rem);
-  --settings-team-button-height: clamp(42px, 12vw, 52px);
-  padding-right: max(var(--settings-team-page-x), env(safe-area-inset-right, 0px));
-  padding-left: max(var(--settings-team-page-x), env(safe-area-inset-left, 0px));
-}
-
+/* Team picker screen: fixed layout, no inner scroll; sizing compresses by viewport height. */
 .settings-app-screen.settings-screen-team {
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: manipulation;
+  --settings-team-page-x: clamp(14px, 5vw, 30px);
+  --settings-team-page-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(8px, 1.6dvh, 18px));
+  --settings-team-page-bottom: max(clamp(8px, 1.4dvh, 14px), env(safe-area-inset-bottom, 0px));
+  --settings-team-card-padding: clamp(8px, 1.7dvh, 16px);
+  --settings-team-card-gap: clamp(7px, 1.35dvh, 13px);
+  --settings-team-row-gap: clamp(4px, 0.85dvh, 8px);
+  --settings-team-row-height: clamp(34px, 5.4dvh, 48px);
+  --settings-team-row-radius: clamp(12px, 3.5vw, 16px);
+  --settings-team-row-x: clamp(10px, 3.8vw, 17px);
+  --settings-team-radio-size: clamp(18px, 4.8vw, 23px);
+  --settings-team-dot-size: clamp(9px, 2.7vw, 12px);
+  --settings-team-font-size: clamp(0.82rem, 2.05dvh, 1.02rem);
+  --settings-team-button-height: clamp(38px, 5.6dvh, 50px);
+  padding: var(--settings-team-page-top) max(var(--settings-team-page-x), env(safe-area-inset-right, 0px)) var(--settings-team-page-bottom) max(var(--settings-team-page-x), env(safe-area-inset-left, 0px));
 }
 
 .settings-app-screen.settings-screen-team .settings-screen-anim {
   box-sizing: border-box;
   width: 100%;
   max-width: 560px;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: none;
   margin: 0 auto;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  overflow: visible;
 }
 
 .settings-app-screen.settings-screen-team .settings-header {
-  min-height: clamp(54px, 13vw, 70px);
-  margin-bottom: clamp(10px, 2.8vw, 18px);
+  min-height: clamp(48px, 7.6dvh, 68px);
+  margin-bottom: clamp(6px, 1.3dvh, 14px);
 }
 
 .settings-app-screen.settings-screen-team .settings-header h2 {
-  font-size: clamp(1.18rem, 4.4vw, 1.52rem);
+  font-size: clamp(1.1rem, 4vw, 1.48rem);
   line-height: 1.18;
 }
 
@@ -1776,10 +1769,11 @@
   grid-template-columns: calc(var(--settings-team-radio-size) + 8px) minmax(0, 1fr);
   gap: clamp(8px, 2.5vw, 14px);
   min-height: var(--settings-team-row-height);
+  height: var(--settings-team-row-height);
   border-radius: var(--settings-team-row-radius);
   padding: 0 var(--settings-team-row-x);
   font-size: var(--settings-team-font-size);
-  line-height: 1.16;
+  line-height: 1.12;
 }
 
 .settings-app-screen.settings-screen-team .settings-radio-row > span {
@@ -1801,17 +1795,29 @@
 
 .settings-app-screen.settings-screen-team .settings-primary-button.settings-blue-action-button {
   min-height: var(--settings-team-button-height);
+  height: var(--settings-team-button-height);
   border-radius: clamp(12px, 3.5vw, 16px);
-  font-size: clamp(0.88rem, 3.5vw, 1.05rem);
+  font-size: clamp(0.84rem, 2dvh, 1rem);
+}
+
+@media (max-height: 720px) {
+  .settings-app-screen.settings-screen-team {
+    --settings-team-page-x: clamp(12px, 4.4vw, 22px);
+    --settings-team-card-padding: clamp(7px, 1.4dvh, 11px);
+    --settings-team-card-gap: clamp(6px, 1.1dvh, 9px);
+    --settings-team-row-gap: clamp(3px, 0.7dvh, 5px);
+    --settings-team-row-height: clamp(32px, 5.25dvh, 38px);
+    --settings-team-font-size: clamp(0.78rem, 1.9dvh, 0.9rem);
+    --settings-team-button-height: clamp(36px, 5.3dvh, 40px);
+  }
 }
 
 @media (max-width: 360px) {
   .settings-app-screen.settings-screen-team {
     --settings-team-page-x: 12px;
-    --settings-team-card-padding: 12px;
-    --settings-team-row-height: 40px;
-    --settings-team-font-size: 0.84rem;
-    --settings-team-button-height: 40px;
+    --settings-team-card-padding: 8px;
+    --settings-team-row-height: 34px;
+    --settings-team-font-size: 0.78rem;
+    --settings-team-button-height: 38px;
   }
 }
-
