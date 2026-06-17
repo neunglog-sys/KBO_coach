@@ -49,19 +49,19 @@
 | VIEW | 1 | 2 | 3 |
 |---|---|---|---|
 | 로그인 및 시작하기 | 회원가입 | 로그인 | 응원구단 선택 |
-|  | <video src="./docs/rd/demo/signup.mp4" width="220" controls></video> | <video src="./docs/rd/demo/login.mp4" width="220" controls></video> | <video src="./docs/rd/demo/team-select.mp4" width="220" controls></video> |
+|  | <img src="./zgif/Screen_Recording_20260617_1314461.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1328382.gif" width="220" controls></img> | <img src="./zgif/Screen_Recording_20260617_1331281.gif" width="220" controls></img> |
 | 메인 서비스 | 홈 화면 | AI 도우미 | - |
-|  | <video src="./docs/rd/demo/home.mp4" width="220" controls></video> | <video src="./docs/rd/demo/ai-chat.mp4" width="220" controls></video> | - |
+|  | <img src="./zgif/Screen_Recording_20260617_1336331.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1339031.gif" width="220"> | - |
 | 채팅방 | 채팅방 메인 | - | - |
-|  | <video src="./docs/rd/demo/team-chat.mp4" width="220" controls></video> | - | - |
+|  | <img src="./zgif/Screen_Recording_20260617_1342501.gif" width="220"> | - | - |
 | 나만의 기록 | 연속 기록 도전 | 직관 기록 캘린더 | 경기 기록 조회 |
-|  | <video src="./docs/rd/demo/record-challenge.mp4" width="220" controls></video> | <video src="./docs/rd/demo/record-calendar.mp4" width="220" controls></video> | <video src="./docs/rd/demo/game-record.mp4" width="220" controls></video> |
+|  | <img src="./zgif/Screen_Recording_20260617_1344051.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1344241.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1344421.gif" width="220"> |
 | 야구짝꿍 | 성별 · 닉네임 설정 | 야구짝꿍 메인화면 | 꾸미기 |
-|  | <video src="./docs/rd/demo/mate-setup.mp4" width="220" controls></video> | <video src="./docs/rd/demo/mate-home.mp4" width="220" controls></video> | <video src="./docs/rd/demo/mate-custom.mp4" width="220" controls></video> |
+|  | <img src="./zgif/Screen_Recording_20260617_1353311.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1354301.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1355191.gif" width="220"> |
 | 구장정보 | 구장 안내 | 먹거리 정보 | 지역 정보 |
-|  | <video src="./docs/rd/demo/stadium-info.mp4" width="220" controls></video> | <video src="./docs/rd/demo/stadium-food.mp4" width="220" controls></video> | <video src="./docs/rd/demo/stadium-area.mp4" width="220" controls></video> |
+|  | <img src="./zgif/Screen_Recording_20260617_1357131.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1357591.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1358531.gif" width="220"> |
 | 환경설정 | 환경설정 | 내 정보 | 응원구단 변경 |
-|  | <video src="./docs/rd/demo/settings.mp4" width="220" controls></video> | <video src="./docs/rd/demo/profile.mp4" width="220" controls></video> | <video src="./docs/rd/demo/change-team.mp4" width="220" controls></video> |
+|  | <img src="./zgif/Screen_Recording_20260617_1400351.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1400551.gif" width="220"> | <img src="./zgif/Screen_Recording_20260617_1402051.gif" width="220"> |
 
 ---
 
