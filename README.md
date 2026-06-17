@@ -233,6 +233,8 @@ Capacitor 기반. 빌드 · 실행 상세는 [`frontend/README.md`](frontend/REA
 └────────────────────────────────────────────────────────────────────┘
 ```
 
+<img src=".\docs\rd\images\Architecture.png" alt="Architecture" width="800">
+
 ---
 
 # 📂 Project Structure
