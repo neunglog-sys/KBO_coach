@@ -340,7 +340,9 @@ export function App() {
       if (insetRaf) window.cancelAnimationFrame(insetRaf);
       insetRaf = window.requestAnimationFrame(() => {
         insetRaf = 0;
-        root.style.setProperty("--keyboard-inset", `${Math.max(0, Math.round(value))}px`);
+        const inset = Math.max(0, Math.round(value));
+        root.style.setProperty("--keyboard-inset", `${inset}px`);
+        root.style.setProperty("--keyboard-login-lift", `${Math.min(150, Math.round(inset * 0.38))}px`);
       });
     };
     const measuredInset = (fallback: number) => {
@@ -382,6 +384,7 @@ export function App() {
         clearSettleTimer();
         if (insetRaf) window.cancelAnimationFrame(insetRaf);
         root.style.setProperty("--keyboard-inset", "0px");
+        root.style.setProperty("--keyboard-login-lift", "0px");
         root.classList.remove("kb-open");
       };
     });

@@ -1,4 +1,6 @@
 :root {
+  --keyboard-inset: 0px;
+  --keyboard-login-lift: 0px;
   color-scheme: light;
   --ink: #111827;
   --muted: #5b6472;
@@ -36,6 +38,14 @@
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 button,
@@ -733,11 +743,17 @@ select:focus {
 }
 
 .plat-ios .login-view.auth-login-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: contain;
   align-items: start;
   justify-content: center;
+  justify-items: center;
   padding:
     calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 8px)
     24px
@@ -746,6 +762,8 @@ select:focus {
 
 .plat-ios .auth-login-card {
   width: min(100%, 360px);
+  max-width: 100%;
+  transition: transform 180ms ease;
   min-height: calc(
     100dvh
     - max(env(safe-area-inset-top, 0px), var(--sat, 0px))
@@ -4025,12 +4043,13 @@ html.theme-dark .app-shell {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   justify-content: start;
-  padding-bottom: calc(var(--keyboard-inset, 0px) + 20px);
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + var(--keyboard-inset, 0px) + 20px);
 }
 
 .plat-ios.kb-open .auth-login-card {
   min-height: auto;
   overflow: visible;
+  transform: translate3d(0, calc(0px - var(--keyboard-login-lift, 0px)), 0);
 }
 
 .plat-ios.kb-open .auth-register-card {
