@@ -328,6 +328,8 @@ export function App() {
     let keyboardSeq = 0;
     let insetRaf = 0;
     let settleTimer: number | null = null;
+    let loginScrollLockTimers: number[] = [];
+
 
     const root = document.documentElement;
     const clearSettleTimer = () => {
@@ -351,6 +353,36 @@ export function App() {
       const measured = vv ? Math.round(window.innerHeight - vv.height - vv.offsetTop) : 0;
       return measured > 60 ? measured : fallback;
     };
+    const clearLoginScrollLocks = () => {
+      loginScrollLockTimers.forEach((id) => window.clearTimeout(id));
+      loginScrollLockTimers = [];
+    };
+    const isLoginInputActive = () => {
+      if (platform !== "ios") return false;
+      const active = document.activeElement;
+      return active instanceof HTMLElement && Boolean(active.closest(".auth-login-screen"));
+    };
+    const resetLoginDocumentScroll = () => {
+      if (!root.classList.contains("login-kb-open")) return;
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      window.scrollTo(0, 0);
+    };
+    const lockLoginDocumentScroll = () => {
+      clearLoginScrollLocks();
+      if (!isLoginInputActive()) {
+        root.classList.remove("login-kb-open");
+        return;
+      }
+      root.classList.add("login-kb-open");
+      [0, 40, 90, 180, 320, 520].forEach((delay) => {
+        const id = window.setTimeout(resetLoginDocumentScroll, delay);
+        loginScrollLockTimers.push(id);
+      });
+    };
+    const handleLoginViewportShift = () => {
+      if (root.classList.contains("login-kb-open")) resetLoginDocumentScroll();
+    };
 
     void import("@capacitor/keyboard").then(({ Keyboard }) => {
       if (platform === "ios") {
@@ -362,7 +394,9 @@ export function App() {
         keyboardSeq += 1;
         const seq = keyboardSeq;
         root.classList.add("kb-open");
+        lockLoginDocumentScroll();
         setInset(measuredInset(info.keyboardHeight));
+
         clearSettleTimer();
         settleTimer = window.setTimeout(() => {
           if (keyboardVisible && seq === keyboardSeq) setInset(measuredInset(info.keyboardHeight));
@@ -373,19 +407,31 @@ export function App() {
         keyboardVisible = false;
         keyboardSeq += 1;
         clearSettleTimer();
+        clearLoginScrollLocks();
         root.classList.remove("kb-open");
+
+        root.classList.remove("login-kb-open");
         setInset(0);
         window.requestAnimationFrame(() => window.scrollTo(0, 0));
       });
 
+      window.visualViewport?.addEventListener("scroll", handleLoginViewportShift);
+      window.visualViewport?.addEventListener("resize", handleLoginViewportShift);
+
       cleanup = () => {
         void show.then((h) => h.remove());
+
         void hide.then((h) => h.remove());
         clearSettleTimer();
+        clearLoginScrollLocks();
+        window.visualViewport?.removeEventListener("scroll", handleLoginViewportShift);
+        window.visualViewport?.removeEventListener("resize", handleLoginViewportShift);
         if (insetRaf) window.cancelAnimationFrame(insetRaf);
+
         root.style.setProperty("--keyboard-inset", "0px");
         root.style.setProperty("--keyboard-login-lift", "0px");
         root.classList.remove("kb-open");
+        root.classList.remove("login-kb-open");
       };
     });
     return () => cleanup?.();

@@ -4038,6 +4038,22 @@ html.theme-dark .app-shell {
   scroll-margin-bottom: 24px;
 }
 
+
+.plat-ios.login-kb-open,
+.plat-ios.login-kb-open body,
+.plat-ios.login-kb-open #root {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.plat-ios.login-kb-open body,
+.plat-ios.login-kb-open #root {
+  position: fixed;
+  inset: 0;
+  height: 100%;
+}
 .plat-ios.kb-open .login-view.auth-login-screen {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
