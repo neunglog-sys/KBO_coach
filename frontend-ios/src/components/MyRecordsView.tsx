@@ -147,16 +147,24 @@ function saveStreakDates(dates: string[]) {
   localStorage.setItem(STREAK_DATES_KEY, JSON.stringify(Array.from(new Set(dates)).sort()));
 }
 
-function calcStreak(dateSet: Set<string>, resetDate: string | null): number {
+function addDaysKey(key: string, delta: number): string {
+  const d = new Date(`${key}T00:00:00+09:00`);
+  d.setDate(d.getDate() + delta);
+  return fmt(d);
+}
+
+function calcStreak(dateSet: Set<string>, resetDate: string | null, todayKey = koreaTodayKey()): number {
+  const latestKey = Array.from(dateSet)
+    .filter((key) => key <= todayKey && (!resetDate || key > resetDate))
+    .sort()
+    .at(-1);
+  if (!latestKey) return 0;
+
   let streak = 0;
-  const d = new Date(`${koreaTodayKey()}T00:00:00+09:00`);
-  const todayKey = koreaTodayKey();
-  if ((resetDate && todayKey <= resetDate) || !dateSet.has(todayKey)) return 0;
-  while (true) {
-    const key = fmt(d);
-    if ((resetDate && key <= resetDate) || !dateSet.has(key)) break;
-    streak++;
-    d.setDate(d.getDate() - 1);
+  let key = latestKey;
+  while ((!resetDate || key > resetDate) && dateSet.has(key)) {
+    streak += 1;
+    key = addDaysKey(key, -1);
   }
   return streak;
 }
@@ -435,9 +443,8 @@ export function MyRecordsView({ authToken, onBack, onNavigate, requestClose = fa
 
   const streak = useMemo(() => {
     const challengeDates = new Set(streakDates);
-    if (recordsByDate.has(todayKey)) challengeDates.add(todayKey);
-    return calcStreak(challengeDates, goalResetDate);
-  }, [goalResetDate, recordsByDate, streakDates, todayKey]);
+    return calcStreak(challengeDates, goalResetDate, todayKey);
+  }, [goalResetDate, streakDates, todayKey]);
   const progress = Math.min(100, Math.round((streak / Math.max(1, goalDays)) * 100));
   const remain = Math.max(0, goalDays - streak);
   const reachedGoal = streak >= goalDays;
@@ -495,18 +502,19 @@ export function MyRecordsView({ authToken, onBack, onNavigate, requestClose = fa
     onNavigate?.(target);
   }
 
-  function rememberTodayStreakDate(savedDate: string) {
+  function rememberStreakDate(savedDate: string) {
     if (savedDate !== todayKey) return;
     const next = Array.from(new Set([...streakDates, todayKey])).sort();
-    setGoalResetDate(null);
-    localStorage.removeItem(GOAL_RESET_KEY);
+    if (goalResetDate && todayKey > goalResetDate) {
+      setGoalResetDate(null);
+      localStorage.removeItem(GOAL_RESET_KEY);
+    }
     setStreakDates(next);
     saveStreakDates(next);
   }
 
-  function forgetTodayStreakDate(deletedDate: string) {
-    if (deletedDate !== todayKey) return;
-    const next = streakDates.filter((d) => d !== todayKey);
+  function forgetStreakDate(deletedDate: string) {
+    const next = streakDates.filter((d) => d !== deletedDate);
     setStreakDates(next);
     saveStreakDates(next);
   }
@@ -867,9 +875,9 @@ export function MyRecordsView({ authToken, onBack, onNavigate, requestClose = fa
           onClose={() => setModalDate(null)}
           onSaved={async (savedDate, action) => {
             if (action === "delete") {
-              forgetTodayStreakDate(savedDate);
+              forgetStreakDate(savedDate);
             } else {
-              rememberTodayStreakDate(savedDate);
+              rememberStreakDate(savedDate);
             }
             await reload();
             setModalDate(null);
