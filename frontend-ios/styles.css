@@ -1,6 +1,7 @@
 :root {
   --keyboard-inset: 0px;
   --keyboard-login-lift: 0px;
+  --visual-viewport-left: 0px;
   color-scheme: light;
   --ink: #111827;
   --muted: #5b6472;
@@ -4053,6 +4054,13 @@ html.theme-dark .app-shell {
   position: fixed;
   inset: 0;
   height: 100%;
+}
+
+.plat-ios.login-kb-open .login-view.auth-login-screen {
+  left: 0;
+  right: auto;
+  width: 100%;
+  transform: translate3d(var(--visual-viewport-left, 0px), 0, 0);
 }
 .plat-ios.kb-open .login-view.auth-login-screen {
   overflow-y: auto;

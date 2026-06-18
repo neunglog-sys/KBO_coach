@@ -345,6 +345,7 @@ export function App() {
         const inset = Math.max(0, Math.round(value));
         root.style.setProperty("--keyboard-inset", `${inset}px`);
         root.style.setProperty("--keyboard-login-lift", `${Math.min(150, Math.round(inset * 0.38))}px`);
+        root.style.setProperty("--visual-viewport-left", `${Math.max(0, Math.round(window.visualViewport?.offsetLeft ?? 0))}px`);
       });
     };
     const measuredInset = (fallback: number) => {
@@ -357,28 +358,36 @@ export function App() {
       loginScrollLockTimers.forEach((id) => window.clearTimeout(id));
       loginScrollLockTimers = [];
     };
-    const isLoginInputActive = () => {
-      if (platform !== "ios") return false;
-      const active = document.activeElement;
-      return active instanceof HTMLElement && Boolean(active.closest(".auth-login-screen"));
+    const isLoginInputTarget = (target: EventTarget | null) => {
+      if (platform !== "ios" || !(target instanceof HTMLElement)) return false;
+      return Boolean(target.closest(".auth-login-screen input, .auth-login-screen textarea, .auth-login-screen select"));
     };
+    const isLoginInputActive = () => isLoginInputTarget(document.activeElement);
     const resetLoginDocumentScroll = () => {
       if (!root.classList.contains("login-kb-open")) return;
+      const viewportLeft = Math.max(0, Math.round(window.visualViewport?.offsetLeft ?? 0));
+      root.style.setProperty("--visual-viewport-left", `${viewportLeft}px`);
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
       window.scrollTo(0, 0);
     };
-    const lockLoginDocumentScroll = () => {
+    const lockLoginDocumentScroll = (target?: EventTarget | null) => {
       clearLoginScrollLocks();
-      if (!isLoginInputActive()) {
+      if (target !== undefined && !isLoginInputTarget(target)) return;
+      if (target === undefined && !isLoginInputActive()) {
         root.classList.remove("login-kb-open");
+        root.style.setProperty("--visual-viewport-left", "0px");
         return;
       }
       root.classList.add("login-kb-open");
-      [0, 40, 90, 180, 320, 520].forEach((delay) => {
+      resetLoginDocumentScroll();
+      [0, 16, 32, 60, 100, 180, 320, 520, 760].forEach((delay) => {
         const id = window.setTimeout(resetLoginDocumentScroll, delay);
         loginScrollLockTimers.push(id);
       });
+    };
+    const handleLoginPreFocusLock = (event: Event) => {
+      lockLoginDocumentScroll(event.target);
     };
     const handleLoginViewportShift = () => {
       if (root.classList.contains("login-kb-open")) resetLoginDocumentScroll();
@@ -415,6 +424,9 @@ export function App() {
         window.requestAnimationFrame(() => window.scrollTo(0, 0));
       });
 
+      document.addEventListener("touchstart", handleLoginPreFocusLock, true);
+      document.addEventListener("pointerdown", handleLoginPreFocusLock, true);
+      document.addEventListener("focusin", handleLoginPreFocusLock, true);
       window.visualViewport?.addEventListener("scroll", handleLoginViewportShift);
       window.visualViewport?.addEventListener("resize", handleLoginViewportShift);
 
@@ -424,12 +436,16 @@ export function App() {
         void hide.then((h) => h.remove());
         clearSettleTimer();
         clearLoginScrollLocks();
+        document.removeEventListener("touchstart", handleLoginPreFocusLock, true);
+        document.removeEventListener("pointerdown", handleLoginPreFocusLock, true);
+        document.removeEventListener("focusin", handleLoginPreFocusLock, true);
         window.visualViewport?.removeEventListener("scroll", handleLoginViewportShift);
         window.visualViewport?.removeEventListener("resize", handleLoginViewportShift);
         if (insetRaf) window.cancelAnimationFrame(insetRaf);
 
         root.style.setProperty("--keyboard-inset", "0px");
         root.style.setProperty("--keyboard-login-lift", "0px");
+        root.style.setProperty("--visual-viewport-left", "0px");
         root.classList.remove("kb-open");
         root.classList.remove("login-kb-open");
       };
