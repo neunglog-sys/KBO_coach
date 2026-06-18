@@ -1,7 +1,6 @@
 :root {
   --keyboard-inset: 0px;
   --keyboard-login-lift: 0px;
-  --visual-viewport-left: 0px;
   color-scheme: light;
   --ink: #111827;
   --muted: #5b6472;
@@ -4045,22 +4044,16 @@ html.theme-dark .app-shell {
 .plat-ios.login-kb-open #root {
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-.plat-ios.login-kb-open body,
-.plat-ios.login-kb-open #root {
-  position: fixed;
-  inset: 0;
-  height: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 .plat-ios.login-kb-open .login-view.auth-login-screen {
   left: 0;
-  right: auto;
+  right: 0;
   width: 100%;
-  transform: translate3d(var(--visual-viewport-left, 0px), 0, 0);
+  max-width: 100%;
+  transform: none !important;
 }
 .plat-ios.kb-open .login-view.auth-login-screen {
   overflow-y: auto;

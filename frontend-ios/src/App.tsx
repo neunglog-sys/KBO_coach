@@ -329,6 +329,7 @@ export function App() {
     let insetRaf = 0;
     let settleTimer: number | null = null;
     let loginScrollLockTimers: number[] = [];
+    let loginResizeRestoreTimer: number | null = null;
 
 
     const root = document.documentElement;
@@ -345,7 +346,6 @@ export function App() {
         const inset = Math.max(0, Math.round(value));
         root.style.setProperty("--keyboard-inset", `${inset}px`);
         root.style.setProperty("--keyboard-login-lift", `${Math.min(150, Math.round(inset * 0.38))}px`);
-        root.style.setProperty("--visual-viewport-left", `${Math.max(0, Math.round(window.visualViewport?.offsetLeft ?? 0))}px`);
       });
     };
     const measuredInset = (fallback: number) => {
@@ -358,44 +358,72 @@ export function App() {
       loginScrollLockTimers.forEach((id) => window.clearTimeout(id));
       loginScrollLockTimers = [];
     };
+    const clearLoginResizeRestoreTimer = () => {
+      if (loginResizeRestoreTimer != null) {
+        window.clearTimeout(loginResizeRestoreTimer);
+        loginResizeRestoreTimer = null;
+      }
+    };
     const isLoginInputTarget = (target: EventTarget | null) => {
       if (platform !== "ios" || !(target instanceof HTMLElement)) return false;
       return Boolean(target.closest(".auth-login-screen input, .auth-login-screen textarea, .auth-login-screen select"));
     };
     const isLoginInputActive = () => isLoginInputTarget(document.activeElement);
     const resetLoginDocumentScroll = () => {
-      if (!root.classList.contains("login-kb-open")) return;
-      const viewportLeft = Math.max(0, Math.round(window.visualViewport?.offsetLeft ?? 0));
-      root.style.setProperty("--visual-viewport-left", `${viewportLeft}px`);
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
-      window.scrollTo(0, 0);
-    };
-    const lockLoginDocumentScroll = (target?: EventTarget | null) => {
-      clearLoginScrollLocks();
-      if (target !== undefined && !isLoginInputTarget(target)) return;
-      if (target === undefined && !isLoginInputActive()) {
-        root.classList.remove("login-kb-open");
-        root.style.setProperty("--visual-viewport-left", "0px");
-        return;
+      if (window.scrollX !== 0 || window.scrollY !== 0) {
+        window.scrollTo(0, 0);
       }
-      root.classList.add("login-kb-open");
-      resetLoginDocumentScroll();
-      [0, 16, 32, 60, 100, 180, 320, 520, 760].forEach((delay) => {
-        const id = window.setTimeout(resetLoginDocumentScroll, delay);
-        loginScrollLockTimers.push(id);
-      });
     };
-    const handleLoginPreFocusLock = (event: Event) => {
-      lockLoginDocumentScroll(event.target);
-    };
-    const handleLoginViewportShift = () => {
-      if (root.classList.contains("login-kb-open")) resetLoginDocumentScroll();
-    };
+    void import("@capacitor/keyboard").then(({ Keyboard, KeyboardResize }) => {
+      const enableLoginKeyboardMode = () => {
+        if (platform !== "ios") return;
+        void Keyboard.setResizeMode({ mode: KeyboardResize.Native }).catch(() => { });
+        void Keyboard.setScroll({ isDisabled: true }).catch(() => { });
+      };
+      const restoreDefaultKeyboardMode = () => {
+        if (platform !== "ios") return;
+        void Keyboard.setResizeMode({ mode: KeyboardResize.None }).catch(() => { });
+        void Keyboard.setScroll({ isDisabled: true }).catch(() => { });
+      };
+      const scheduleLoginScrollReset = () => {
+        clearLoginScrollLocks();
+        [0, 16, 32, 60, 100, 180, 320, 520, 760].forEach((delay) => {
+          const id = window.setTimeout(resetLoginDocumentScroll, delay);
+          loginScrollLockTimers.push(id);
+        });
+      };
+      const prepareLoginKeyboard = (target?: EventTarget | null) => {
+        if (target !== undefined && !isLoginInputTarget(target)) return false;
+        if (target === undefined && !isLoginInputActive()) return false;
+        clearLoginResizeRestoreTimer();
+        root.classList.add("login-kb-open");
+        enableLoginKeyboardMode();
+        resetLoginDocumentScroll();
+        scheduleLoginScrollReset();
+        return true;
+      };
+      const releaseLoginKeyboard = () => {
+        clearLoginResizeRestoreTimer();
+        clearLoginScrollLocks();
+        root.classList.remove("login-kb-open");
+        restoreDefaultKeyboardMode();
+        root.style.setProperty("--keyboard-login-lift", "0px");
+        root.style.setProperty("--keyboard-inset", "0px");
+        resetLoginDocumentScroll();
+      };
+      const handleLoginPreFocusLock = (event: Event) => {
+        prepareLoginKeyboard(event.target);
+      };
+      const handleLoginViewportShift = () => {
+        if (!root.classList.contains("login-kb-open")) return;
+        resetLoginDocumentScroll();
+      };
 
-    void import("@capacitor/keyboard").then(({ Keyboard }) => {
       if (platform === "ios") {
         void Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
+        restoreDefaultKeyboardMode();
       }
 
       const show = Keyboard.addListener("keyboardWillShow", (info) => {
@@ -403,7 +431,7 @@ export function App() {
         keyboardSeq += 1;
         const seq = keyboardSeq;
         root.classList.add("kb-open");
-        lockLoginDocumentScroll();
+        if (isLoginInputActive()) prepareLoginKeyboard();
         setInset(measuredInset(info.keyboardHeight));
 
         clearSettleTimer();
@@ -416,12 +444,8 @@ export function App() {
         keyboardVisible = false;
         keyboardSeq += 1;
         clearSettleTimer();
-        clearLoginScrollLocks();
         root.classList.remove("kb-open");
-
-        root.classList.remove("login-kb-open");
-        setInset(0);
-        window.requestAnimationFrame(() => window.scrollTo(0, 0));
+        releaseLoginKeyboard();
       });
 
       document.addEventListener("touchstart", handleLoginPreFocusLock, true);
@@ -432,22 +456,16 @@ export function App() {
 
       cleanup = () => {
         void show.then((h) => h.remove());
-
         void hide.then((h) => h.remove());
         clearSettleTimer();
-        clearLoginScrollLocks();
         document.removeEventListener("touchstart", handleLoginPreFocusLock, true);
         document.removeEventListener("pointerdown", handleLoginPreFocusLock, true);
         document.removeEventListener("focusin", handleLoginPreFocusLock, true);
         window.visualViewport?.removeEventListener("scroll", handleLoginViewportShift);
         window.visualViewport?.removeEventListener("resize", handleLoginViewportShift);
         if (insetRaf) window.cancelAnimationFrame(insetRaf);
-
-        root.style.setProperty("--keyboard-inset", "0px");
-        root.style.setProperty("--keyboard-login-lift", "0px");
-        root.style.setProperty("--visual-viewport-left", "0px");
+        releaseLoginKeyboard();
         root.classList.remove("kb-open");
-        root.classList.remove("login-kb-open");
       };
     });
     return () => cleanup?.();
