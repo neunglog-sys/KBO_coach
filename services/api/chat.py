@@ -103,7 +103,9 @@ def _public_context(used: dict, *, cached: bool = False) -> dict:
         context["cached"] = True
     return context
 
-CHUNK_MIN_SCORE = 0.45   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외
+CHUNK_MIN_SCORE = 0.65   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외.
+                         # 0.45는 너무 관대(무관 질문에도 청크 항상 부착)라 0.65로 상향
+                         # — RAG ablation(116문항): 환각 9%→7%, groundedness 0.914→0.931
 
 
 class ChatIn(BaseModel):
