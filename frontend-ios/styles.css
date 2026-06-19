@@ -4059,7 +4059,9 @@ html.theme-dark .app-shell {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  justify-content: start;
+  /* grid라 justify-content는 '가로축' — start로 두면 카드(공복이)가 왼쪽으로 밀린다.
+     세로 위쪽 정렬은 base의 align-items:start가 이미 처리하므로 가로는 center 유지. */
+  justify-content: center;
   /* 포커스된 입력칸이 키보드 바로 위가 아니라 여유를 두고 스크롤되도록 */
   scroll-padding-bottom: calc(var(--keyboard-inset, 0px) + 24px);
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + var(--keyboard-inset, 0px) + 20px);
