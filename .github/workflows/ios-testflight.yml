@@ -1,0 +1,102 @@
+name: iOS TestFlight Upload
+
+# 서명된 IPA를 빌드해 TestFlight에 업로드한다 (맥 없이 — macOS 러너 + 수동 서명).
+# 필요 시크릿: IOS_P12_BASE64 / IOS_P12_PASSWORD / IOS_PROFILE_BASE64 /
+#             ASC_KEY_ID / ASC_ISSUER_ID / ASC_API_KEY_BASE64 (+ VITE_*)
+# macOS 분 차감 10배 → 수동 실행 전용.
+# 실행 방법: ① Actions 탭 수동 실행(워크플로가 main에 있을 때) 또는
+#           ② `git tag ios-tf-N && git push origin ios-tf-N` (어느 브랜치에서든 즉시 실행)
+on:
+  workflow_dispatch:
+  push:
+    tags: ["ios-tf-*"]
+
+env:
+  TEAM_ID: MQY843WD59
+  PROFILE_NAME: kbo-appstore
+
+jobs:
+  testflight:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: frontend-ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode
+        # App Store Connect가 iOS 26 SDK(Xcode 26+) 빌드만 수리 — 기본 선택이 구버전이라 최신으로 전환
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install deps & build web
+        env:
+          VITE_API_BASE: https://kboai-5dea0.web.app   # 앱은 상대경로가 자기 내부로 가므로 필수
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
+        run: |
+          npm ci
+          npm run build
+      - name: Capacitor sync
+        run: npx cap sync ios
+
+      - name: Import signing cert & profile
+        env:
+          P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+        run: |
+          # 임시 키체인에 배포 인증서 등록
+          KEYCHAIN=$RUNNER_TEMP/build.keychain-db
+          security create-keychain -p ci-temp-pass "$KEYCHAIN"
+          security set-keychain-settings -lut 1800 "$KEYCHAIN"
+          security unlock-keychain -p ci-temp-pass "$KEYCHAIN"
+          echo "$P12_BASE64" | base64 -d > $RUNNER_TEMP/dist.p12
+          security import $RUNNER_TEMP/dist.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -k ci-temp-pass "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          # 프로비저닝 프로파일 설치
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE_BASE64" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/kbo-appstore.mobileprovision
+
+      - name: Archive (signed)
+        # 서명 설정은 CLI 전역 주입 금지 — SPM 패키지 타겟이 프로비저닝 프로파일을 거부함.
+        # 앱 타겟의 Release 빌드 설정(project.pbxproj)에 Manual 서명이 박혀 있다.
+        # 빌드 번호는 워크플로 실행 번호 + 100 자동 사용 — 수동 증가/중복 업로드 방지.
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Release -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            CURRENT_PROJECT_VERSION=$((100 + ${{ github.run_number }}))
+
+      - name: Export & upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_API_KEY_BASE64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          cat > $RUNNER_TEMP/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>provisioningProfiles</key>
+            <dict><key>com.neunglog.baseballcoach</key><string>$PROFILE_NAME</string></dict>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/App.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8 \
+            -authenticationKeyID $ASC_KEY_ID \
+            -authenticationKeyIssuerID $ASC_ISSUER_ID

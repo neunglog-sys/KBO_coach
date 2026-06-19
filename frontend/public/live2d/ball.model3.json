@@ -1,0 +1,69 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "ball.moc3",
+		"Textures": [
+			"ball.2048/texture_00.png"
+		],
+		"DisplayInfo": "ball.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "kiwoom",
+				"File": "kiwoom.exp3.json"
+			},
+			{
+				"Name": "samsung",
+				"File": "samsung.exp3.json"
+			},
+			{
+				"Name": "kia",
+				"File": "kia.exp3.json"
+			},
+			{
+				"Name": "ssg",
+				"File": "ssg.exp3.json"
+			},
+			{
+				"Name": "nc",
+				"File": "nc.exp3.json"
+			},
+			{
+				"Name": "lg",
+				"File": "lg.exp3.json"
+			},
+			{
+				"Name": "kt",
+				"File": "kt.exp3.json"
+			},
+			{
+				"Name": "lotte",
+				"File": "lotte.exp3.json"
+			},
+			{
+				"Name": "doosan",
+				"File": "doosan.exp3.json"
+			},
+			{
+				"Name": "hanwha",
+				"File": "hanwha.exp3.json"
+			},
+			{
+				"Name": "bat",
+				"File": "bat.exp3.json"
+			}
+		]
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	],
+	"HitAreas": []
+}

@@ -1,0 +1,53 @@
+{
+  "name": "baseball-rookie-coach-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5000",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "verify:stadiums": "esbuild ./scripts/verify-stadiums.tsx --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-stadiums.cjs && node node_modules/.cache/verify-stadiums.cjs",
+    "verify:tamagotchi": "esbuild ./scripts/verify-tamagotchi.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-tamagotchi.cjs && node node_modules/.cache/verify-tamagotchi.cjs",
+    "verify:quiz-personalization": "esbuild ./scripts/verify-quiz-personalization.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-quiz-personalization.cjs && node node_modules/.cache/verify-quiz-personalization.cjs",
+    "verify:settings": "esbuild ./scripts/verify-app-settings.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-app-settings.cjs && node node_modules/.cache/verify-app-settings.cjs",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "npm run ios:sync && cap open ios",
+    "preview": "vite preview --host 127.0.0.1 --port 5000"
+  },
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.0",
+    "@capacitor-firebase/messaging": "^8.3.0",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
+    "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capgo/capacitor-social-login": "^8.3.22",
+    "@capgo/capacitor-speech-recognition": "^8.1.3",
+    "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^4.3.4",
+    "firebase": "^12.14.0",
+    "lucide-react": "^1.17.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sql.js": "^1.14.1",
+    "three": "^0.160.0"
+  },
+  "overrides": {
+    "gh-pages": "^6.3.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.4.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@types/three": "^0.160.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"$PWD\\\\frontend\\\\android\\\\gradlew.bat\" -p \"$PWD\\\\frontend\\\\android\" installDebug 2>&1 | Select-Object -Last 6)"
+    ]
+  }
+}

@@ -1,0 +1,1823 @@
+@font-face {
+  font-family: "Pretendard-SemiBold";
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+.settings-entry-tile {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 46px;
+  place-items: center;
+  border: 2px solid rgba(18, 109, 255, 0.7);
+  border-radius: 7px;
+  color: #0d2f55;
+  background: #eef8ff;
+  box-shadow: 0 5px 0 rgba(18, 109, 255, 0.16);
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+}
+
+.settings-entry-tile span {
+  font-size: 0.9rem;
+}
+
+.settings-entry-tile strong {
+  color: #126dff;
+  font-size: 0.62rem;
+}
+
+.settings-entry-tile.is-active,
+.settings-entry-tile:hover {
+  background: #dff3ff;
+  transform: translateY(1px);
+  box-shadow: 0 3px 0 rgba(18, 109, 255, 0.18);
+}
+
+.settings-window-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 12, 32, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.settings-window {
+  position: relative;
+  box-sizing: border-box;
+  width: min(460px, 100%);
+  max-height: min(820px, calc(100vh - 40px));
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 26px;
+  background: #dff5ff;
+  box-shadow: 0 26px 76px rgba(0, 0, 0, 0.42);
+  animation: app-screen-slide-in var(--app-transition-screen, 240ms) var(--app-ease-standard, cubic-bezier(0.22, 0.8, 0.28, 1)) both;
+  backface-visibility: hidden;
+  contain: paint;
+  will-change: transform, opacity;
+}
+
+.settings-window-backdrop.is-closing {
+  pointer-events: none;
+}
+
+.settings-window-backdrop.is-closing .settings-window {
+  animation: app-screen-slide-out var(--app-transition-screen, 240ms) var(--app-ease-exit, cubic-bezier(0.4, 0, 0.7, 0.2)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-window-backdrop,
+  .settings-window,
+  .settings-window-backdrop.is-closing,
+  .settings-window-backdrop.is-closing .settings-window {
+    animation: none;
+  }
+}
+
+.settings-app-screen {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: min(820px, calc(100vh - 40px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 10px) 20px 78px;
+  color: #101a36;
+  background: #f7fcff;
+  font-family:
+    Pretendard,
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
+    sans-serif;
+}
+
+.settings-fixed-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.26) 0 48px, transparent 49px),
+    linear-gradient(180deg, #8bd7ff 0%, #dff5ff 38%, #f7fcff 100%);
+  transform: translateZ(0);
+}
+
+.settings-fixed-background::before {
+  content: "";
+  position: absolute;
+  right: clamp(22px, 7vw, 58px);
+  top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(34px, 8vh, 72px));
+  width: clamp(72px, 18vw, 116px);
+  height: clamp(72px, 18vw, 116px);
+  border: clamp(6px, 1.5vw, 9px) solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+.settings-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-bottom: 6px;
+}
+
+.settings-header-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.settings-header h2 {
+  flex: 1;
+  margin: 0;
+  color: #101a36;
+  font-size: 1.72rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.55);
+}
+
+.settings-close-button {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.24);
+  border: 0;
+  cursor: pointer;
+}
+
+.settings-close-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.settings-top-menu,
+.settings-stack,
+.settings-card-list,
+.settings-form-card,
+.settings-team-card {
+  position: relative;
+  z-index: 1;
+}
+
+.settings-top-menu {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 22px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 3px 10px rgba(20, 93, 150, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
+
+.settings-top-menu button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 4px 2px;
+  color: #101a36;
+  background: transparent;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  text-align: center;
+}
+
+.settings-top-menu button > span:last-child {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  line-height: 1.08;
+  text-align: center;
+}
+
+.settings-top-menu button.is-active {
+  border-color: rgba(22, 119, 255, 0.24);
+  color: #126dff;
+  background: rgba(22, 119, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.18);
+}
+
+.settings-icon-circle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  color: #126dff;
+  background: #e9f6ff;
+  box-shadow: inset 0 0 0 1px rgba(18, 109, 255, 0.06);
+}
+
+.settings-icon-circle svg {
+  width: 52%;
+  height: 52%;
+}
+
+.settings-icon-circle.is-danger {
+  color: #ef4444;
+  background: #ffecec;
+}
+
+.settings-img-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  position: static;
+}
+
+.setting-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
+
+.settings-menu-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.settings-top-menu button.is-active .settings-menu-icon {
+  color: #126dff;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-stack,
+.settings-card-list {
+  display: grid;
+}
+
+.settings-stack {
+  gap: 12px;
+}
+
+.settings-card-list {
+  gap: 14px;
+  grid-auto-rows: 76px;
+  align-items: stretch;
+}
+
+.settings-large-card,
+.settings-menu-card,
+.settings-form-card,
+.settings-team-card,
+.settings-account-card {
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 3px 10px rgba(20, 93, 150, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
+
+.settings-large-card {
+  display: contents;
+}
+
+.settings-divider {
+  display: none;
+}
+
+.settings-menu-card,
+.settings-toggle-row,
+.settings-action-row,
+.settings-account-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-stack > .settings-menu-card,
+.settings-stack > .settings-large-card > .settings-toggle-row,
+.settings-stack > .settings-large-card > .settings-action-row {
+  --settings-card-inline-padding: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 18px;
+  padding: 10px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 3px 10px rgba(20, 93, 150, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  text-align: left;
+}
+
+.settings-card-list .settings-account-card,
+.settings-card-list .settings-menu-card,
+.settings-card-list .settings-nickname-form {
+  --settings-card-inline-padding: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  height: 76px;
+  max-height: 76px;
+  align-self: stretch;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 18px;
+  padding: 12px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 3px 10px rgba(20, 93, 150, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  text-align: left;
+  align-items: center;
+}
+
+.settings-menu-card .settings-row-text,
+.settings-action-row .settings-row-text,
+.settings-toggle-row .settings-row-text,
+.settings-account-card .settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings-row-text strong {
+  color: #101a36;
+  font-size: 0.92rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: 1.12;
+}
+
+.settings-row-text span {
+  color: #677182;
+  font-size: 0.6rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: 1.2;
+}
+
+.settings-stack > .settings-menu-card .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong {
+  font-size: 0.82rem;
+  line-height: 1.12;
+}
+
+.settings-stack > .settings-menu-card .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text span {
+  font-size: 0.52rem;
+  line-height: 1.2;
+}
+
+.settings-card-list .settings-row-text strong {
+  font-size: 0.92rem;
+  line-height: 1.12;
+}
+
+.settings-card-list .settings-row-text span {
+  font-size: 0.6rem;
+  line-height: 1.2;
+}
+
+.settings-chevron {
+  flex: 0 0 auto;
+  color: #0b1a35;
+  width: 22px;
+  height: 22px;
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 2px 2px rgba(25, 61, 105, 0.24));
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+
+.settings-menu-card:hover .settings-chevron,
+.settings-action-row:hover .settings-chevron {
+  transform: translateX(2px);
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.95))
+    drop-shadow(0 3px 2px rgba(25, 61, 105, 0.28));
+}
+
+.settings-menu-card:active .settings-chevron,
+.settings-action-row:active .settings-chevron {
+  transform: translate(2px, 2px);
+  filter: drop-shadow(0 1px 1px rgba(25, 61, 105, 0.2));
+}
+
+.settings-toggle {
+  --settings-toggle-track: rgba(148, 163, 184, 0.35);
+  --settings-toggle-border: rgba(255, 255, 255, 0.72);
+  --settings-toggle-shadow: rgba(71, 85, 105, 0.18);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  align-self: center;
+  min-width: 42px;
+  border: 0;
+  padding: 0;
+  color: #727987;
+  background: transparent;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  font-size: 0.56rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-toggle span {
+  position: relative;
+  box-sizing: border-box;
+  width: 38px;
+  height: 21px;
+  overflow: hidden;
+  border: 1px solid var(--settings-toggle-border);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent 46%),
+    var(--settings-toggle-track);
+  box-shadow:
+    0 3px 7px var(--settings-toggle-shadow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.72),
+    inset 0 -2px 3px rgba(71, 85, 105, 0.12);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.14s ease;
+}
+
+.settings-toggle span::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #ffffff 16%, #f5f9ff 72%, #e2e8f0);
+  box-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -1px 2px rgba(148, 163, 184, 0.22);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.14s ease;
+}
+
+.settings-toggle.is-on {
+  --settings-toggle-track: linear-gradient(135deg, #4ea1ff 0%, #1e7bff 54%, #1263df 100%);
+  --settings-toggle-border: rgba(255, 255, 255, 0.72);
+  --settings-toggle-shadow: rgba(30, 123, 255, 0.34);
+  color: #126dff;
+}
+
+.settings-toggle.is-on span {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 48%),
+    var(--settings-toggle-track);
+  box-shadow:
+    0 4px 9px var(--settings-toggle-shadow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.62),
+    inset 0 -2px 4px rgba(8, 70, 174, 0.2);
+}
+
+.settings-toggle.is-on span::after {
+  transform: translateX(17px);
+}
+
+.settings-toggle:hover span {
+  box-shadow:
+    0 5px 11px var(--settings-toggle-shadow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.72),
+    inset 0 -2px 4px rgba(71, 85, 105, 0.14);
+}
+
+.settings-toggle:active span {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 5px var(--settings-toggle-shadow),
+    inset 0 2px 4px rgba(15, 23, 42, 0.12);
+}
+
+.settings-toggle:active span::after {
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.24),
+    inset 0 1px 2px rgba(148, 163, 184, 0.18);
+}
+
+.settings-toggle:focus-visible {
+  outline: none;
+}
+
+.settings-toggle:focus-visible span {
+  box-shadow:
+    0 4px 9px var(--settings-toggle-shadow),
+    0 0 0 3px rgba(30, 123, 255, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.72);
+}
+
+.settings-form-card,
+.settings-team-card {
+  padding: 10px;
+}
+
+.settings-form-card {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-form-card label {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: #101a36;
+  font-size: 0.9rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+}
+
+.settings-form-card input {
+  min-height: 42px;
+  border: 1px solid rgba(132, 164, 196, 0.48);
+  border-radius: 12px;
+  padding: 0 10px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 2px 6px rgba(33, 72, 110, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.84rem;
+  caret-color: #126dff;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.settings-form-card input:focus {
+  border-color: #126dff;
+  background: rgba(255, 255, 255, 0.62);
+  transform: translateY(-1px);
+  box-shadow:
+    0 3px 8px rgba(18, 91, 220, 0.1),
+    0 0 0 3px rgba(18, 109, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.settings-primary-button {
+  min-height: 42px;
+  border-radius: 12px;
+  font-size: 0.98rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+}
+
+.settings-blue-action-button {
+  border: 1px solid rgba(19, 100, 235, 0.82);
+  color: #fff;
+  background: linear-gradient(180deg, #4a94ff 0%, #237cff 52%, #1264e8 100%);
+  box-shadow:
+    0 3px 8px rgba(18, 91, 220, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 52, 160, 0.18);
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  text-shadow: 0 1px 1px rgba(0, 45, 135, 0.26);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+
+.settings-blue-action-button:not(:disabled):hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.settings-blue-action-button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 4px rgba(18, 91, 220, 0.1),
+    inset 0 2px 4px rgba(0, 48, 145, 0.18);
+}
+
+.settings-primary-button.settings-blue-action-button {
+  min-height: 36px;
+  border-radius: 11px;
+  font-size: 0.78rem;
+}
+
+.settings-primary-button:disabled,
+.settings-secondary-button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.settings-primary-button.is-danger {
+  border-color: rgba(217, 54, 62, 0.76);
+  background: linear-gradient(180deg, #ff969b 0%, #ff747c 52%, #e9565f 100%);
+  box-shadow:
+    0 3px 8px rgba(191, 54, 63, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -2px 0 rgba(161, 32, 42, 0.14);
+}
+
+.settings-blue-action-button.is-danger {
+  border-color: rgba(217, 54, 62, 0.78);
+  background: linear-gradient(180deg, #ff9da2 0%, #ff747c 52%, #e95760 100%);
+  box-shadow:
+    0 3px 8px rgba(218, 54, 63, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 0 rgba(161, 32, 42, 0.18);
+  text-shadow: 0 1px 1px rgba(128, 24, 32, 0.28);
+}
+
+.settings-blue-action-button.is-danger:not(:disabled):active {
+  box-shadow:
+    0 2px 4px rgba(191, 54, 63, 0.1),
+    inset 0 2px 4px rgba(128, 24, 32, 0.18);
+}
+
+.settings-confirm-actions .settings-delete-confirm-button {
+  min-height: 40px;
+  border: 1px solid rgba(220, 38, 38, 0.72);
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(180deg, #fb7185 0%, #ef4444 55%, #dc2626 100%);
+  box-shadow:
+    0 3px 8px rgba(220, 38, 38, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -2px 0 rgba(153, 27, 27, 0.2);
+  font-size: 0.82rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  text-shadow: 0 1px 1px rgba(127, 29, 29, 0.3);
+}
+
+.settings-confirm-actions .settings-delete-confirm-button:not(:disabled):hover {
+  background: linear-gradient(180deg, #fb7d8e 0%, #f04b4b 55%, #df2c2c 100%);
+  filter: brightness(1.02);
+}
+
+.settings-confirm-actions .settings-delete-confirm-button:not(:disabled):active {
+  transform: translateY(2px);
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow:
+    0 2px 4px rgba(185, 28, 28, 0.1),
+    inset 0 2px 4px rgba(127, 29, 29, 0.22);
+}
+
+.settings-confirm-actions .settings-delete-confirm-button:disabled {
+  opacity: 0.58;
+  box-shadow:
+    0 3px 7px rgba(220, 38, 38, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -2px 0 rgba(153, 27, 27, 0.12);
+}
+
+.settings-secondary-button {
+  min-height: 40px;
+  border: 1px solid rgba(183, 204, 225, 0.86);
+  border-radius: 12px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 3px 8px rgba(42, 80, 115, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -2px 0 rgba(126, 158, 187, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.82rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  text-shadow: 0 1px 0 #fff;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+
+.settings-primary-button:not(.settings-blue-action-button):not(:disabled):hover,
+.settings-secondary-button:not(:disabled):hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.settings-primary-button:not(.settings-blue-action-button):not(:disabled):active,
+.settings-secondary-button:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 rgba(38, 84, 128, 0.16),
+    inset 0 3px 5px rgba(21, 61, 103, 0.16);
+}
+
+.settings-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(4, 12, 32, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.settings-confirm-modal {
+  display: grid;
+  gap: 10px;
+  width: min(340px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  padding: 14px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow:
+    0 4px 12px rgba(4, 12, 32, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+}
+
+.settings-confirm-modal h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: 1.2;
+}
+
+.settings-confirm-modal p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.78rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: 1.4;
+}
+
+.settings-confirm-modal p strong {
+  color: #ef4444;
+}
+
+.settings-confirm-input {
+  min-height: 38px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #101a36;
+  background: #fff;
+  font-size: 0.8rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+}
+
+.settings-confirm-input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
+}
+
+.settings-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-team-card {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-team-card fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.settings-radio-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 12px;
+  padding: 0 10px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  font-size: 0.9rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.settings-radio-row:hover {
+  border-color: rgba(18, 109, 255, 0.32);
+  background: rgba(255, 255, 255, 0.38);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.settings-radio-row:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 3px rgba(60, 99, 136, 0.08);
+}
+
+.settings-radio-row:has(input:checked) {
+  border-color: rgba(18, 109, 255, 0.72);
+  color: #0b55c9;
+  background: rgba(126, 184, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.settings-radio-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-radio-row > span {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #9aa8b8;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #edf3f8 100%);
+  box-shadow: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.settings-radio-row input:checked + span {
+  border-color: #126dff;
+  background: linear-gradient(180deg, #ffffff 0%, #e7f1ff 100%);
+  box-shadow: none;
+}
+
+.settings-radio-row input:checked + span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  border-radius: inherit;
+  background: linear-gradient(180deg, #4d9aff 0%, #126dff 62%, #0758d2 100%);
+  box-shadow:
+    0 2px 3px rgba(0, 64, 170, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.settings-radio-row input:focus-visible + span {
+  box-shadow: 0 0 0 4px rgba(18, 109, 255, 0.16);
+}
+
+.settings-notice {
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 0;
+  color: #126dff;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+.settings-stadium-decoration {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(112px, 19vh, 180px);
+  opacity: 0.62;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 92% 90%, #fff 0 46px, transparent 47px),
+    linear-gradient(180deg, transparent 0%, rgba(89, 171, 240, 0.35) 34%, rgba(74, 149, 224, 0.52) 100%);
+}
+
+.settings-stadium-decoration::before,
+.settings-stadium-decoration::after {
+  content: "";
+  position: absolute;
+  bottom: clamp(14px, 2.4vh, 24px);
+  width: 42%;
+  height: clamp(44px, 7vh, 70px);
+  border-top: clamp(6px, 1vh, 9px) solid rgba(89, 171, 240, 0.5);
+  background: rgba(114, 184, 244, 0.28);
+}
+
+.settings-stadium-decoration::before {
+  left: clamp(-34px, -4vw, -24px);
+  transform: skewY(10deg);
+}
+
+.settings-stadium-decoration::after {
+  right: clamp(-34px, -4vw, -24px);
+  transform: skewY(-10deg);
+}
+
+.settings-stadium-decoration span {
+  position: absolute;
+  bottom: clamp(66px, 10vh, 108px);
+  width: clamp(34px, 7vw, 54px);
+  height: clamp(46px, 8vh, 72px);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.settings-stadium-decoration span:first-child {
+  left: clamp(42px, 12vw, 92px);
+}
+
+.settings-stadium-decoration span:last-child {
+  right: clamp(42px, 12vw, 92px);
+}
+
+.settings-stadium-decoration span::after {
+  content: "";
+  position: absolute;
+  left: 42%;
+  top: 91%;
+  width: clamp(6px, 1.2vw, 9px);
+  height: clamp(34px, 6vh, 54px);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.settings-account-card {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+.settings-card-list .settings-img-circle,
+.settings-card-list .setting-icon,
+.settings-card-list .settings-icon-circle {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+.settings-nickname-form {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  overflow: visible;
+}
+
+.settings-card-list .settings-nickname-form > .settings-img-circle {
+  align-self: center;
+  justify-self: start;
+  margin: 0;
+}
+
+.settings-nickname-fields {
+  --nickname-control-height: 28px;
+  --nickname-button-width: 44px;
+  display: grid;
+  grid-template-rows: 10px var(--nickname-control-height);
+  width: 100%;
+  max-width: 100%;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-nickname-fields label {
+  margin: 0;
+  color: #677182;
+  font-size: 0.62rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  height: 10px;
+  line-height: 10px;
+}
+
+.settings-nickname-fields > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--nickname-button-width);
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.settings-nickname-fields input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  border: 1px solid rgba(132, 164, 196, 0.5);
+  border-radius: 9px;
+  padding: 0 10px;
+  color: #101a36;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 2px 6px rgba(33, 72, 110, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.66rem;
+  font-family: "Pretendard-SemiBold", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-weight: 600;
+  font-synthesis: none;
+  line-height: var(--nickname-control-height);
+  caret-color: #126dff;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.settings-nickname-fields input:focus,
+.settings-nickname-fields input:focus-visible {
+  border-color: #176dff;
+  background: rgba(255, 255, 255, 0.62);
+  transform: translateY(-1px);
+  box-shadow:
+    0 3px 8px rgba(18, 91, 220, 0.1),
+    0 0 0 3px rgba(18, 109, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.settings-nickname-fields button {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: var(--nickname-button-width);
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  border-radius: 9px;
+  padding: 0 6px;
+  font-size: 0.6rem;
+  line-height: 1;
+  white-space: nowrap;
+  align-self: stretch;
+}
+
+.settings-nickname-fields button:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.settings-screen-anim {
+  position: relative;
+  z-index: 1;
+  animation: settings-screen-in 0.26s cubic-bezier(0.22, 0.8, 0.28, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes settings-screen-in {
+  from {
+    opacity: 0.88;
+    transform: translateX(3%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.settings-app-screen :is(
+  .settings-top-menu,
+  .settings-menu-card,
+  .settings-form-card,
+  .settings-team-card,
+  .settings-account-card
+) {
+  border-color: rgba(255, 255, 255, 0.64);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 3px 10px rgba(20, 93, 150, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
+
+.settings-app-screen .settings-confirm-modal.is-delete {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.settings-app-screen .settings-confirm-modal.is-logout {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@media (max-width: 720px) {
+  .settings-window-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .settings-window {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .settings-app-screen {
+    min-height: 100dvh;
+    padding-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 18px);
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + 72px);
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+  }
+
+  .settings-header {
+    grid-template-columns: 46px 1fr 46px;
+    min-height: 58px;
+    margin-bottom: 10px;
+  }
+
+  .settings-header h2 {
+    font-size: 1.34rem;
+  }
+
+  .settings-top-menu {
+    gap: 4px;
+    margin-bottom: 12px;
+    border-radius: 20px;
+    padding: 8px;
+  }
+
+  .settings-top-menu button {
+    gap: 3px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 3px 2px;
+    font-size: 0.56rem;
+  }
+
+  .settings-top-menu button > span:last-child {
+    min-height: 0;
+    line-height: 1.08;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .settings-menu-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .settings-stack {
+    gap: 12px;
+  }
+
+  .settings-card-list {
+    gap: 14px;
+    grid-auto-rows: 76px;
+    align-items: stretch;
+  }
+
+  .settings-row-text strong {
+    font-size: 0.92rem;
+    line-height: 1.12;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  .settings-row-text span {
+    font-size: 0.6rem;
+  }
+
+  .settings-stack > .settings-menu-card .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong {
+    font-size: 0.82rem;
+  }
+
+  .settings-stack > .settings-menu-card .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text span {
+    font-size: 0.52rem;
+  }
+
+  .settings-menu-card,
+  .settings-toggle-row,
+  .settings-action-row,
+  .settings-account-card {
+    gap: 9px;
+  }
+
+  .settings-stack > .settings-menu-card,
+  .settings-stack > .settings-large-card > .settings-toggle-row,
+  .settings-stack > .settings-large-card > .settings-action-row {
+    min-height: 52px;
+    border-radius: 18px;
+    padding: 10px;
+  }
+
+  .settings-card-list .settings-account-card,
+  .settings-card-list .settings-menu-card,
+  .settings-card-list .settings-nickname-form {
+    min-height: 76px;
+    height: 76px;
+    max-height: 76px;
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .settings-menu-card .settings-icon-circle,
+  .settings-action-row .settings-icon-circle,
+  .settings-toggle-row .settings-icon-circle,
+  .settings-card-list .settings-icon-circle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .settings-img-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .setting-icon {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+
+  .settings-toggle {
+    gap: 2px;
+    min-width: 40px;
+    font-size: 0.54rem;
+  }
+
+  .settings-toggle span {
+    width: 36px;
+    height: 20px;
+  }
+
+  .settings-toggle span::after {
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    top: 2px;
+  }
+
+  .settings-toggle.is-on span::after {
+    transform: translateX(16px);
+  }
+
+  .settings-chevron {
+    width: 22px;
+    height: 22px;
+  }
+
+  .settings-form-card,
+  .settings-team-card {
+    border-radius: 20px;
+    padding: 14px;
+  }
+
+  .settings-form-card label {
+    font-size: 0.84rem;
+  }
+
+  .settings-form-card input,
+  .settings-primary-button {
+    min-height: 40px;
+  }
+
+  .settings-confirm-backdrop {
+    padding: 14px;
+  }
+
+  .settings-confirm-modal {
+    gap: 10px;
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .settings-confirm-modal h3 {
+    font-size: 1rem;
+  }
+
+  .settings-confirm-actions {
+    gap: 8px;
+  }
+
+  .settings-radio-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 0 9px;
+    font-size: 0.84rem;
+  }
+
+  .settings-radio-row > span {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-nickname-fields {
+    --nickname-control-height: 28px;
+    --nickname-button-width: 44px;
+  }
+
+  .settings-nickname-fields label {
+    font-size: 0.62rem;
+  }
+
+  .settings-nickname-fields input,
+  .settings-nickname-fields button {
+    font-size: 0.6rem;
+  }
+
+  .settings-nickname-fields input {
+    height: var(--nickname-control-height);
+    min-height: var(--nickname-control-height);
+    padding: 0 8px;
+  }
+
+  .settings-nickname-fields button {
+    height: var(--nickname-control-height);
+    min-height: var(--nickname-control-height);
+  }
+}
+
+@media (max-width: 360px) {
+  .settings-nickname-fields > div {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 5px;
+  }
+
+  .settings-nickname-fields button {
+    width: 42px;
+    padding: 0 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-screen-anim {
+    animation: none;
+  }
+}
+/* 카드/아이콘/텍스트 크기 통일 수정 */
+.settings-app-screen {
+  --settings-card-padding: 16px;
+  --settings-card-height: 88px;
+  --settings-card-gap: 14px;
+  --settings-icon-size: 56px;
+}
+
+.settings-stack,
+.settings-card-list {
+  gap: var(--settings-card-gap);
+}
+
+.settings-card-list {
+  grid-auto-rows: var(--settings-card-height);
+}
+
+.settings-menu-card,
+.settings-toggle-row,
+.settings-action-row,
+.settings-account-card {
+  gap: 14px;
+}
+
+.settings-stack > .settings-menu-card,
+.settings-stack > .settings-large-card > .settings-toggle-row,
+.settings-stack > .settings-large-card > .settings-action-row,
+.settings-card-list .settings-account-card,
+.settings-card-list .settings-menu-card,
+.settings-card-list .settings-nickname-form {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--settings-card-height);
+  height: var(--settings-card-height);
+  max-height: var(--settings-card-height);
+  border-radius: 18px;
+  padding: var(--settings-card-padding);
+  align-items: center;
+}
+
+.settings-img-circle,
+.settings-icon-circle,
+.settings-card-list .settings-img-circle,
+.settings-card-list .setting-icon,
+.settings-card-list .settings-icon-circle,
+.settings-menu-card .settings-icon-circle,
+.settings-action-row .settings-icon-circle,
+.settings-toggle-row .settings-icon-circle {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  flex: 0 0 var(--settings-icon-size);
+}
+
+.setting-icon {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  object-fit: contain;
+}
+
+.settings-row-text {
+  gap: 3px;
+}
+
+.settings-row-text strong,
+.settings-stack > .settings-menu-card .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong,
+.settings-card-list .settings-row-text strong {
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.settings-row-text span,
+.settings-stack > .settings-menu-card .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+.settings-stack > .settings-large-card > .settings-action-row .settings-row-text span,
+.settings-card-list .settings-row-text span {
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
+.settings-nickname-form {
+  grid-template-columns: var(--settings-icon-size) minmax(0, 1fr);
+  column-gap: 14px;
+}
+
+.settings-nickname-fields {
+  --nickname-control-height: 32px;
+  --nickname-button-width: 48px;
+  grid-template-rows: 12px var(--nickname-control-height);
+  gap: 5px;
+}
+
+.settings-nickname-fields label {
+  height: 12px;
+  font-size: 0.66rem;
+  line-height: 12px;
+}
+
+.settings-nickname-fields input {
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  font-size: 0.72rem;
+}
+
+.settings-nickname-fields button {
+  width: var(--nickname-button-width);
+  height: var(--nickname-control-height);
+  min-height: var(--nickname-control-height);
+  font-size: 0.64rem;
+}
+
+@media (max-width: 720px) {
+  .settings-app-screen {
+    --settings-card-padding: 16px;
+    --settings-card-height: 88px;
+    --settings-card-gap: 14px;
+    --settings-icon-size: 56px;
+  }
+
+  .settings-stack,
+  .settings-card-list {
+    gap: var(--settings-card-gap);
+  }
+
+  .settings-card-list {
+    grid-auto-rows: var(--settings-card-height);
+  }
+
+  .settings-menu-card,
+  .settings-toggle-row,
+  .settings-action-row,
+  .settings-account-card {
+    gap: 14px;
+  }
+
+  .settings-stack > .settings-menu-card,
+  .settings-stack > .settings-large-card > .settings-toggle-row,
+  .settings-stack > .settings-large-card > .settings-action-row,
+  .settings-card-list .settings-account-card,
+  .settings-card-list .settings-menu-card,
+  .settings-card-list .settings-nickname-form {
+    min-height: var(--settings-card-height);
+    height: var(--settings-card-height);
+    max-height: var(--settings-card-height);
+    padding: var(--settings-card-padding);
+  }
+
+  .settings-img-circle,
+  .settings-icon-circle,
+  .settings-card-list .settings-img-circle,
+  .settings-card-list .setting-icon,
+  .settings-card-list .settings-icon-circle,
+  .settings-menu-card .settings-icon-circle,
+  .settings-action-row .settings-icon-circle,
+  .settings-toggle-row .settings-icon-circle {
+    width: var(--settings-icon-size);
+    height: var(--settings-icon-size);
+    flex: 0 0 var(--settings-icon-size);
+  }
+
+  .setting-icon {
+    width: var(--settings-icon-size);
+    height: var(--settings-icon-size);
+  }
+
+  .settings-row-text strong,
+  .settings-stack > .settings-menu-card .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text strong,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text strong,
+  .settings-card-list .settings-row-text strong {
+    font-size: 1rem;
+    line-height: 1.18;
+  }
+
+  .settings-row-text span,
+  .settings-stack > .settings-menu-card .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-toggle-row .settings-row-text span,
+  .settings-stack > .settings-large-card > .settings-action-row .settings-row-text span,
+  .settings-card-list .settings-row-text span {
+    font-size: 0.64rem;
+    line-height: 1.25;
+  }
+
+  .settings-nickname-form {
+    grid-template-columns: var(--settings-icon-size) minmax(0, 1fr);
+    column-gap: 14px;
+  }
+
+  .settings-nickname-fields {
+    --nickname-control-height: 32px;
+    --nickname-button-width: 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-nickname-fields {
+    --nickname-control-height: 32px;
+    --nickname-button-width: 48px;
+  }
+
+  .settings-nickname-fields label {
+    font-size: 0.66rem;
+  }
+
+  .settings-nickname-fields input,
+  .settings-nickname-fields button {
+    font-size: 0.64rem;
+  }
+}
+
+.plat-ios.kb-open .settings-confirm-backdrop {
+  align-items: flex-start;
+  overflow-y: auto;
+  padding-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px);
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 16px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.plat-ios.kb-open .settings-confirm-modal {
+  max-height: calc(100dvh - var(--keyboard-inset, 0px) - max(env(safe-area-inset-top, 0px), var(--sat, 0px)) - 32px);
+  overflow-y: auto;
+  scroll-padding-bottom: 16px;
+}
+
+.plat-ios.kb-open .settings-confirm-input {
+  scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 56px);
+  scroll-margin-bottom: 16px;
+}
+/* Team picker screen: fixed layout, no inner scroll; sizing compresses by viewport height. */
+.settings-app-screen.settings-screen-team {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  --settings-team-page-x: clamp(14px, 5vw, 30px);
+  --settings-team-page-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(8px, 1.6dvh, 18px));
+  --settings-team-page-bottom: max(clamp(8px, 1.4dvh, 14px), env(safe-area-inset-bottom, 0px));
+  --settings-team-card-padding: clamp(8px, 1.7dvh, 16px);
+  --settings-team-card-gap: clamp(7px, 1.35dvh, 13px);
+  --settings-team-row-gap: clamp(4px, 0.85dvh, 8px);
+  --settings-team-row-height: clamp(34px, 5.4dvh, 48px);
+  --settings-team-row-radius: clamp(12px, 3.5vw, 16px);
+  --settings-team-row-x: clamp(10px, 3.8vw, 17px);
+  --settings-team-radio-size: clamp(18px, 4.8vw, 23px);
+  --settings-team-dot-size: clamp(9px, 2.7vw, 12px);
+  --settings-team-font-size: clamp(0.82rem, 2.05dvh, 1.02rem);
+  --settings-team-button-height: clamp(38px, 5.6dvh, 50px);
+  padding: var(--settings-team-page-top) max(var(--settings-team-page-x), env(safe-area-inset-right, 0px)) var(--settings-team-page-bottom) max(var(--settings-team-page-x), env(safe-area-inset-left, 0px));
+}
+
+.settings-app-screen.settings-screen-team .settings-screen-anim {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  max-height: none;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.settings-app-screen.settings-screen-team .settings-header {
+  min-height: clamp(48px, 7.6dvh, 68px);
+  margin-bottom: clamp(6px, 1.3dvh, 14px);
+}
+
+.settings-app-screen.settings-screen-team .settings-header h2 {
+  font-size: clamp(1.1rem, 4vw, 1.48rem);
+  line-height: 1.18;
+}
+
+.settings-app-screen.settings-screen-team .settings-header :is(.app-back-button, .app-menu-button) {
+  width: clamp(40px, 10.5vw, 48px);
+  height: clamp(40px, 10.5vw, 48px);
+  border-radius: clamp(12px, 3.2vw, 15px);
+}
+
+.settings-app-screen.settings-screen-team .settings-header :is(.app-back-button, .app-menu-button) svg {
+  width: clamp(22px, 5.6vw, 27px);
+  height: clamp(22px, 5.6vw, 27px);
+}
+
+.settings-app-screen.settings-screen-team .settings-team-card {
+  display: grid;
+  gap: var(--settings-team-card-gap);
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: clamp(18px, 5vw, 24px);
+  padding: var(--settings-team-card-padding);
+}
+
+.settings-app-screen.settings-screen-team .settings-team-card fieldset {
+  gap: var(--settings-team-row-gap);
+}
+
+.settings-app-screen.settings-screen-team .settings-radio-row {
+  grid-template-columns: calc(var(--settings-team-radio-size) + 8px) minmax(0, 1fr);
+  gap: clamp(8px, 2.5vw, 14px);
+  min-height: var(--settings-team-row-height);
+  height: var(--settings-team-row-height);
+  border-radius: var(--settings-team-row-radius);
+  padding: 0 var(--settings-team-row-x);
+  font-size: var(--settings-team-font-size);
+  line-height: 1.12;
+}
+
+.settings-app-screen.settings-screen-team .settings-radio-row > span {
+  width: var(--settings-team-radio-size);
+  height: var(--settings-team-radio-size);
+  border-width: clamp(1.5px, 0.45vw, 2px);
+}
+
+.settings-app-screen.settings-screen-team .settings-radio-row input:checked + span::after {
+  width: var(--settings-team-dot-size);
+  height: var(--settings-team-dot-size);
+}
+
+.settings-app-screen.settings-screen-team .settings-radio-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.settings-app-screen.settings-screen-team .settings-primary-button.settings-blue-action-button {
+  min-height: var(--settings-team-button-height);
+  height: var(--settings-team-button-height);
+  border-radius: clamp(12px, 3.5vw, 16px);
+  font-size: clamp(0.84rem, 2dvh, 1rem);
+}
+
+@media (max-height: 720px) {
+  .settings-app-screen.settings-screen-team {
+    --settings-team-page-x: clamp(12px, 4.4vw, 22px);
+    --settings-team-card-padding: clamp(7px, 1.4dvh, 11px);
+    --settings-team-card-gap: clamp(6px, 1.1dvh, 9px);
+    --settings-team-row-gap: clamp(3px, 0.7dvh, 5px);
+    --settings-team-row-height: clamp(32px, 5.25dvh, 38px);
+    --settings-team-font-size: clamp(0.78rem, 1.9dvh, 0.9rem);
+    --settings-team-button-height: clamp(36px, 5.3dvh, 40px);
+  }
+}
+
+@media (max-width: 360px) {
+  .settings-app-screen.settings-screen-team {
+    --settings-team-page-x: 12px;
+    --settings-team-card-padding: 8px;
+    --settings-team-row-height: 34px;
+    --settings-team-font-size: 0.78rem;
+    --settings-team-button-height: 38px;
+  }
+}

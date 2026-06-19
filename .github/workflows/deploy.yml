@@ -1,0 +1,109 @@
+name: Deploy to GCP
+
+# dev에 머지(push)되면 자동 배포. 바뀐 영역(백엔드/프론트)만 골라서 배포.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:   # Actions 탭에서 수동 실행(테스트·강제배포용)
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'services/**'
+              - 'requirements.txt'
+              - 'Procfile'
+              - '.gcloudignore'
+              - '.github/workflows/deploy.yml'   # 배포 설정 변경도 백엔드 재배포(예: 워밍업 단계)
+            frontend:
+              - 'frontend/**'
+
+  deploy-backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Write env.yaml (시크릿 → 배포용 env 파일)
+        run: |
+          cat > services/api/env.yaml <<EOF
+          MONGO_URI: "${{ secrets.MONGO_URI }}"
+          MONGO_DB: "kbo"
+          DATABASE_URL: "${{ secrets.DATABASE_URL }}"
+          JWT_SECRET: "${{ secrets.JWT_SECRET }}"
+          GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_ID }}"
+          KAKAO_REST_KEY: "${{ secrets.KAKAO_REST_KEY }}"
+          KAKAO_CLIENT_SECRET: "${{ secrets.KAKAO_CLIENT_SECRET }}"
+          NAVER_CLIENT_ID: "${{ secrets.NAVER_CLIENT_ID }}"
+          NAVER_CLIENT_SECRET: "${{ secrets.NAVER_CLIENT_SECRET }}"
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
+          GOOGLE_GENAI_USE_VERTEXAI: "true"
+          GOOGLE_CLOUD_PROJECT: "kboai-5dea0"
+          GOOGLE_CLOUD_LOCATION: "global"
+          INTERNAL_TOKEN: "${{ secrets.INTERNAL_TOKEN }}"
+          AZURE_SPEECH_KEY: "${{ secrets.AZURE_SPEECH_KEY }}"
+          AZURE_SPEECH_REGION: "${{ secrets.AZURE_SPEECH_REGION }}"
+          AZURE_TTS_VOICE: "ko-KR-SunHiNeural"
+          ELEVENLABS_KEY: "${{ secrets.ELEVENLABS_KEY }}"
+          CRAWL_DIR: "/tmp/crawling"
+          TZ: "Asia/Seoul"
+          EOF
+      - name: Deploy Cloud Run
+        run: |
+          gcloud run deploy kbo-api \
+            --source . \
+            --project kboai-5dea0 \
+            --region asia-northeast3 \
+            --allow-unauthenticated \
+            --timeout 900 \
+            --min-instances 1 \
+            --service-account firebase-adminsdk-fbsvc@kboai-5dea0.iam.gserviceaccount.com \
+            --env-vars-file services/api/env.yaml
+      - name: Warm up service
+        # 배포 직후 워밍업을 CI가 한 번 쳐서 min-instance를 미리 데움(LLM·임베딩·Azure·ElevenLabs 연결).
+        # → 첫 사용자 질문이 콜드(약 7초)로 빠지던 것 제거. min-instances=1이라 데워진 채 유지됨.
+        run: |
+          URL=$(gcloud run services describe kbo-api --project kboai-5dea0 \
+                --region asia-northeast3 --format='value(status.url)')
+          echo "Warming $URL/chat/warmup"
+          for i in 1 2 3; do
+            curl -s -m 90 -X POST "$URL/chat/warmup" && break
+            echo "retry $i"; sleep 5
+          done
+
+  deploy-frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          npm ci
+          npm run build
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy Firebase Hosting
+        working-directory: frontend
+        run: npx firebase-tools@latest deploy --only hosting --project kboai-5dea0
