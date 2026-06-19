@@ -4060,13 +4060,18 @@ html.theme-dark .app-shell {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   justify-content: start;
+  /* 포커스된 입력칸이 키보드 바로 위가 아니라 여유를 두고 스크롤되도록 */
+  scroll-padding-bottom: calc(var(--keyboard-inset, 0px) + 24px);
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)) + var(--keyboard-inset, 0px) + 20px);
 }
 
 .plat-ios.kb-open .auth-login-card {
   min-height: auto;
   overflow: visible;
-  transform: translate3d(0, calc(0px - var(--keyboard-login-lift, 0px)), 0);
+  /* 카드(공복이+입력칸)를 통째로 끌어올리던 lift 제거 — 공복이가 같이 밀려 잘리던 문제.
+     대신 위 .auth-login-screen 이 인페이지 스크롤 컨테이너라, 포커스된 입력칸만
+     자연스럽게 키보드 위로 스크롤된다(공복이는 원본 크기 유지, 위로 스크롤하면 다시 보임). */
+  transform: none;
 }
 
 .plat-ios.kb-open .auth-register-card {
