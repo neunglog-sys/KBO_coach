@@ -379,7 +379,7 @@ export function App() {
     void import("@capacitor/keyboard").then(({ Keyboard, KeyboardResize }) => {
       const enableLoginKeyboardMode = () => {
         if (platform !== "ios") return;
-        void Keyboard.setResizeMode({ mode: KeyboardResize.Native }).catch(() => { });
+        void Keyboard.setResizeMode({ mode: KeyboardResize.None }).catch(() => { });
         void Keyboard.setScroll({ isDisabled: true }).catch(() => { });
       };
       const restoreDefaultKeyboardMode = () => {
