@@ -35,10 +35,6 @@ STADIUMS = {
 PTY_MAP = {"0": "없음", "1": "비", "2": "비/눈", "3": "눈", "4": "소나기"}
 SKY_MAP = {"1": "맑음", "3": "구름많음", "4": "흐림"}
 
-# 비/소나기(PTY 1·4)는 강수확률(POP)이 이 값 이상일 때만 비 애니메이션을 표시한다.
-# 미만이면 강수형태가 비여도 하늘상태(맑음/구름많음/흐림)로 표시 → 과한 비 효과 방지.
-RAIN_POP_THRESHOLD = 90
-
 
 def _latlon_to_grid(lat: float, lon: float):
     RE, GRID = 6371.00877, 5.0
@@ -111,10 +107,10 @@ def _group_by_time(items):
 def _condition(sky: str, pty: str, pop: int = 100):
     """애니메이션 키 + 한글 라벨.
 
-    비/소나기(PTY 1·4)는 강수확률(pop)이 RAIN_POP_THRESHOLD 이상일 때만 'rain'.
-    그 미만이면 강수형태가 비여도 하늘상태(SKY)로 표시한다. (눈/비눈은 기존대로)
+    강수형태(PTY)가 비/소나기(1·4)면 강수확률(pop)과 무관하게 'rain'.
+    즉 기상예보에 '비'로 적혀 있으면 바로 비 애니메이션을 표시한다. (눈/비눈은 기존대로)
     """
-    if pty in ("1", "4") and pop >= RAIN_POP_THRESHOLD:
+    if pty in ("1", "4"):
         return "rain", "비"
     if pty == "3":
         return "snow", "눈"
