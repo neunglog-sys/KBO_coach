@@ -19,7 +19,7 @@ from db_pg import get_conn
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALG = "HS256"
-TOKEN_HOURS = 24 * 7
+TOKEN_HOURS = 24 * 90   # 90일 — 모바일앱 수준 로그인 유지. 자동갱신(/auth/refresh)과 결합해 활성 유저는 사실상 무기한
 
 # 구글 로그인 검증용 — Google Cloud Console의 "웹 애플리케이션" OAuth 클라이언트 ID.
 # (안드로이드 앱은 이 웹 클라이언트 ID를 serverClientId로 써서 idToken을 발급받음)
@@ -529,6 +529,25 @@ def me(user_id: int = Depends(current_user_id)):
         if not user:
             raise HTTPException(status_code=404, detail="유저 없음")
         return user
+    finally:
+        conn.close()
+
+
+@router.post("/refresh")
+def refresh(user_id: int = Depends(current_user_id)):
+    """유효한 토큰을 새 토큰으로 재발급(슬라이딩 만료).
+    앱 사용 중 주기적으로 호출하면 활성 유저는 만료 없이 로그인 유지된다.
+    이미 만료된 토큰은 current_user_id에서 401 → 그때만 재로그인 필요(7일+ 미접속)."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            cur.execute("SELECT user_id, email, nickname, fav_team_code, gender, buddy_nickname, created_at "
+                        "FROM users WHERE user_id = %s", (user_id,))
+            user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="유저 없음")
+        return {"user": user, "token": make_token(user["user_id"], user["email"])}
     finally:
         conn.close()
 
