@@ -167,6 +167,17 @@ systemctl reload caddy
 
 ## 7. 예약 작업 (기존 Cloud Scheduler 대체)
 
+권장 방식은 저장소의 설치 스크립트를 쓰는 것이다. 크롤링 타이머뿐 아니라 여러 명이
+RAG 콘텐츠를 수정했을 때 임베딩을 5분 안에 다시 만드는 타이머도 함께 설치된다.
+
+```bash
+cd /opt/kbo
+bash infra/ncp/install-scheduled-jobs.sh
+systemctl list-timers --all | grep -E 'kbo-(notify|daily-crawl|lineup|rag-refresh)'
+```
+
+아래 `crontab` 방식은 설치 스크립트를 쓰지 못할 때만 사용하는 수동 대안이다.
+
 ```bash
 crontab -e
 ```

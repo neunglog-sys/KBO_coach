@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh KBO records every morning
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Seoul
+RandomizedDelaySec=30s
+Persistent=true
+Unit=kbo-internal-job@crawl.service
+
+[Install]
+WantedBy=timers.target
