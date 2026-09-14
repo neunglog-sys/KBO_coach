@@ -224,14 +224,14 @@ GitHub 화면에 예전 이름인 `Deploy to GCP`가 보이면 페이지를 새�
 ### 자동배포가 실패했을 때 서버에서 수동 적용
 
 ```bash
-cd /opt/kbo
-git fetch origin dev
-git checkout dev
-git pull --ff-only origin dev
-.venv/bin/pip install -r requirements.txt
-systemctl restart kbo-api
-systemctl status kbo-api --no-pager
+# Actions의 Deploy to NCP가 성공한 뒤 실행한다.
+systemctl start kbo-auto-deploy.service
+systemctl status kbo-auto-deploy.service --no-pager
+journalctl -u kbo-auto-deploy.service -n 50 --no-pager
 ```
+
+환경변수만 수정했다면 자동배포 대신 `/opt/kbo/.env`를 저장하고
+`systemctl restart kbo-api`를 실행한다.
 
 ---
 
