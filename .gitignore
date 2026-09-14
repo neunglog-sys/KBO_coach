@@ -97,6 +97,11 @@ test/
 design_preview/
 .claude/settings.local.json
 
+# Local backups and personal documents
+/baseball_coach.zip
+/document/
+/공모전/
+
 #tts_samples
 /tts_samples
 secrets_ios/

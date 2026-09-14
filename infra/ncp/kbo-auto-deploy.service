@@ -1,0 +1,11 @@
+[Unit]
+Description=Deploy latest validated KBO dev commit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kbo-auto-deploy
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

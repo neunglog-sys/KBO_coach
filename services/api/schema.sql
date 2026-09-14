@@ -70,10 +70,12 @@ CREATE TABLE IF NOT EXISTS legends ( -- 레전드/유명 선수
     team_code VARCHAR(4) REFERENCES teams (team_code),
     name VARCHAR(50) NOT NULL,
     position VARCHAR(20),
-    era VARCHAR(30), -- 활약 시기
+    era VARCHAR(100), -- 활약 시기 (드라이브 원본의 소속 시기는 최대 51자)
     note TEXT,
     jersey_no VARCHAR(10) -- 영구결번 번호(KBO 공식, 영구결번 선수만 채움). 2026-06-15 기준
 );
+
+ALTER TABLE legends ALTER COLUMN era TYPE VARCHAR(100);
 
 CREATE TABLE IF NOT EXISTS team_personas (
     team_code varchar(4) PRIMARY KEY,
@@ -173,3 +175,41 @@ CREATE TABLE IF NOT EXISTS user_question_history (
     asked_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (user_key, question)
 );
+
+-- ===== RAG(pgvector) 관련 — 2026-09 복구 시 추가 =====
+-- 원본 DB에만 있고 이 파일에 빠져 있던 테이블·컬럼. 신규 프로젝트에서 스키마만으로
+-- 챗봇 RAG가 그대로 서게 하려면 반드시 필요하다. (embed_chunks.py가 임베딩을 채운다)
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS knowledge_chunks ( -- 구단 문화·팩트 청크 (벡터검색 대상)
+    chunk_id SERIAL PRIMARY KEY,
+    source VARCHAR(200),
+    team_code VARCHAR(4),             -- NULL이면 전 구단 공통 청크
+    category VARCHAR(50),
+    title VARCHAR(200),
+    content TEXT NOT NULL,
+    basis_date DATE,
+    embedding vector(768)             -- embeddings.EMBED_DIM 기본값과 일치
+);
+
+CREATE TABLE IF NOT EXISTS team_culture_profiles ( -- 구단별 응원·팬덤 문화 요약
+    team_code VARCHAR(4) PRIMARY KEY,
+    culture_summary TEXT,
+    fandom_style TEXT,
+    cheer_style TEXT,
+    signature_items TEXT,
+    beginner_tip TEXT,
+    caution TEXT,
+    basis_date DATE,
+    updated_at TIMESTAMP NOT NULL DEFAULT now()   -- 적재 SQL의 ON CONFLICT가 갱신
+);
+ALTER TABLE team_culture_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT now();
+
+-- 용어·규칙도 임베딩 폴백(오타 추정·의미 근접 규칙)에 쓰이므로 컬럼이 필요하다.
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS embedding vector(768);
+ALTER TABLE rules ADD COLUMN IF NOT EXISTS embedding vector(768);
+
+-- cheering 적재 SQL이 쓰는 출처 컬럼(원본 DB에는 있었으나 이 파일에 누락돼 있었음)
+ALTER TABLE cheering ADD COLUMN IF NOT EXISTS source VARCHAR(255);
+ALTER TABLE cheering ADD COLUMN IF NOT EXISTS basis_date DATE;

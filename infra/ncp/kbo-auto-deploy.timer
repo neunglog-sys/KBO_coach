@@ -1,0 +1,12 @@
+[Unit]
+Description=Check GitHub dev branch for KBO updates
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=20s
+Persistent=true
+Unit=kbo-auto-deploy.service
+
+[Install]
+WantedBy=timers.target

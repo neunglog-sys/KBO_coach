@@ -1,0 +1,12 @@
+[Unit]
+Description=Run KBO internal job: %i
+After=network-online.target kbo-api.service
+Wants=network-online.target
+Requires=kbo-api.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kbo-internal-job %i
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-"""knowledge_chunks 임베딩 백필 — embedding 컬럼이 비어있는(NULL) 청크만 임베딩해 저장.
-신규 청크가 추가되면 다시 실행하면 됨(증분).
+"""임베딩 백필 — embedding 컬럼이 비어있는(NULL) 행만 임베딩해 저장. 증분 실행 안전.
 
-사용법:  python embed_chunks.py
+대상 3종. chat.py가 세 테이블 모두 벡터검색에 쓴다:
+  knowledge_chunks  구단 문화·팩트 청크 (주 검색 대상)
+  glossary          용어 — 심한 오타 추정 폴백("돌우"→도루)
+  rules             규칙 — topic 키워드가 없어도 의미가 가까운 규칙 부착
+
+사용법:  python embed_chunks.py            (3종 전부)
+        python embed_chunks.py glossary   (특정 테이블만)
 """
 import os
 import pathlib
+import sys
 from urllib.parse import urlparse
 
 import psycopg2
@@ -22,36 +28,56 @@ def _load_env():
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-def main():
-    _load_env()
-    u = urlparse(os.environ["DATABASE_URL"])
-    conn = psycopg2.connect(host=u.hostname, port=u.port, dbname=u.path.lstrip("/"),
-                            user=u.username, password=u.password)
-    cur = conn.cursor()
+# (테이블, PK 컬럼, 임베딩할 텍스트 컬럼들) — 텍스트는 줄바꿈으로 이어 붙여 임베딩한다.
+TARGETS = {
+    "knowledge_chunks": ("chunk_id", ("title", "content")),
+    "glossary": ("term_id", ("term", "definition")),
+    "rules": ("rule_id", ("topic", "content")),
+}
 
-    # pgvector + embedding 컬럼 보장 (멱등)
-    cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    cur.execute(f"ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS embedding vector({EMBED_DIM})")
+
+def backfill(conn, table: str) -> int:
+    pk, cols = TARGETS[table]
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS embedding vector({EMBED_DIM})")
     conn.commit()
 
-    cur.execute("SELECT chunk_id, title, content FROM knowledge_chunks WHERE embedding IS NULL ORDER BY chunk_id")
+    cur.execute(f"SELECT {pk}, {', '.join(cols)} FROM {table} "
+                f"WHERE embedding IS NULL ORDER BY {pk}")
     rows = cur.fetchall()
-    print(f"임베딩 대상: {len(rows)}건 (NULL만)")
+    print(f"[{table}] 임베딩 대상: {len(rows)}건 (NULL만)")
 
     done = 0
-    for chunk_id, title, content in rows:
-        text = f"{title}\n{content}" if title else content
-        vec = embed_text(text, task_type="RETRIEVAL_DOCUMENT")
-        cur.execute("UPDATE knowledge_chunks SET embedding = %s WHERE chunk_id = %s",
-                    (to_pgvector(vec), chunk_id))
+    for row in rows:
+        key, parts = row[0], [p for p in row[1:] if p]
+        vec = embed_text("\n".join(parts), task_type="RETRIEVAL_DOCUMENT")
+        cur.execute(f"UPDATE {table} SET embedding = %s WHERE {pk} = %s",
+                    (to_pgvector(vec), key))
         conn.commit()
         done += 1
         if done % 10 == 0:
             print(f"  {done}/{len(rows)}")
 
-    cur.execute("SELECT count(*) FROM knowledge_chunks WHERE embedding IS NOT NULL")
-    total = cur.fetchone()[0]
-    print(f"완료: {done}건 임베딩 → 전체 {total}건 embedding 보유")
+    cur.execute(f"SELECT count(*) FROM {table} WHERE embedding IS NOT NULL")
+    print(f"[{table}] 완료: {done}건 임베딩 → 전체 {cur.fetchone()[0]}건 보유")
+    return done
+
+
+def main():
+    _load_env()
+    tables = sys.argv[1:] or list(TARGETS)
+    unknown = [t for t in tables if t not in TARGETS]
+    if unknown:
+        raise SystemExit(f"알 수 없는 테이블: {unknown} (가능: {list(TARGETS)})")
+
+    u = urlparse(os.environ["DATABASE_URL"])
+    conn = psycopg2.connect(host=u.hostname, port=u.port, dbname=u.path.lstrip("/"),
+                            user=u.username, password=u.password)
+    conn.cursor().execute("CREATE EXTENSION IF NOT EXISTS vector")
+    conn.commit()
+
+    for t in tables:
+        backfill(conn, t)
     conn.close()
 
 
