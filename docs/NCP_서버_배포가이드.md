@@ -84,6 +84,7 @@ NAVER_CLIENT_SECRET=
 GEMINI_API_KEY=
 ELEVENLABS_KEY=
 INTERNAL_TOKEN=
+PORT=8000
 
 # ↓ 값 고정
 GOOGLE_GENAI_USE_VERTEXAI=false
@@ -96,6 +97,7 @@ NAVER_REDIRECT_URI=https://<도메인>/auth/naver/callback
 
 - `GOOGLE_GENAI_USE_VERTEXAI=false` **필수**. true면 GCP(결제 끊김)로 Gemini를 부르다 실패한다.
 - `INTERNAL_TOKEN`은 새로 만들면 된다: `openssl rand -hex 24` 출력값을 넣고 따로 적어둔다(7번에서 사용).
+- `PORT=8000`은 경기 종료 감지 후 API가 자기 자신의 결과 크롤 엔드포인트를 호출할 때 필요하다.
 - `KAKAO_CLIENT_SECRET`은 비워둬도 된다. 현재 카카오 앱이 클라이언트 시크릿 미사용 설정인 것을 확인했다(2026-09-14).
 - `AZURE_SPEECH_KEY`는 만료(401)라 넣지 않아도 된다. 구단 음성은 ElevenLabs로 나온다.
 
@@ -203,14 +205,33 @@ crontab -e
 curl -X POST -H "X-Internal-Token: <INTERNAL_TOKEN>" http://127.0.0.1:8000/internal/crawl
 ```
 
-## 8. 코드 업데이트 방법
+## 8. 코드 업데이트 방법 (일반 사용자)
+
+평소에는 NCP 콘솔이나 서버 터미널에 접속할 필요가 없다.
+
+1. 각자 기능 브랜치에서 코드를 수정하고 GitHub에 push한다.
+2. 기능 브랜치에서 `dev`로 Pull Request를 만들고 승인 후 merge한다.
+3. GitHub의 **Actions → Deploy to NCP** 실행이 초록색 성공인지 확인한다.
+4. NCP 서버가 2분마다 `dev`를 확인하므로, 보통 merge 후 2~3분 안에 자동 반영된다.
+5. `https://baseball-coach.duckdns.org/`에서 동작을 확인한다.
+
+GitHub 화면에 예전 이름인 `Deploy to GCP`가 보이면 페이지를 새로고침한다. 실제 배포 대상은
+워크플로 파일의 이름과 실행 단계가 `Deploy to NCP`인지 열어서 확인하면 된다.
+
+서버 환경변수(`/opt/kbo/.env`)나 systemd 설정처럼 Git에 들어가지 않는 값을 바꿀 때만
+관리자 비밀번호로 서버에 접속해 수동 작업한다.
+
+### 자동배포가 실패했을 때 서버에서 수동 적용
 
 ```bash
-cd /opt/kbo
-git pull
-.venv/bin/pip install -r requirements.txt
-systemctl restart kbo-api
+# Actions의 Deploy to NCP가 성공한 뒤 실행한다.
+systemctl start kbo-auto-deploy.service
+systemctl status kbo-auto-deploy.service --no-pager
+journalctl -u kbo-auto-deploy.service -n 50 --no-pager
 ```
+
+환경변수만 수정했다면 자동배포 대신 `/opt/kbo/.env`를 저장하고
+`systemctl restart kbo-api`를 실행한다.
 
 ---
 
