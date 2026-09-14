@@ -59,7 +59,7 @@ install_self_update() {
   local target_sha candidate
   target_sha="$1"
   candidate="$(mktemp)"
-  if git -C "$REPO_DIR" show "$target_sha:infra/ncp/kbo-auto-deploy.sh" > "$candidate" 2>/dev/null \
+  if git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" show "$target_sha:infra/ncp/kbo-auto-deploy.sh" > "$candidate" 2>/dev/null \
       && bash -n "$candidate"; then
     install -m 0755 "$candidate" /usr/local/sbin/kbo-auto-deploy
   fi
@@ -68,8 +68,8 @@ install_self_update() {
 
 install -d -m 0755 "$BACKEND_RELEASES" "$FRONTEND_RELEASES" "$STATE_DIR"
 
-git -C "$REPO_DIR" fetch --quiet --depth=50 origin dev
-target_sha="$(git -C "$REPO_DIR" rev-parse origin/dev)"
+git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" fetch --quiet --depth=50 origin dev
+target_sha="$(git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" rev-parse origin/dev)"
 current_sha="$(cat "$STATE_FILE" 2>/dev/null || true)"
 
 if [ "$target_sha" = "$current_sha" ]; then
@@ -115,7 +115,7 @@ safe_remove_tree "$BACKEND_RELEASES" "$backend_tmp" 2>/dev/null || true
 safe_remove_tree "$FRONTEND_RELEASES" "$frontend_tmp" 2>/dev/null || true
 install -d -m 0755 "$backend_tmp" "$frontend_tmp"
 
-git -C "$REPO_DIR" archive "$target_sha" -- \
+git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" archive "$target_sha" -- \
   services data integrations apps model scripts requirements.txt Procfile \
   | tar -x -C "$backend_tmp"
 ln -s /opt/kbo/.env "$backend_tmp/.env"

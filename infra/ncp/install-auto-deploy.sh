@@ -23,8 +23,8 @@ if grep -q '^WorkingDirectory=' /etc/systemd/system/kbo-api.service; then
   sed -i 's|^WorkingDirectory=.*|WorkingDirectory=/opt/kbo-current|' /etc/systemd/system/kbo-api.service
 fi
 
-git -C "$repo_dir" fetch --quiet --depth=50 origin dev
-git -C "$repo_dir" rev-parse origin/dev > /var/lib/kbo-deploy/current.sha
+git -c safe.directory="$repo_dir" -C "$repo_dir" fetch --quiet --depth=50 origin dev
+git -c safe.directory="$repo_dir" -C "$repo_dir" rev-parse origin/dev > /var/lib/kbo-deploy/current.sha
 
 systemctl daemon-reload
 systemctl restart kbo-api
