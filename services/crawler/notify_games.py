@@ -128,7 +128,9 @@ def _trigger_crawl(target_date):
     """그 날 결과 크롤을 백그라운드로 띄움. notify는 시간제한이 짧아 직접 안 돌리고,
     같은 컨테이너의 /internal/crawl 을 호출만 하고 응답은 안 기다림(서버가 계속 처리)."""
     import requests
-    port = os.environ.get("PORT", "8080")
+    # NCP는 uvicorn을 8000에서 띄우고 PORT를 따로 두지 않는다. 옛 기본값 8080(Cloud Run)이면 연결이
+    # 실패해도 아래에서 조용히 넘어가고, 트리거 게이트는 이미 기록돼 그날 결과 크롤이 통째로 빠진다.
+    port = os.environ.get("PORT", "8000")
     token = os.environ.get("INTERNAL_TOKEN", "")
     try:
         requests.post(f"http://localhost:{port}/internal/crawl",
