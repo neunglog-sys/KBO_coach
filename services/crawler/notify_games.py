@@ -126,19 +126,32 @@ def _send(cur, conn, event_key, tokens, title, body, data, dry, ttl=None):
 
 def _trigger_crawl(target_date):
     """그 날 결과 크롤을 백그라운드로 띄움. notify는 시간제한이 짧아 직접 안 돌리고,
-    같은 컨테이너의 /internal/crawl 을 호출만 하고 응답은 안 기다림(서버가 계속 처리)."""
+    같은 서버의 /internal/crawl 을 호출만 하고 응답은 안 기다림(서버가 계속 처리).
+
+    읽기 타임아웃은 서버가 긴 크롤을 시작한 정상 상황으로 본다. 연결 자체가
+    실패하면 False를 반환해 호출 게이트를 지우고 다음 notify 주기에 재시도한다.
+    """
     import requests
     # NCP는 uvicorn을 8000에서 띄우고 PORT를 따로 두지 않는다. 옛 기본값 8080(Cloud Run)이면 연결이
     # 실패해도 아래에서 조용히 넘어가고, 트리거 게이트는 이미 기록돼 그날 결과 크롤이 통째로 빠진다.
     port = os.environ.get("PORT", "8000")
     token = os.environ.get("INTERNAL_TOKEN", "")
     try:
-        requests.post(f"http://localhost:{port}/internal/crawl",
-                      params={"date": target_date.isoformat()},
-                      headers={"x-internal-token": token}, timeout=5)
-    except requests.exceptions.RequestException:
-        pass   # 타임아웃은 정상(크롤은 서버에서 계속 진행). 연결 자체 실패만 무시.
+        response = requests.post(
+            f"http://127.0.0.1:{port}/internal/crawl",
+            params={"date": target_date.isoformat()},
+            headers={"x-internal-token": token},
+            timeout=5,
+        )
+        response.raise_for_status()
+    except requests.exceptions.ReadTimeout:
+        # /internal/crawl은 동기 엔드포인트라 크롤 중 응답 제한시간을 넘기는 것이 정상이다.
+        pass
+    except requests.exceptions.RequestException as exc:
+        print(f"  → 결과 크롤 연결 실패(다음 주기에 재시도): {exc}")
+        return False
     print(f"  → 결과 크롤 트리거: {target_date} (백그라운드)")
+    return True
 
 
 def main():
@@ -234,7 +247,10 @@ def main():
             claimed = cur.rowcount == 1
             conn.commit()
             if claimed:
-                _trigger_crawl(today)
+                if not _trigger_crawl(today):
+                    cur.execute("DELETE FROM notified_events WHERE event_key = %s",
+                                (f"crawl_trig_{today.isoformat()}",))
+                    conn.commit()
 
     conn.close()
 

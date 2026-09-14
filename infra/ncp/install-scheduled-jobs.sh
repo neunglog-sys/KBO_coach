@@ -19,6 +19,13 @@ if ! grep -q '^INTERNAL_TOKEN=.' "$env_file"; then
   umask 077
   printf '\nINTERNAL_TOKEN=%s\n' "$(openssl rand -hex 24)" >> "$env_file"
 fi
+
+# API 서비스와 notify_games.py의 내부 크롤 호출 포트를 일치시킨다.
+if grep -q '^PORT=' "$env_file"; then
+  sed -i 's/^PORT=.*/PORT=8000/' "$env_file"
+else
+  printf '\nPORT=8000\n' >> "$env_file"
+fi
 chmod 0600 "$env_file"
 
 install -d -m 0755 /usr/local/share/kbo
