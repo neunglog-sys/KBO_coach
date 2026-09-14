@@ -17,6 +17,10 @@ install -m 0755 "$repo_dir/infra/ncp/kbo-auto-deploy.sh" /usr/local/sbin/kbo-aut
 install -m 0644 "$repo_dir/infra/ncp/kbo-auto-deploy.service" /etc/systemd/system/kbo-auto-deploy.service
 install -m 0644 "$repo_dir/infra/ncp/kbo-auto-deploy.timer" /etc/systemd/system/kbo-auto-deploy.timer
 
+# systemd 서비스에는 로그인 셸의 ~/.gitconfig가 적용되지 않을 수 있다.
+git config --system --get-all safe.directory | grep -Fx "$repo_dir" >/dev/null \
+  || git config --system --add safe.directory "$repo_dir"
+
 ln -sfn /opt/kbo /opt/kbo-current
 
 if grep -q '^WorkingDirectory=' /etc/systemd/system/kbo-api.service; then
