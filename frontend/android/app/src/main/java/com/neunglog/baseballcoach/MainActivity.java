@@ -1,8 +1,10 @@
 package com.neunglog.baseballcoach;
 
 import android.graphics.Color;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.webkit.WebView;
 
 import androidx.core.graphics.Insets;
@@ -12,8 +14,14 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginHandle;
 
-public class MainActivity extends BridgeActivity {
+import ee.forgr.capacitor.social.login.GoogleProvider;
+import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
+import ee.forgr.capacitor.social.login.SocialLoginPlugin;
+
+public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -73,5 +81,39 @@ public class MainActivity extends BridgeActivity {
         if (hasFocus) {
             applyLightSystemBars();
         }
+    }
+
+    /**
+     * Google Credential Manager가 추가 권한 화면을 띄운 경우 그 결과를 Capgo
+     * SocialLogin 플러그인으로 전달한다. 이 전달이 없으면 계정 선택 후 JS 호출이
+     * 완료되지 않아 로그인 화면이 멈춘 것처럼 보일 수 있다.
+     */
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN
+                || requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
+            return;
+        }
+
+        PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
+        if (pluginHandle == null) {
+            Log.e("Google Activity Result", "SocialLogin plugin handle is null");
+            return;
+        }
+
+        Plugin plugin = pluginHandle.getInstance();
+        if (!(plugin instanceof SocialLoginPlugin)) {
+            Log.e("Google Activity Result", "SocialLogin plugin instance is invalid");
+            return;
+        }
+
+        ((SocialLoginPlugin) plugin).handleGoogleLoginIntent(requestCode, data);
+    }
+
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {
+        // Marker required by @capgo/capacitor-social-login.
     }
 }

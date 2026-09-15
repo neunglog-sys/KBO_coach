@@ -25,11 +25,19 @@ from tamagotchi import router as tamagotchi_router
 app = FastAPI(title="KBO Baseball Helper API", version="0.1.0")
 
 # CORS — 프론트(다른 도메인)에서 호출 허용. Bearer 토큰 방식이라 쿠키(credentials) 미사용.
-# 기본은 전체 허용(데모). 운영 시 CORS_ORIGINS="https://a.com,https://b.com"로 제한 가능.
+# Capacitor는 앱 내 웹 코드를 localhost origin으로 실행한다. 운영서버의
+# CORS_ORIGINS가 제한되어 있어도 Android/iOS 앱은 API를 호출할 수 있어야 한다.
 _origins = os.environ.get("CORS_ORIGINS", "*")
+_native_app_origins = ("http://localhost", "https://localhost", "capacitor://localhost")
+if _origins == "*":
+    _allowed_origins = ["*"]
+else:
+    _configured_origins = [origin.strip() for origin in _origins.split(",") if origin.strip()]
+    _allowed_origins = list(dict.fromkeys([*_configured_origins, *_native_app_origins]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in _origins.split(",")] if _origins != "*" else ["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
