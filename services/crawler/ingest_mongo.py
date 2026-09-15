@@ -45,7 +45,9 @@ KEYFIELDS = {
     "pitchers":      ["date", "playerId"],
     "games":         ["date", "원정팀", "홈팀"],
     "game_hitters":  ["gameId", "팀", "선수명", "타순"],
-    "game_pitchers": ["gameId", "팀", "선수명"],
+    # 박스스코어엔 playerId가 없어 이름만으론 같은 팀 동명이인(삼성 이승현·한화 박준영)이 한 행으로 덮어써졌다.
+    # → 팀 안에서의 등판 순서(순번)로 구분. 순번은 적재 시 원본 행 순서대로 매긴다.
+    "game_pitchers": ["gameId", "팀", "순번"],
     "game_scoreboards": ["gameId"],
 }
 
@@ -60,6 +62,15 @@ def ingest_file(db, path: pathlib.Path) -> tuple[str, int]:
         return (dataset or path.name, 0)
 
     keyfields = KEYFIELDS.get(dataset, ["date"])
+    if dataset == "game_pitchers":
+        order = {}
+        for r in records:
+            k = (r.get("gameId"), r.get("팀"))
+            order[k] = order.get(k, 0) + 1
+            r["순번"] = order[k]
+        # 순번 도입 전 방식(이름 키)으로 적재된 옛 행은 동명이인이 합쳐져 있을 수 있어 지우고 다시 넣는다
+        gids = sorted({r.get("gameId") for r in records if r.get("gameId")})
+        db[dataset].delete_many({"gameId": {"$in": gids}, "순번": {"$exists": False}})
     ops = []
     for r in records:
         r = {**r, "date": date, "collected_date": collected}

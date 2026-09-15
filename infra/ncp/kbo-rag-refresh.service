@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh KBO RAG embeddings after database edits
+After=network-online.target kbo-api.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/kbo-current
+ExecStart=/opt/kbo/.venv/bin/python /usr/local/sbin/kbo-rag-refresh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

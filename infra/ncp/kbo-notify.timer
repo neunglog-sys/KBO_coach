@@ -1,0 +1,12 @@
+[Unit]
+Description=Check KBO game state and notifications every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=10s
+Persistent=true
+Unit=kbo-internal-job@notify.service
+
+[Install]
+WantedBy=timers.target

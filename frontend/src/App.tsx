@@ -190,6 +190,39 @@ export function App() {
   const [showExitHint, setShowExitHint] = useState(false);
   const lastLoginBackPressRef = useRef(0);
   const exitHintTimerRef = useRef<number | null>(null);
+  const authTokenRef = useRef(authToken);
+  authTokenRef.current = authToken;
+
+  // 토큰 자동 갱신(슬라이딩 만료) — 앱 시작 시 + 6시간마다 새 토큰 재발급.
+  // 활성 유저는 재로그인 없이 유지. 만료(401)돼도 강제 로그아웃하지 않고 다음 접속 때 재로그인.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    async function refreshToken() {
+      const token = authTokenRef.current;
+      if (!token) return;
+      try {
+        const res = await fetch(apiUrl("/auth/refresh"), {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return; // 만료 등 → 강제 로그아웃 안 함, 다음 접속 때 재로그인
+        const data = await res.json();
+        if (cancelled || !data.token) return;
+        setAuthToken(data.token);
+        const cur = loadAuthSession(); // 최신 세션값 유지 + 토큰만 교체(favTeam 등 덮어쓰기 방지)
+        saveAuthSession(data.token, cur.favTeamCode, cur.nickname, cur.buddyNickname);
+      } catch {
+        // 네트워크 실패 무시 — 다음 주기에 재시도
+      }
+    }
+    void refreshToken();
+    const id = window.setInterval(refreshToken, 6 * 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) {
