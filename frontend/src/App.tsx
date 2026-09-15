@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { apiUrl } from "./api";
+import { isGoogleLoginConfigured, loginWithGoogle } from "./googleAuth";
 import { loadAppSettings, saveAppSettings } from "./appSettings";
 import { disablePush, registerPush } from "./push";
 import { initDb } from "./db";
@@ -465,22 +466,13 @@ export function App() {
     setLoginError("");
     setLoginNotice("");
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-    if (!clientId) {
+    if (!isGoogleLoginConfigured()) {
       setLoginError("구글 로그인 설정이 필요합니다 (VITE_GOOGLE_CLIENT_ID).");
       return;
     }
 
     try {
-      // 동적 import — 웹 프리뷰 등 네이티브 플러그인이 없는 환경에서 모듈 로드시 깨지지 않게.
-      const { SocialLogin } = await import("@capgo/capacitor-social-login");
-      await SocialLogin.initialize({ google: { webClientId: clientId } });
-      // scopes를 넘기면 MainActivity 수정이 필요(@capgo 제약). idToken만 쓰므로 옵션 비움 —
-      // 이메일·이름은 idToken 클레임에 이미 포함된다.
-      const res = await SocialLogin.login({
-        provider: "google",
-        options: {},
-      });
+      const res = await loginWithGoogle();
       const result = res.result as { idToken?: string | null };
       const idToken = result?.idToken;
       if (!idToken) {

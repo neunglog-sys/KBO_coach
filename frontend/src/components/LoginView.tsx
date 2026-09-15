@@ -252,23 +252,29 @@ export function LoginView({
             }}
           >
             로그인 시{" "}
-            <span
+            <a
+              href="https://baseball-coach.duckdns.org/terms/"
+              target="_blank"
+              rel="noreferrer"
               style={{
                 color: "#258cff",
                 textDecoration: "underline",
               }}
             >
               서비스 약관
-            </span>
+            </a>
             {" "}및{" "}
-            <span
+            <a
+              href="https://baseball-coach.duckdns.org/privacy/"
+              target="_blank"
+              rel="noreferrer"
               style={{
                 color: "#258cff",
                 textDecoration: "underline",
               }}
             >
               개인정보 처리방침
-            </span>
+            </a>
             에 동의합니다.
           </p>
         </div>
