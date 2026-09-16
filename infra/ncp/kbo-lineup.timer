@@ -2,9 +2,13 @@
 Description=Refresh KBO starting lineups before games
 
 [Timer]
-OnCalendar=*-*-* 13:00:00 Asia/Seoul
-OnCalendar=*-*-* 16:00:00 Asia/Seoul
-OnCalendar=*-*-* 17:30:00 Asia/Seoul
+# 라인업은 보통 경기 1시간 전쯤 게시되지만 그보다 늦게 올라오는 날도 있다.
+# 13:00/16:00/17:30만 돌던 때는 18:30 경기 타순이 17:30에 아직 없어서 그날 내내 비어 있었다.
+# → 낮 12시부터 밤 9시까지 15분 간격으로 다시 확인한다. upsert라 여러 번 돌아도 안전하다.
+OnCalendar=*-*-* 12..21:00:00 Asia/Seoul
+OnCalendar=*-*-* 12..21:15:00 Asia/Seoul
+OnCalendar=*-*-* 12..21:30:00 Asia/Seoul
+OnCalendar=*-*-* 12..21:45:00 Asia/Seoul
 RandomizedDelaySec=20s
 Persistent=true
 Unit=kbo-internal-job@lineup.service
