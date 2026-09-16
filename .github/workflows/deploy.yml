@@ -25,6 +25,7 @@ jobs:
           python -m compileall -q services/api integrations scripts
           bash -n infra/ncp/kbo-auto-deploy.sh
           bash -n infra/ncp/install-auto-deploy.sh
+          bash -n infra/ncp/install-scheduled-jobs.sh
 
       - uses: actions/setup-node@v4
         with:
