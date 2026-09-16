@@ -22,15 +22,6 @@ if (useDeviceFrame) {
   iframe.src = window.location.href; // 같은 앱을 폰 폭 뷰포트로 다시 로드(내부에선 isTopWindow=false → 앱 렌더)
   rootEl.appendChild(iframe);
   document.getElementById("app-startup-cover")?.classList.add("is-ready");
-  // 창 폭이 임계값(600px)을 넘나들면 한 번만 새로고침해 프레임/풀스크린 모드를 맞춘다.
-  let below = window.innerWidth < 600;
-  window.addEventListener("resize", () => {
-    const nowBelow = window.innerWidth < 600;
-    if (nowBelow !== below) {
-      below = nowBelow;
-      window.location.reload();
-    }
-  });
 } else {
   if (isWeb) document.documentElement.classList.add("is-web");
 
@@ -45,5 +36,18 @@ if (useDeviceFrame) {
       document.getElementById("app-startup-cover")?.classList.add("is-ready");
       window.dispatchEvent(new Event("app:first-paint"));
     });
+  });
+}
+
+// 최상위 웹 창이 600px 경계를 어느 방향으로든 넘으면 현재 레이아웃을 다시 선택한다.
+// 모바일 폭에서 시작한 뒤 다시 넓혀도 데스크톱 프레임과 바깥 장식이 복원되어야 한다.
+if (isWeb && isTopWindow) {
+  let wasDeviceFrame = window.innerWidth >= 600;
+  window.addEventListener("resize", () => {
+    const shouldUseDeviceFrame = window.innerWidth >= 600;
+    if (shouldUseDeviceFrame !== wasDeviceFrame) {
+      wasDeviceFrame = shouldUseDeviceFrame;
+      window.location.reload();
+    }
   });
 }

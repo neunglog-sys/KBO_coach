@@ -4260,7 +4260,7 @@ html.is-web-frame #root {
 }
 
 /* 데스크톱 웹의 앱 바깥 여백 장식. 앱/모바일 화면 안에는 렌더하지 않는다. */
-@media (min-width: 980px) {
+@media (min-width: 900px) {
   html.is-web-frame body::before,
   html.is-web-frame body::after {
     position: fixed;
@@ -4276,7 +4276,7 @@ html.is-web-frame #root {
   html.is-web-frame body::before {
     top: 28px;
     left: 24px;
-    width: clamp(180px, 20vw, 280px);
+    width: clamp(90px, 10vw, 140px);
     aspect-ratio: 3 / 1;
     background-image: url("/assets/yagubollae-logo.png");
   }
@@ -4284,7 +4284,7 @@ html.is-web-frame #root {
   html.is-web-frame body::after {
     right: 18px;
     bottom: 0;
-    width: clamp(230px, 26vw, 360px);
+    width: clamp(115px, 13vw, 180px);
     aspect-ratio: 1684 / 1245;
     background-image: url("/assets/yagubollae-heart-character.png");
   }
@@ -4298,7 +4298,5 @@ html.is-web-frame #root {
   height: 100dvh;
   border: 0;
   background: #ffffff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.18),
-    0 24px 70px rgba(0, 0, 0, 0.5);
+  box-shadow: none;
 }
