@@ -644,6 +644,38 @@ select:focus {
   top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 43px);
 }
 
+/* 게스트 바는 모든 웹 화면의 전용 상단 영역을 차지한다.
+   메인 외의 전체 화면도 기존 헤더/레이아웃을 그대로 유지한 채 아래로 내린다. */
+.app-shell.is-guest-web {
+  --guest-content-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 50px);
+}
+
+.app-shell.is-guest-web :is(
+  .screen-cover,
+  .records-view,
+  .attendance-window-backdrop,
+  .stadium-page-backdrop,
+  .settings-window-backdrop,
+  .side-menu-backdrop,
+  .side-menu-panel
+) {
+  top: var(--guest-content-top);
+}
+
+.app-shell.is-guest-web .chat-view {
+  top: calc(var(--chat-viewport-top, 0px) + var(--guest-content-top));
+  height: calc(var(--chat-viewport-height, 100dvh) - var(--guest-content-top));
+  min-height: calc(var(--chat-viewport-height, 100dvh) - var(--guest-content-top));
+}
+
+.app-shell.is-guest-web :is(.attendance-window, .stadium-page-window, .settings-window) {
+  max-height: calc(100dvh - var(--guest-content-top) - 20px);
+}
+
+.app-shell.is-guest-web .side-menu-panel {
+  max-height: calc(100dvh - var(--guest-content-top));
+}
+
 .guest-notice-backdrop,
 .guest-auth-backdrop {
   position: fixed;
@@ -728,6 +760,11 @@ select:focus {
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.4);
 }
 
+.guest-auth-dialog.is-login,
+.guest-auth-dialog.is-login .login-view {
+  background: #cae4f9;
+}
+
 .guest-auth-close {
   position: sticky;
   top: 10px;
@@ -774,6 +811,18 @@ select:focus {
 .guest-auth-dialog .auth-register-card {
   padding-top: 24px;
   border-radius: 24px;
+}
+
+@media (max-width: 720px) {
+  .app-shell.is-guest-web :is(.attendance-window, .stadium-page-window, .settings-window) {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  .app-shell.is-guest-web :is(.settings-app-screen, .tamagotchi-dashboard) {
+    min-height: 100%;
+  }
 }
 
 @media (max-width: 360px) {
