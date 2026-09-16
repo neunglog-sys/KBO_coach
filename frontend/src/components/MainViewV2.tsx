@@ -78,6 +78,7 @@ const TEAM_SEND_COLOR: Record<string, string> = {
 
 interface MainViewV2Props {
   authToken: string;
+  isGuest?: boolean;
   favTeamCode?: string;
   nickname?: string;
   buddyNickname?: string;
@@ -204,6 +205,7 @@ function VoiceWaveIcon() {
 
 export function MainViewV2({
   authToken,
+  isGuest = false,
   favTeamCode,
   nickname,
   buddyNickname,
@@ -1740,6 +1742,7 @@ export function MainViewV2({
           >
             <SettingsView
               onClose={() => closeOverlay("settings")}
+              isGuest={isGuest}
               nickname={nickname}
               notificationEnabled={notificationEnabled}
               onNotificationEnabledChange={onNotificationEnabledChange}

@@ -518,6 +518,279 @@ select:focus {
   box-shadow: none;
 }
 
+/* === 공개 웹 게스트 체험 ====================================== */
+.guest-bootstrap-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  color: #183153;
+  background: #cae4f9;
+  text-align: center;
+}
+
+.guest-bootstrap-screen img {
+  display: block;
+  object-fit: contain;
+}
+
+.guest-bootstrap-screen h1 {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.guest-bootstrap-screen p {
+  margin: -4px 0 4px;
+  color: #59718d;
+  font-size: 0.9rem;
+}
+
+.guest-bootstrap-screen button {
+  min-width: 132px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  color: #fff;
+  background: #258cff;
+  font-weight: 800;
+}
+
+.guest-bootstrap-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(37, 140, 255, 0.2);
+  border-top-color: #258cff;
+  border-radius: 50%;
+  animation: guest-bootstrap-spin 0.8s linear infinite;
+}
+
+@keyframes guest-bootstrap-spin {
+  to { transform: rotate(360deg); }
+}
+
+.guest-access-bar {
+  position: fixed;
+  top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 6px);
+  left: 50%;
+  z-index: 470;
+  width: min(calc(100% - 20px), 430px);
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 7px 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 14px;
+  color: #233754;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 7px 20px rgba(20, 50, 90, 0.18);
+  backdrop-filter: blur(12px);
+  transform: translateX(-50%);
+}
+
+.guest-access-label,
+.guest-access-actions {
+  display: inline-flex;
+  align-items: center;
+}
+
+.guest-access-label {
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.guest-access-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff9a28;
+  box-shadow: 0 0 0 3px rgba(255, 154, 40, 0.15);
+}
+
+.guest-access-actions {
+  gap: 5px;
+}
+
+.guest-access-actions button {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: #246fb9;
+  background: #eef7ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.guest-access-actions button.is-primary {
+  color: #fff;
+  background: #258cff;
+}
+
+.app-shell.is-guest-web .stage-view {
+  --stage-nav-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + var(--stage-side) + 38px);
+  --stage-character-top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + clamp(88px, 17vh, 164px));
+}
+
+.app-shell.is-guest-web .stage-nav-overlay {
+  height: 150px;
+}
+
+.app-shell.is-guest-web .stage-nav-handle.is-hidden {
+  top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 43px);
+}
+
+.guest-notice-backdrop,
+.guest-auth-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(6, 19, 42, 0.66);
+  backdrop-filter: blur(8px);
+}
+
+.guest-notice-backdrop {
+  z-index: 600;
+}
+
+.guest-notice-dialog {
+  width: min(100%, 380px);
+  padding: 26px 22px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+  text-align: center;
+}
+
+.guest-notice-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 12px;
+  border-radius: 18px;
+  background: #eaf5ff;
+  font-size: 1.65rem;
+}
+
+.guest-notice-dialog h2 {
+  margin: 0 0 16px;
+  color: #172b49;
+  font-size: 1.25rem;
+}
+
+.guest-notice-copy {
+  color: #52647a;
+  font-size: 0.88rem;
+  line-height: 1.62;
+  word-break: keep-all;
+}
+
+.guest-notice-copy p {
+  margin: 0 0 11px;
+}
+
+.guest-notice-copy p:first-child {
+  color: #294e77;
+  font-weight: 800;
+}
+
+.guest-notice-confirm {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 5px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #258cff, #55b8ff);
+  box-shadow: 0 9px 20px rgba(37, 140, 255, 0.28);
+  font-weight: 850;
+}
+
+.guest-auth-backdrop {
+  z-index: 650;
+}
+
+.guest-auth-dialog {
+  position: relative;
+  width: min(100%, 420px);
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  background: #f8fbff;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.4);
+}
+
+.guest-auth-close {
+  position: sticky;
+  top: 10px;
+  z-index: 5;
+  float: right;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 10px 10px -46px 0;
+  border-radius: 50%;
+  color: #53657b;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 12px rgba(34, 63, 96, 0.14);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.guest-auth-dialog .login-view {
+  min-height: 0;
+  padding: 18px;
+  background: transparent;
+}
+
+.guest-auth-dialog .auth-login-card {
+  width: 100%;
+  padding-top: 6px;
+}
+
+.guest-auth-dialog .auth-hero {
+  margin-bottom: 10px;
+}
+
+.guest-auth-dialog .auth-hero-img {
+  width: 128px;
+  height: 128px;
+}
+
+.guest-auth-dialog .auth-register-screen,
+.guest-auth-dialog .auth-register-card {
+  min-height: 0;
+}
+
+.guest-auth-dialog .auth-register-card {
+  padding-top: 24px;
+  border-radius: 24px;
+}
+
+@media (max-width: 360px) {
+  .guest-access-bar {
+    padding-left: 9px;
+  }
+
+  .guest-access-label {
+    font-size: 0.69rem;
+  }
+
+  .guest-access-actions button {
+    padding: 0 7px;
+    font-size: 0.68rem;
+  }
+}
+
 .auth-reg-back {
   position: absolute;
   top: calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px);

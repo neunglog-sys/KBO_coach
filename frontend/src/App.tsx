@@ -12,17 +12,17 @@ import { MainViewV2 } from "./components/MainViewV2";
 import { RegisterView } from "./components/RegisterView";
 import { TeamSelectOnboarding } from "./components/TeamSelectOnboarding";
 import { FpsOverlay } from "./components/FpsOverlay";
+import { AuthModal, type AuthModalMode } from "./components/AuthModal";
+import { GuestAccessBar } from "./components/GuestAccessBar";
+import { GuestNoticeModal } from "./components/GuestNoticeModal";
 
 // 팀 선택 온보딩 강제 표시 (개발용 — 배포/발표 전 반드시 false!)
 const FORCE_SHOW_TEAM_ONBOARDING = false;
 
-const DEMO_AUTH = {
-  id: "admin",
-  pw: "admin1234",
-};
-
 const AUTH_SESSION_KEY = "baseballCoachAuth";
+const GUEST_NOTICE_ACK_KEY = "baseballCoachGuestNoticeAccepted";
 const MAIN_STAGE_ASSETS = ["/img/sky.png", "/img/background1.2.png"];
+const IS_PUBLIC_WEB = !Capacitor.isNativePlatform();
 
 type AuthSession = {
   isLoggedIn: boolean;
@@ -30,6 +30,7 @@ type AuthSession = {
   favTeamCode: string;
   nickname: string;
   buddyNickname: string;
+  isGuest: boolean;
 };
 
 const EMPTY_AUTH_SESSION: AuthSession = {
@@ -38,6 +39,7 @@ const EMPTY_AUTH_SESSION: AuthSession = {
   favTeamCode: "",
   nickname: "",
   buddyNickname: "",
+  isGuest: false,
 };
 
 let mainStageAssetsPromise: Promise<void> | null = null;
@@ -79,6 +81,7 @@ function parseAuthSession(saved: string | null): AuthSession | null {
       favTeamCode?: string;
       nickname?: string;
       buddyNickname?: string;
+      isGuest?: boolean;
     };
     return {
       isLoggedIn: Boolean(parsed.isLoggedIn),
@@ -86,6 +89,7 @@ function parseAuthSession(saved: string | null): AuthSession | null {
       favTeamCode: parsed.favTeamCode || "",
       nickname: parsed.nickname || "",
       buddyNickname: parsed.buddyNickname || "",
+      isGuest: Boolean(parsed.isGuest),
     };
   } catch {
     return null;
@@ -121,14 +125,49 @@ function saveAuthSession(
   nickname: string,
   buddyNickname = "",
   remember = localStorage.getItem(AUTH_SESSION_KEY) != null,
+  isGuest = false,
 ) {
-  const value = JSON.stringify({ isLoggedIn: true, authToken, favTeamCode, nickname, buddyNickname });
+  const value = JSON.stringify({
+    isLoggedIn: true,
+    authToken,
+    favTeamCode,
+    nickname,
+    buddyNickname,
+    isGuest,
+  });
   sessionStorage.setItem(AUTH_SESSION_KEY, value);
-  if (remember) {
+  if (remember && !isGuest) {
     localStorage.setItem(AUTH_SESSION_KEY, value);
   } else {
     localStorage.removeItem(AUTH_SESSION_KEY);
   }
+}
+
+let guestSessionPromise: Promise<AuthSession> | null = null;
+
+function requestGuestSession() {
+  if (!guestSessionPromise) {
+    guestSessionPromise = fetch(apiUrl("/auth/guest"), { method: "POST" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`guest session failed: ${response.status}`);
+        const data = await response.json();
+        const token = data.token || data.access_token || "";
+        if (!token) throw new Error("guest token missing");
+        return {
+          isLoggedIn: true,
+          authToken: token,
+          favTeamCode: data.user?.fav_team_code || "",
+          nickname: data.user?.nickname || "게스트",
+          buddyNickname: data.user?.buddy_nickname || "",
+          isGuest: true,
+        };
+      })
+      .catch((error) => {
+        guestSessionPromise = null;
+        throw error;
+      });
+  }
+  return guestSessionPromise;
 }
 
 function readKakaoAuthSession(url = window.location.href): AuthSession | null {
@@ -184,20 +223,63 @@ export function App() {
   const [favTeamCode, setFavTeamCode] = useState(authSession.favTeamCode);
   const [nickname, setNickname] = useState(authSession.nickname);
   const [buddyNickname, setBuddyNickname] = useState(authSession.buddyNickname);
+  const [isGuest, setIsGuest] = useState(authSession.isGuest);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [registerError, setRegisterError] = useState("");
+  const [guestBootstrapState, setGuestBootstrapState] = useState<"idle" | "loading" | "error">(
+    IS_PUBLIC_WEB && !authSession.isLoggedIn ? "loading" : "idle",
+  );
+  const [showGuestNotice, setShowGuestNotice] = useState(
+    authSession.isGuest
+      && Boolean(authSession.favTeamCode)
+      && sessionStorage.getItem(GUEST_NOTICE_ACK_KEY) !== "1",
+  );
   const [showExitHint, setShowExitHint] = useState(false);
   const lastLoginBackPressRef = useRef(0);
   const exitHintTimerRef = useRef<number | null>(null);
   const authTokenRef = useRef(authToken);
   authTokenRef.current = authToken;
 
+  async function startGuestAccess() {
+    if (!IS_PUBLIC_WEB) return;
+    setGuestBootstrapState("loading");
+    sessionStorage.removeItem(GUEST_NOTICE_ACK_KEY);
+    try {
+      const guestSession = await requestGuestSession();
+      runRouteTransition(() => {
+        setAuthToken(guestSession.authToken);
+        setFavTeamCode(guestSession.favTeamCode);
+        setNickname(guestSession.nickname);
+        setBuddyNickname(guestSession.buddyNickname);
+        setIsGuest(true);
+        setIsLoggedIn(true);
+        setGuestBootstrapState("idle");
+      });
+      saveAuthSession(
+        guestSession.authToken,
+        guestSession.favTeamCode,
+        guestSession.nickname,
+        guestSession.buddyNickname,
+        false,
+        true,
+      );
+    } catch {
+      setGuestBootstrapState("error");
+    }
+  }
+
+  useEffect(() => {
+    if (!IS_PUBLIC_WEB || isLoggedIn) return;
+    void startGuestAccess();
+  }, [isLoggedIn]);
+
   // 토큰 자동 갱신(슬라이딩 만료) — 앱 시작 시 + 6시간마다 새 토큰 재발급.
   // 활성 유저는 재로그인 없이 유지. 만료(401)돼도 강제 로그아웃하지 않고 다음 접속 때 재로그인.
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || isGuest) return;
     let cancelled = false;
     async function refreshToken() {
       const token = authTokenRef.current;
@@ -223,7 +305,7 @@ export function App() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [isLoggedIn]);
+  }, [isGuest, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -241,7 +323,9 @@ export function App() {
       setFavTeamCode(kakaoSession.favTeamCode);
       setNickname(kakaoSession.nickname);
       setBuddyNickname(kakaoSession.buddyNickname);
+      setIsGuest(false);
       setIsLoggedIn(true);
+      setAuthModalMode(null);
     });
     saveAuthSession(
       kakaoSession.authToken,
@@ -249,6 +333,7 @@ export function App() {
       kakaoSession.nickname,
       kakaoSession.buddyNickname,
       true,
+      false,
     );
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -435,27 +520,16 @@ export function App() {
           setFavTeamCode(teamCode);
           setNickname(userNickname);
           setBuddyNickname(userBuddyNickname);
+          setIsGuest(false);
           setIsLoggedIn(true);
+          setAuthModalMode(null);
         });
-        saveAuthSession(token, teamCode, userNickname, userBuddyNickname, remember);
+        saveAuthSession(token, teamCode, userNickname, userBuddyNickname, remember, false);
         window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
     } catch {
-      // Static demo fallback until the FastAPI auth server is connected.
-    }
-
-    if (id === DEMO_AUTH.id && password === DEMO_AUTH.pw) {
-      runRouteTransition(() => {
-        setAuthToken("");
-        setFavTeamCode("");
-        setNickname("야구팬");
-        setBuddyNickname("");
-        setIsLoggedIn(true);
-      });
-      saveAuthSession("", "", "야구팬", "", remember);
-      window.scrollTo({ top: 0, behavior: "auto" });
-      return;
+      // 네트워크 오류도 로그인 실패로 안내한다.
     }
 
     setLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
@@ -507,9 +581,11 @@ export function App() {
         setFavTeamCode(teamCode);
         setNickname(userNickname);
         setBuddyNickname(userBuddyNickname);
+        setIsGuest(false);
         setIsLoggedIn(true);
+        setAuthModalMode(null);
       });
-      saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true);
+      saveAuthSession(token, teamCode, userNickname, userBuddyNickname, true, false);
       window.scrollTo({ top: 0, behavior: "auto" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -560,6 +636,7 @@ export function App() {
       if (response.ok) {
         runRouteTransition(() => {
           setAuthMode("login");
+          if (authModalMode) setAuthModalMode("login");
           setLoginNotice("회원가입이 완료되었습니다. 로그인해주세요.");
           setRegisterError("");
         });
@@ -578,13 +655,18 @@ export function App() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem("myTeamCode");
+    sessionStorage.removeItem(GUEST_NOTICE_ACK_KEY);
     clearTamagotchiLocalState();
+    if (IS_PUBLIC_WEB) guestSessionPromise = null;
     runRouteTransition(() => {
       setAuthToken("");
       setFavTeamCode("");
       setNickname("");
       setBuddyNickname("");
+      setIsGuest(false);
       setIsLoggedIn(false);
+      setShowGuestNotice(false);
+      setAuthModalMode(null);
       setLoginError("");
       setLoginNotice("");
       setRegisterError("");
@@ -597,33 +679,74 @@ export function App() {
   // 응원구단 변경: 전역 로그인 상태 + sessionStorage 갱신 → 메인/다마고치/구장정보/챗이 같은 팀 값을 봄
   function handleFavTeamChange(code: string) {
     runRouteTransition(() => setFavTeamCode(code));
-    saveAuthSession(authToken, code, nickname, buddyNickname);
+    saveAuthSession(authToken, code, nickname, buddyNickname, undefined, isGuest);
+    if (isGuest && sessionStorage.getItem(GUEST_NOTICE_ACK_KEY) !== "1") {
+      setShowGuestNotice(true);
+    }
   }
 
   function handleBuddyNicknameChange(nextBuddyNickname: string) {
     setBuddyNickname(nextBuddyNickname);
-    saveAuthSession(authToken, favTeamCode, nickname, nextBuddyNickname);
+    saveAuthSession(authToken, favTeamCode, nickname, nextBuddyNickname, undefined, isGuest);
   }
 
   function handleNicknameChange(nextNickname: string) {
     setNickname(nextNickname);
-    saveAuthSession(authToken, favTeamCode, nextNickname, buddyNickname);
+    saveAuthSession(authToken, favTeamCode, nextNickname, buddyNickname, undefined, isGuest);
+  }
+
+  function openAuthModal(mode: AuthModalMode) {
+    setLoginError("");
+    setLoginNotice("");
+    setRegisterError("");
+    setAuthModalMode(mode);
+  }
+
+  function confirmGuestNotice() {
+    sessionStorage.setItem(GUEST_NOTICE_ACK_KEY, "1");
+    setShowGuestNotice(false);
   }
 
   const needsTeamOnboarding = FORCE_SHOW_TEAM_ONBOARDING || Boolean(authToken && !favTeamCode);
+  const isGuestBootstrapVisible = IS_PUBLIC_WEB && !isLoggedIn;
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${isGuest ? " is-guest-web" : ""}`}>
       <FpsOverlay enabled={new URLSearchParams(window.location.search).has("fps")} />
       <div
         key={isLoggedIn ? "app" : authMode}
         className="app-route-transition"
       >
-        {isLoggedIn ? (
+        {isGuestBootstrapVisible ? (
+          <section className="guest-bootstrap-screen" aria-live="polite">
+            <img src="/img/gongbok.png" alt="공복이" width={180} height={180} />
+            {guestBootstrapState === "error" ? (
+              <>
+                <h1>게스트 연결에 실패했어요</h1>
+                <p>잠시 후 다시 시도해 주세요.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    guestSessionPromise = null;
+                    void startGuestAccess();
+                  }}
+                >
+                  다시 시도
+                </button>
+              </>
+            ) : (
+              <>
+                <h1>게스트 모드를 준비하고 있어요</h1>
+                <span className="guest-bootstrap-spinner" aria-hidden="true" />
+              </>
+            )}
+          </section>
+        ) : isLoggedIn ? (
           <>
           {!needsTeamOnboarding ? (
           <MainViewV2
             authToken={authToken}
+            isGuest={isGuest}
             favTeamCode={favTeamCode}
             nickname={nickname}
             buddyNickname={buddyNickname}
@@ -642,7 +765,7 @@ export function App() {
             <TeamSelectOnboarding
               authToken={authToken}
               onComplete={handleFavTeamChange}
-              onBack={handleLogout}
+              onBack={isGuest ? undefined : handleLogout}
             />
           ) : null}
           </>
@@ -672,6 +795,33 @@ export function App() {
           />
         )}
       </div>
+
+      {isGuest && !needsTeamOnboarding ? (
+        <GuestAccessBar
+          onLogin={() => openAuthModal("login")}
+          onRegister={() => openAuthModal("register")}
+        />
+      ) : null}
+
+      {isGuest && showGuestNotice && !needsTeamOnboarding ? (
+        <GuestNoticeModal onConfirm={confirmGuestNotice} />
+      ) : null}
+
+      {isGuest && authModalMode ? (
+        <AuthModal
+          mode={authModalMode}
+          loginError={loginError}
+          loginNotice={loginNotice}
+          registerError={registerError}
+          onClose={() => setAuthModalMode(null)}
+          onModeChange={(mode) => openAuthModal(mode)}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          onGoogleLogin={handleGoogleLogin}
+          onKakaoLogin={handleKakaoLogin}
+          onNaverLogin={handleNaverLogin}
+        />
+      ) : null}
     </main>
   );
 }

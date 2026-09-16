@@ -9,8 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
     fav_team_code VARCHAR(4),
     gender VARCHAR(8) CHECK (gender IS NULL OR gender IN ('man', 'girl')),
     buddy_nickname VARCHAR(10),
+    is_guest BOOLEAN NOT NULL DEFAULT FALSE,
+    guest_expires_at TIMESTAMPTZ,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_guest_expiry
+    ON users (guest_expires_at)
+    WHERE is_guest = TRUE;
 
 CREATE TABLE IF NOT EXISTS visits (
     visit_id SERIAL PRIMARY KEY,
