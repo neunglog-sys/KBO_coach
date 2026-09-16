@@ -164,6 +164,9 @@ function buildLocalFallbackAnswer(question: string) {
   );
 }
 
+const CHAT_SEARCH_TIMEOUT_MESSAGE =
+  "최신 정보를 확인하는 데 시간이 조금 오래 걸렸어요. 같은 질문을 한 번만 다시 보내주세요!";
+
 // 보내기(전송) 버튼 아이콘 — 위쪽 화살표. stroke=currentColor라 감싼 버튼의 color를 따른다.
 function SendArrowIcon() {
   return (
@@ -1179,21 +1182,82 @@ export function MainViewV2({
   }
 
   // 응원팀(team_code) 페르소나로 답변 전체를 받아옴. (표시는 음성에 맞춰 speakAnswer가 드러냄)
-  async function fetchAnswer(question: string): Promise<string> {
+  async function fetchAnswer(
+    question: string,
+    onStatus?: (message: string) => void,
+  ): Promise<string> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+    const requestBody = JSON.stringify({
+      question,
+      team_code: favTeamCode || null,
+      session_id: "frontend-demo",
+    });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 25000);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (authToken) headers.Authorization = `Bearer ${authToken}`;
-      const r = await fetch(apiUrl("/chat"), {
+      const r = await fetch(apiUrl("/chat/progress"), {
         method: "POST",
         headers,
-        body: JSON.stringify({ question, team_code: favTeamCode || null, session_id: "frontend-demo" }),
+        body: requestBody,
+        signal: controller.signal,
       });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.answer && !isPlaceholderAnswer(d.answer)) return d.answer as string;
+      if (r.ok && r.body) {
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let answer = "";
+
+        const consumeEvent = (block: string) => {
+          const line = block.split("\n").find((item) => item.startsWith("data:"));
+          if (!line) return;
+          try {
+            const event = JSON.parse(line.slice(5).trim()) as {
+              type?: string;
+              message?: string;
+              answer?: string;
+            };
+            if (event.type === "status" && event.message) onStatus?.(event.message);
+            if (event.type === "answer" && event.answer) answer = event.answer;
+          } catch {
+            /* 불완전하거나 알 수 없는 이벤트는 무시 */
+          }
+        };
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let separator: number;
+          while ((separator = buffer.indexOf("\n\n")) >= 0) {
+            consumeEvent(buffer.slice(0, separator));
+            buffer = buffer.slice(separator + 2);
+          }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) consumeEvent(buffer);
+        if (answer && !isPlaceholderAnswer(answer)) return answer;
+      } else if (r.status === 404) {
+        // 백엔드가 먼저/나중에 배포되는 짧은 구간에는 기존 API로 한 번만 호환한다.
+        onStatus?.("답변을 정리하고 있어요…");
+        const fallbackResponse = await fetch(apiUrl("/chat"), {
+          method: "POST",
+          headers,
+          body: requestBody,
+          signal: controller.signal,
+        });
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json();
+          if (data.answer && !isPlaceholderAnswer(data.answer)) return data.answer as string;
+        }
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return CHAT_SEARCH_TIMEOUT_MESSAGE;
+      }
       console.warn("[MainViewV2] /chat failed; using local fallback", err);
+    } finally {
+      window.clearTimeout(timeout);
     }
     return buildLocalFallbackAnswer(question);
   }
@@ -1221,27 +1285,19 @@ export function MainViewV2({
     const botId = baseId + 1;
     setMessages((prev) => [...prev, { id: baseId, type: "user", text: question }]);
     setInput("");
-    setMessages((prev) => [...prev, { id: botId, type: "bot", text: "…" }]); // 답변 준비 중 표시
+    setMessages((prev) => [
+      ...prev,
+      { id: botId, type: "bot", text: "관련 자료를 확인하고 있어요…" },
+    ]);
     const setBot = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, text } : m)));
 
     // 로컬 SQLite에 대화 이력 저장(기기 보관, 서버 미전송) — 개인화 퀴즈 출제 등에 사용
     void saveChat(authToken || "guest", "user", question, favTeamCode || "").catch(() => { });
 
-    // 통문장 — 답변 전체를 한 번에 합성해야 ElevenLabs가 문맥을 보고 사투리 억양을 살린다.
-    // (청킹은 문장마다 따로 합성돼 억양이 평평해져 표준어처럼 들림 → 사용 안 함)
-    // 첫 응답이 7초 넘게 안 오면 서버 혼잡 안내 — Gemini 생성 무한지연 등 백엔드 폴백으로
-    // 못 막는 케이스 대비(임베딩 지연은 embeddings.py의 3초 타임아웃 폴백이 이미 처리).
-    // 정상(폴백 포함) 상한은 ~5초라 7초면 오발 없이 진짜 지연만 잡는다.
-    const slowNoticeTimer = window.setTimeout(() => {
-      setBot("답변이 평소보다 늦어지고 있어요 ⚾ 서버가 잠시 혼잡한가 봐요. 조금만 기다려 주세요!");
-    }, 7000);
-    let answer: string;
-    try {
-      answer = await fetchAnswer(question);
-    } finally {
-      window.clearTimeout(slowNoticeTimer);
-    }
+    // 백엔드 진행 이벤트가 같은 말풍선을 RAG 확인 → 최신 검색 → 답변 정리 순으로 갱신한다.
+    // 통문장 답변이 끝난 뒤에만 TTS를 시작해 기존 구단별 억양과 페르소나를 유지한다.
+    const answer = await fetchAnswer(question, setBot);
     void saveChat(authToken || "guest", "bot", answer, favTeamCode || "").catch(() => { });
     // 키워드 탐지는 여기서 하되, 실제 모션 발동은 TTS(음성)가 시작될 때로 미룬다.
     // (텍스트가 화면에 나오는 시점이 아니라 캐릭터가 "말하기 시작하는" 순간에 맞춰 움직이도록)

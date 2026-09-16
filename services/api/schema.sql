@@ -199,6 +199,22 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks ( -- 구단 문화·팩트 청크 (�
     embedding vector(768)             -- embeddings.EMBED_DIM 기본값과 일치
 );
 
+-- Google Search에서 실제 출처가 확인된 최신 정보의 단기 RAG 캐시.
+-- 영구 지식과 분리하고 expires_at 이후 자동으로 재사용하지 않는다.
+CREATE TABLE IF NOT EXISTS web_knowledge_cache (
+    cache_id BIGSERIAL PRIMARY KEY,
+    query_key TEXT NOT NULL,
+    question TEXT NOT NULL,
+    team_code VARCHAR(4) NOT NULL DEFAULT '',
+    answer TEXT NOT NULL,
+    sources JSONB NOT NULL DEFAULT '[]'::jsonb,
+    embedding vector(768),
+    checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (query_key, team_code)
+);
+CREATE INDEX IF NOT EXISTS idx_web_knowledge_expiry ON web_knowledge_cache (expires_at);
+
 CREATE TABLE IF NOT EXISTS team_culture_profiles ( -- 구단별 응원·팬덤 문화 요약
     team_code VARCHAR(4) PRIMARY KEY,
     culture_summary TEXT,

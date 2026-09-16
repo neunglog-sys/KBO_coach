@@ -14,19 +14,33 @@
   GOOGLE_CLOUD_PROJECT=kboai-5dea0, GOOGLE_CLOUD_LOCATION=global
   GEMINI_API_KEYS=keyA,keyB,...   (또는 GEMINI_API_KEY, GEMINI_API_KEY_2, ...)
   GEMINI_MODEL=gemini-3.1-flash-lite
+  GEMINI_SEARCH_MODEL=gemini-2.5-flash
+  GEMINI_SEARCH_TIMEOUT_S=12
 """
 import os
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutureTimeout
 
 from google import genai
 from google.genai import types
 
 _clients: dict = {}
 _lock = threading.Lock()
+_search_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="gemini-search")
+
+
+class SearchTimeoutError(RuntimeError):
+    """Google Search grounding이 정해진 전체 제한시간을 넘김."""
 
 
 def model_name() -> str:
     return os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+
+
+def search_model_name() -> str:
+    """최신 정보가 필요할 때만 사용하는 검색 가능 모델."""
+    return os.environ.get("GEMINI_SEARCH_MODEL", "gemini-2.5-flash")
 
 
 def use_vertex() -> bool:
@@ -99,13 +113,20 @@ def _config(system, temperature, max_tokens):
                                        max_output_tokens=max_tokens)
 
 
-def generate(system: str | None, user: str, temperature: float = 0.85, max_tokens: int = 250) -> str:
+def generate(
+    system: str | None,
+    user: str,
+    temperature: float = 0.85,
+    max_tokens: int = 250,
+    model: str | None = None,
+) -> str:
     """폴백 체인으로 단일 생성. 백엔드 순서대로 시도, 429/오류 시 다음으로 자동 전환."""
     errs = []
     for b in _backends():
         try:
             r = _client_for(b).models.generate_content(
-                model=model_name(), contents=user, config=_config(system, temperature, max_tokens))
+                model=model or model_name(), contents=user,
+                config=_config(system, temperature, max_tokens))
             txt = (r.text or "").strip()
             if txt:
                 return txt
@@ -115,14 +136,21 @@ def generate(system: str | None, user: str, temperature: float = 0.85, max_token
     raise RuntimeError("LLM 전체 폴백 실패 — " + " | ".join(errs))
 
 
-def generate_stream(system: str | None, user: str, temperature: float = 0.85, max_tokens: int = 250):
+def generate_stream(
+    system: str | None,
+    user: str,
+    temperature: float = 0.85,
+    max_tokens: int = 250,
+    model: str | None = None,
+):
     """폴백 체인으로 스트리밍 생성. 한 백엔드가 토큰을 흘리기 시작하면 그걸로 끝까지(중복 방지)."""
     errs = []
     for b in _backends():
         yielded = False
         try:
             for chunk in _client_for(b).models.generate_content_stream(
-                    model=model_name(), contents=user, config=_config(system, temperature, max_tokens)):
+                    model=model or model_name(), contents=user,
+                    config=_config(system, temperature, max_tokens)):
                 if chunk.text:
                     yielded = True
                     yield chunk.text
@@ -134,6 +162,84 @@ def generate_stream(system: str | None, user: str, temperature: float = 0.85, ma
                 return   # 이미 일부 전송됨 → 재시도하면 중복, 종료
             errs.append(f"{b['id']}:{str(e)[:70]}")
     # 전부 실패 → 아무것도 안 나옴(호출부가 폴백/에러 처리)
+
+
+def _grounding_sources(response) -> list[dict]:
+    """GenerateContentResponse의 grounding metadata에서 실제 웹 근거만 추출한다."""
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        return []
+    metadata = getattr(candidates[0], "grounding_metadata", None)
+    if metadata is None:
+        return []
+
+    # 검색 청크만 있고 문장-근거 연결이 없는 응답은 검증된 결과로 취급하지 않는다.
+    if not (getattr(metadata, "grounding_supports", None) or []):
+        return []
+
+    sources: list[dict] = []
+    seen: set[str] = set()
+    for chunk in getattr(metadata, "grounding_chunks", None) or []:
+        web = getattr(chunk, "web", None)
+        uri = (getattr(web, "uri", None) or "").strip() if web else ""
+        if not uri or uri in seen:
+            continue
+        seen.add(uri)
+        sources.append({
+            "title": (getattr(web, "title", None) or uri).strip(),
+            "url": uri,
+        })
+    return sources
+
+
+def _grounded_call(b: dict, system: str | None, user: str, max_tokens: int):
+    config = types.GenerateContentConfig(
+        system_instruction=system,
+        temperature=0.2,
+        max_output_tokens=max_tokens,
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+    )
+    return _client_for(b).models.generate_content(
+        model=search_model_name(), contents=user, config=config)
+
+
+def generate_grounded(
+    system: str | None,
+    user: str,
+    max_tokens: int = 300,
+) -> dict:
+    """Gemini 2.5 Flash + Google Search로 근거 있는 최신 답변을 생성한다.
+
+    답변 텍스트뿐 아니라 실제 문장 근거가 연결된 웹 출처를 함께 반환한다. 전체 검색
+    시간이 제한을 넘으면 다른 키로 자동 재시도하지 않고 SearchTimeoutError를 올린다.
+    """
+    timeout_s = float(os.environ.get("GEMINI_SEARCH_TIMEOUT_S", "12"))
+    deadline = time.monotonic() + max(1.0, timeout_s)
+    errs: list[str] = []
+
+    for b in _backends():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise SearchTimeoutError(f"Google 검색 시간 초과({timeout_s:g}초)")
+        try:
+            response = _search_pool.submit(
+                _grounded_call, b, system, user, max_tokens
+            ).result(timeout=remaining)
+        except _FutureTimeout as exc:
+            # 시간 초과는 중복 검색·중복 과금을 막기 위해 다른 키로 다시 호출하지 않는다.
+            raise SearchTimeoutError(f"Google 검색 시간 초과({timeout_s:g}초)") from exc
+        except Exception as exc:
+            errs.append(f"{b['id']}:{str(exc)[:90]}")
+            continue
+
+        text = (getattr(response, "text", None) or "").strip()
+        sources = _grounding_sources(response)
+        if text and sources:
+            return {"text": text, "sources": sources, "model": search_model_name()}
+        # 호출 자체가 성공했지만 근거가 없으면 다른 키로 같은 검색을 반복하지 않는다.
+        raise RuntimeError(f"{b['id']}: 검색 근거를 확인할 수 없음")
+
+    raise RuntimeError("검색 근거를 확인할 수 없음 — " + " | ".join(errs))
 
 
 def warmup() -> bool:

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-챗봇 — POST /chat (페르소나 + 간단 RAG + Gemini).
+챗봇 — POST /chat (구단 페르소나 + RAG 우선 + 필요 시 Google Search).
 
 흐름:
   1) team_code로 구단 페르소나 로드 → 시스템 프롬프트 구성(말투·성격·금지사항)
   2) 질문에서 용어(glossary)·규칙(rules) 매칭 → 참고자료로 첨부 (환각 방지)
-  3) Gemini 호출 → 답변
+  3) RAG가 충분하면 기본 Gemini, 부족하거나 최신성이 필요하면 검색 모델 호출
 
-설정: .env에 GEMINI_API_KEY (선택: GEMINI_MODEL, 기본 gemini-2.0-flash)
-다음 단계: knowledge_chunks 임베딩(pgvector) 벡터검색으로 RAG 고도화.
+설정: .env에 GEMINI_API_KEY
+      GEMINI_MODEL(기본 gemini-3.1-flash-lite), GEMINI_SEARCH_MODEL(기본 gemini-2.5-flash)
 """
 import json
 import queue
@@ -25,6 +25,7 @@ from embeddings import embed_text, to_pgvector
 import llm
 import pcache
 import tts
+import web_knowledge
 from attendance import _user_key
 from personalization import record_answer, record_question
 import session_metrics
@@ -73,7 +74,30 @@ def _record_authenticated_answer(
 
 
 # 시스템 프롬프트(규칙) 버전 — 프롬프트를 바꾸면 이 값을 올린다 → 캐시 키가 달라져 옛 답이 자동 무효화.
-_PROMPT_VERSION = "p2-20260616"
+_PROMPT_VERSION = "p3-20260917-grounded-search"
+
+_STATUS_RAG = "관련 자료를 확인하고 있어요…"
+_STATUS_SEARCH = "최신 정보를 찾고 있어요…"
+_STATUS_WRITING = "답변을 정리하고 있어요…"
+_SEARCH_TIMEOUT_ANSWER = (
+    "최신 정보를 확인하는 데 시간이 조금 오래 걸렸어요. "
+    "같은 질문을 한 번만 다시 보내주세요!"
+)
+_SEARCH_UNAVAILABLE_ANSWER = (
+    "지금은 최신 정보를 확인하지 못했어요. 정확하지 않은 내용을 지어내지 않을게요. "
+    "잠시 후 같은 질문을 다시 보내주세요."
+)
+_NO_VERIFIED_RESULT_ANSWER = (
+    "저장된 자료와 검색 결과에서 확인할 수 있는 근거를 찾지 못했어요. "
+    "확인되지 않은 내용은 지어내지 않을게요."
+)
+
+# 이 표현들은 저장 자료가 있더라도 시점에 따라 사실이 달라질 수 있어 검색 캐시/웹을 확인한다.
+_FRESH_INFO_RE = re.compile(
+    r"최신|오늘|지금|현재|방금|뉴스|소식|이적|트레이드|부상|복귀|엔트리|"
+    r"대표팀|국가대표|아시안게임|올림픽|WBC|프리미어\s*12|확정|발표|선발됐|뽑혔|합류",
+    re.IGNORECASE,
+)
 
 
 def _cache_key(body: "ChatIn"):
@@ -833,6 +857,135 @@ def _prepare(body: ChatIn):
     return system, user, used
 
 
+def _requires_fresh_search(question: str) -> bool:
+    return bool(_FRESH_INFO_RE.search(question or ""))
+
+
+def _has_rag_evidence(used: dict) -> bool:
+    return any(bool(used.get(key)) for key in ("terms", "rules", "culture", "facts", "personal"))
+
+
+def _rag_covers_fresh_question(question: str, used: dict) -> bool:
+    """공식 크롤 RAG가 질문의 최신 항목을 직접 포함하면 웹 검색을 생략한다."""
+    q = question or ""
+    topics = " ".join(str(item) for item in (used.get("rules") or []))
+    checks = (
+        (r"라인업|선발\s*명단", r"선발 라인업"),
+        (r"순위|몇\s*위", r"팀 순위"),
+        (r"경기.*(결과|점수)|스코어", r"경기 결과|스코어보드"),
+        (r"일정|언제\s*경기", r"경기 일정"),
+        (r"타율|방어율|홈런|도루|승리|세이브|기록|성적", r"선수 정보|리그 상위|시즌 누적"),
+    )
+    return any(
+        re.search(question_pattern, q, re.IGNORECASE)
+        and re.search(topic_pattern, topics, re.IGNORECASE)
+        for question_pattern, topic_pattern in checks
+    )
+
+
+def _emit_status(callback, message: str) -> None:
+    if callback is not None:
+        callback(message)
+
+
+def _add_cached_web_context(user: str, used: dict, cached: dict) -> str:
+    sources = cached.get("sources") or []
+    checked_at = cached.get("checked_at")
+    checked_label = checked_at.isoformat() if hasattr(checked_at, "isoformat") else str(checked_at or "")
+    source_labels = [s.get("title") or s.get("url") for s in sources if isinstance(s, dict)]
+    used.update({
+        "web_cached": True,
+        "web_checked_at": checked_label,
+        "web_sources": sources,
+    })
+    extra = (
+        "[이전에 웹에서 출처를 확인해 저장한 최신자료]\n"
+        f"확인시각: {checked_label}\n"
+        f"내용: {cached.get('answer', '')}\n"
+        f"출처: {', '.join(x for x in source_labels if x)}\n\n"
+    )
+    used["rag_context"] = (used.get("rag_context") or "") + "\n" + extra.strip()
+    return user.replace("[질문]", extra + "[질문]", 1)
+
+
+def _search_user_prompt(user: str) -> str:
+    return user + """
+
+    [Google Search 사용 규칙]
+    위 참고자료를 먼저 검토하고, 질문에 답하기에 부족하거나 오래된 부분만 Google Search로 확인한다.
+    검색 결과에서 직접 뒷받침되는 사실만 답한다.
+    선수 선발·대표팀·부상·이적·경기 기록을 추측하거나 빈칸을 상상으로 채우지 않는다.
+    확인 가능한 근거가 없으면 __NO_VERIFIED_RESULT__ 만 출력한다.
+    기존 시스템의 구단별 말투·성격·답변 길이·금지사항을 그대로 지킨다.
+    """
+
+
+def _resolve_answer(body: ChatIn, status_callback=None) -> tuple[str, dict]:
+    """RAG 우선 → 검증된 검색 캐시 → Google Search 순서로 답변한다."""
+    system, user, used = _prepare(body)
+    needs_fresh = _requires_fresh_search(body.question)
+    has_rag = _has_rag_evidence(used)
+    rag_is_enough = has_rag and (
+        not needs_fresh or _rag_covers_fresh_question(body.question, used)
+    )
+
+    # 기존 RAG가 질문을 직접 해결하지 못할 때만 검증된 웹 캐시와 검색으로 넘어간다.
+    cached_web = None
+    if not rag_is_enough:
+        cached_web = web_knowledge.find(body.question, body.team_code)
+    if cached_web:
+        user = _add_cached_web_context(user, used, cached_web)
+        _emit_status(status_callback, _STATUS_WRITING)
+        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+        used["route"] = "web_cache"
+        return answer, used
+
+    # 최신성이 필요하지 않고 신뢰 가능한 RAG가 있으면 저렴한 기본 모델로 끝낸다.
+    if rag_is_enough:
+        _emit_status(status_callback, _STATUS_WRITING)
+        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+        used["route"] = "rag"
+        return answer, used
+
+    _emit_status(status_callback, _STATUS_SEARCH)
+    try:
+        grounded = llm.generate_grounded(system, _search_user_prompt(user), max_tokens=300)
+    except llm.SearchTimeoutError:
+        used["route"] = "search_timeout"
+        return _SEARCH_TIMEOUT_ANSWER, used
+    except Exception:
+        used["route"] = "search_unavailable"
+        return _SEARCH_UNAVAILABLE_ANSWER, used
+
+    answer = (grounded.get("text") or "").strip()
+    sources = grounded.get("sources") or []
+    if not answer or "__NO_VERIFIED_RESULT__" in answer or not sources:
+        used["route"] = "search_no_result"
+        return _NO_VERIFIED_RESULT_ANSWER, used
+
+    _emit_status(status_callback, _STATUS_WRITING)
+    used.update({
+        "route": "google_search",
+        "search_model": grounded.get("model"),
+        "web_sources": sources,
+    })
+    source_labels = [s.get("title") or s.get("url") for s in sources if isinstance(s, dict)]
+    used["rag_context"] = (
+        (used.get("rag_context") or "")
+        + "\n- 출처 확인 웹 검색 답변: " + answer
+        + "\n- 웹 출처: " + ", ".join(x for x in source_labels if x)
+    )
+    # 명시적 최신 질문은 24시간, 그 외 RAG 미보유 질문은 7일 동안만 재사용한다.
+    web_knowledge.store(
+        body.question,
+        body.team_code,
+        answer,
+        sources,
+        ttl_hours=24 if needs_fresh else 24 * 7,
+    )
+    return answer, used
+
+
 @router.post("/chat")
 def chat(body: ChatIn, authorization: str | None = Header(default=None)):
     """완료율 계측 wrapper — 정상 반환 시에만 complete 기록(예외 발생 시 미완료로 남음)."""
@@ -842,17 +995,19 @@ def chat(body: ChatIn, authorization: str | None = Header(default=None)):
     return result
 
 
-def _chat_impl(body: ChatIn, authorization: str | None):
+def _chat_impl(body: ChatIn, authorization: str | None, status_callback=None):
+    _emit_status(status_callback, _STATUS_RAG)
     _record_authenticated_question(authorization, body.question)
-    # 개인기록 포함 질문은 사용자별이라 캐시하지 않음
+    # 개인기록·명시적 최신 질문은 사용자/시점별이라 기존 장기 응답 캐시를 쓰지 않음.
     cache_key = None
-    if not body.personal_context:
+    if not body.personal_context and not _requires_fresh_search(body.question):
         # 키에 페르소나 해시 + 프롬프트 버전 포함 — 페르소나(DB)나 시스템 프롬프트 수정 시
         # 옛 답이 캐시에서 나오는 것 자동 방지(프롬프트 바꾸면 _PROMPT_VERSION만 올리면 캐시 자동 무효화).
         phash = pcache.persona_hash(body.team_code)
         cache_key = _cache_key(body) + (phash, _PROMPT_VERSION)
         hit = _cache_get(cache_key)
         if hit is not None:   # 메모리 캐시 적중 → 즉시 응답
+            _emit_status(status_callback, _STATUS_WRITING)
             _record_authenticated_answer(
                 authorization,
                 body.question,
@@ -865,6 +1020,7 @@ def _chat_impl(body: ChatIn, authorization: str | None):
             }
         p = pcache.get("chat", cache_key)   # 영속 캐시(배포 생존) 확인
         if p is not None and p[0]:
+            _emit_status(status_callback, _STATUS_WRITING)
             _cache_put(cache_key, p[0])     # 메모리에 재적재
             _record_authenticated_answer(
                 authorization,
@@ -877,18 +1033,18 @@ def _chat_impl(body: ChatIn, authorization: str | None):
                 "context": _public_context(p[0].get("used", {}), cached=True),
             }
 
-    system, user, used = _prepare(body)
     if not llm.llm_ready():
-        return {"answer": "(아직 LLM 미연결) Vertex(GOOGLE_CLOUD_PROJECT) 또는 GEMINI_API_KEY를 설정하세요.",
-                "context": used}
+        return {"answer": "현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요.",
+                "context": {"route": "llm_unavailable"}}
     try:
-        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+        answer, used = _resolve_answer(body, status_callback=status_callback)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {str(e)[:200]}")
     if not answer:
         raise HTTPException(status_code=502, detail="Gemini 응답 형식 오류(차단되었거나 빈 응답)")
 
-    if cache_key is not None:
+    # 영구 응답 캐시는 순수 기존 RAG 답변만 저장한다. 웹 자료는 별도 TTL 캐시가 관리한다.
+    if cache_key is not None and used.get("route") == "rag":
         entry = {"answer": answer, "used": used}
         _cache_put(cache_key, entry)
         pcache.put("chat", cache_key, payload=entry)   # 비동기 영속화
@@ -898,21 +1054,67 @@ def _chat_impl(body: ChatIn, authorization: str | None):
     return {"answer": answer, "context": _public_context(used)}
 
 
+@router.post("/chat/progress")
+def chat_progress(body: ChatIn, authorization: str | None = Header(default=None)):
+    """RAG·검색·정리 진행 상태와 최종 답변을 SSE로 전달한다."""
+    def gen():
+        events: "queue.Queue" = queue.Queue()
+        sentinel = object()
+
+        def status(message: str) -> None:
+            events.put({"type": "status", "message": message})
+
+        def work() -> None:
+            try:
+                session_metrics.record("chat", "start")
+                result = _chat_impl(body, authorization, status_callback=status)
+                session_metrics.record("chat", "complete")
+                events.put({
+                    "type": "answer",
+                    "answer": result.get("answer", ""),
+                    "context": result.get("context", {}),
+                })
+            except Exception:
+                events.put({
+                    "type": "answer",
+                    "answer": _SEARCH_UNAVAILABLE_ANSWER,
+                    "context": {"route": "error"},
+                })
+            finally:
+                events.put(sentinel)
+
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            event = events.get()
+            if event is sentinel:
+                break
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/chat/stream")
 def chat_stream(body: ChatIn, authorization: str | None = Header(default=None)):
-    """답변을 토큰 단위로 흘려보냄(text/plain). 체감 지연 대폭 감소 — 첫 글자가 1초대에 뜸."""
+    """호환용 text/plain 스트림. 라우팅은 /chat과 동일하게 RAG→검색 순서를 따른다."""
     _record_authenticated_question(authorization, body.question)
-    system, user, _ = _prepare(body)
     if not llm.llm_ready():
-        return StreamingResponse(iter(["(아직 LLM 미연결) Vertex 또는 GEMINI_API_KEY를 설정하세요."]),
+        return StreamingResponse(iter(["현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요."]),
                                  media_type="text/plain; charset=utf-8")
 
     def gen():
         session_metrics.record("chat_stream", "start")
         try:
-            for t in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
-                if t:
-                    yield t
+            answer, used = _resolve_answer(body)
+            if answer:
+                yield answer
+                _record_authenticated_answer(
+                    authorization, body.question, answer, used.get("rag_context")
+                )
         except Exception:
             return   # 실패 시 스트림 종료 → 프론트가 빈 응답 감지하고 폴백
         session_metrics.record("chat_stream", "complete")   # 끝까지 소비됨 = 정상종료

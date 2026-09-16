@@ -82,6 +82,9 @@ KAKAO_CLIENT_SECRET=
 NAVER_CLIENT_ID=
 NAVER_CLIENT_SECRET=
 GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_SEARCH_MODEL=gemini-2.5-flash
+GEMINI_SEARCH_TIMEOUT_S=12
 ELEVENLABS_KEY=
 INTERNAL_TOKEN=
 PORT=8000
@@ -96,6 +99,8 @@ NAVER_REDIRECT_URI=https://<도메인>/auth/naver/callback
 ```
 
 - `GOOGLE_GENAI_USE_VERTEXAI=false` **필수**. true면 GCP(결제 끊김)로 Gemini를 부르다 실패한다.
+- 기본 RAG 답변은 `GEMINI_MODEL`, 최신 정보가 필요한 질문만 `GEMINI_SEARCH_MODEL`과 Google Search를 사용한다.
+- `GEMINI_SEARCH_TIMEOUT_S`를 넘기면 자동 재검색하지 않고 사용자에게 같은 질문을 다시 보내 달라고 안내한다.
 - `INTERNAL_TOKEN`은 새로 만들면 된다: `openssl rand -hex 24` 출력값을 넣고 따로 적어둔다(7번에서 사용).
 - `PORT=8000`은 경기 종료 감지 후 API가 자기 자신의 결과 크롤 엔드포인트를 호출할 때 필요하다.
 - `KAKAO_CLIENT_SECRET`은 비워둬도 된다. 현재 카카오 앱이 클라이언트 시크릿 미사용 설정인 것을 확인했다(2026-09-14).
