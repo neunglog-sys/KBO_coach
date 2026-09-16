@@ -14,7 +14,7 @@ import { LatudiCharacter } from "./LatudiCharacter";
 interface TeamSelectOnboardingProps {
   authToken: string;
   onComplete: (favTeamCode: string) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 // 팀코드(DB) ↔ 표시명 ↔ 라투디 표정(exp3) ↔ 팀 컬러
@@ -100,17 +100,19 @@ export function TeamSelectOnboarding({
           '"Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif',
       }}
     >
-      <div
-        className="team-onboarding-back"
-        style={{
-          position: "absolute",
-          top: "calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px)",
-          left: 16,
-          zIndex: 1,
-        }}
-      >
-        <AppBackButton onClick={onBack} />
-      </div>
+      {onBack ? (
+        <div
+          className="team-onboarding-back"
+          style={{
+            position: "absolute",
+            top: "calc(max(env(safe-area-inset-top, 0px), var(--sat, 0px)) + 16px)",
+            left: 16,
+            zIndex: 1,
+          }}
+        >
+          <AppBackButton onClick={onBack} />
+        </div>
+      ) : null}
 
       <h1 style={{ margin: "4px 0 6px", fontSize: "1.35rem", fontWeight: 900, color: "#101a36" }}>
         응원할 구단을 선택해주세요

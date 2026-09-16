@@ -12,6 +12,7 @@ type SettingsScreen = "main" | "myInfo" | "password" | "team";
 
 interface SettingsViewProps {
   onClose: () => void;
+  isGuest?: boolean;
   onNavigate?: (target: TopMenuTarget) => void;
   nickname?: string;
   notificationEnabled?: boolean;
@@ -197,6 +198,7 @@ function ActionRow({
 
 export default function SettingsView({
   onClose,
+  isGuest = false,
   onNavigate,
   nickname,
   notificationEnabled: controlledNotificationEnabled,
@@ -452,7 +454,7 @@ export default function SettingsView({
                 <div className="settings-divider" />
                 <ActionRow
                   iconSrc={SETTING_ICONS.logout}
-                  title="로그아웃"
+                  title={isGuest ? "게스트 정보 초기화" : "로그아웃"}
                   onClick={() => {
                     setNotice("");
                     setConfirmAction("logout");
@@ -468,6 +470,11 @@ export default function SettingsView({
             <SettingsHeader title="내 정보" onBack={goBack} onMenuOpen={() => setSideMenuOpen(true)} />
 
             <div className="settings-card-list">
+              {isGuest ? (
+                <p className="settings-notice">
+                  게스트 정보는 현재 접속에서만 유지됩니다. 로그인하면 계정 정보를 계속 저장할 수 있습니다.
+                </p>
+              ) : null}
               <form className="settings-account-card settings-nickname-form" onSubmit={handleNicknameSubmit}>
                 <ImgCircle src={SETTING_ICONS.profile} />
                 <div className="settings-nickname-fields">
@@ -490,18 +497,22 @@ export default function SettingsView({
                 </div>
               </form>
 
-              <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
+              {!isGuest ? (
+                <MenuCard iconSrc={SETTING_ICONS.password} title="비밀번호 변경" onClick={() => setScreen("password")} />
+              ) : null}
               <MenuCard iconSrc={SETTING_ICONS.teamChange} title="응원구단 변경" onClick={() => setScreen("team")} />
-              <MenuCard
-                iconSrc={SETTING_ICONS.withdraw}
-                title="회원탈퇴"
-                danger
-                onClick={() => {
-                  setNotice("");
-                  setDeleteConfirmText("");
-                  setConfirmAction("delete");
-                }}
-              />
+              {!isGuest ? (
+                <MenuCard
+                  iconSrc={SETTING_ICONS.withdraw}
+                  title="회원탈퇴"
+                  danger
+                  onClick={() => {
+                    setNotice("");
+                    setDeleteConfirmText("");
+                    setConfirmAction("delete");
+                  }}
+                />
+              ) : null}
             </div>
 
             {notice ? <p className="settings-notice">{notice}</p> : null}
@@ -608,8 +619,12 @@ export default function SettingsView({
           >
             {confirmAction === "logout" ? (
               <>
-                <h3>로그아웃 하시겠습니까?</h3>
-                <p>현재 로그인 세션이 삭제되고 로그인 화면으로 이동합니다.</p>
+                <h3>{isGuest ? "게스트 정보를 초기화하시겠습니까?" : "로그아웃 하시겠습니까?"}</h3>
+                <p>
+                  {isGuest
+                    ? "현재 게스트 정보가 삭제되고 새로운 게스트 이용을 시작합니다."
+                    : "현재 로그인 세션이 삭제되고 로그인 화면으로 이동합니다."}
+                </p>
                 <div className="settings-confirm-actions">
                   <button type="button" className="settings-secondary-button" onClick={closeConfirmModal}>
                     취소
@@ -620,7 +635,7 @@ export default function SettingsView({
                     disabled={isSubmitting}
                     onClick={() => void handleLogoutConfirm()}
                   >
-                    로그아웃
+                    {isGuest ? "초기화" : "로그아웃"}
                   </button>
                 </div>
               </>

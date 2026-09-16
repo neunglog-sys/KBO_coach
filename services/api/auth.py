@@ -4,6 +4,7 @@ import os
 import html
 import json
 import logging
+from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -20,6 +21,7 @@ from db_pg import get_conn
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALG = "HS256"
 TOKEN_HOURS = 24 * 90   # 90일 — 모바일앱 수준 로그인 유지. 자동갱신(/auth/refresh)과 결합해 활성 유저는 사실상 무기한
+GUEST_TOKEN_HOURS = 24
 
 # 구글 로그인 검증용 — Google Cloud Console의 "웹 애플리케이션" OAuth 클라이언트 ID.
 # (안드로이드 앱은 이 웹 클라이언트 ID를 serverClientId로 써서 idToken을 발급받음)
@@ -62,9 +64,9 @@ def verify_pw(pw: str, hashed: str) -> bool:
     return bcrypt.checkpw(pw.encode(), hashed.encode())
 
 
-def make_token(user_id: int, email: str) -> str:
+def make_token(user_id: int, email: str, hours: int = TOKEN_HOURS) -> str:
     payload = {"sub": str(user_id), "email": email,
-               "exp": datetime.now(timezone.utc) + timedelta(hours=TOKEN_HOURS)}
+               "exp": datetime.now(timezone.utc) + timedelta(hours=hours)}
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
 
@@ -81,6 +83,18 @@ def ensure_social_columns(conn) -> None:
         cur.execute("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(20)")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(64)")
+
+
+def ensure_guest_columns(conn) -> None:
+    """임시 웹 게스트 계정과 만료 시각을 구형 DB에도 안전하게 추가한다."""
+    ensure_social_columns(conn)
+    with conn.cursor() as cur:
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT FALSE")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS guest_expires_at TIMESTAMPTZ")
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_guest_expiry "
+            "ON users (guest_expires_at) WHERE is_guest = TRUE"
+        )
 
 
 def public_user(user: dict) -> dict:
@@ -225,6 +239,49 @@ def login(body: LoginIn):
                          "nickname": user["nickname"], "fav_team_code": user["fav_team_code"],
                          "gender": user["gender"], "buddy_nickname": user["buddy_nickname"]},
                 "token": make_token(user["user_id"], user["email"])}
+    finally:
+        conn.close()
+
+
+@router.post("/guest")
+def guest_login():
+    """공개 웹 심사용 일회성 계정을 만들고 일반 사용자와 동일한 JWT를 발급한다.
+
+    클라이언트는 토큰을 sessionStorage에만 보관한다. 만료된 게스트는 새 게스트가
+    만들어질 때 정리되며, users를 참조하는 개인 데이터도 FK cascade로 함께 삭제된다.
+    """
+    guest_id = uuid4().hex
+    email = f"guest-{guest_id}@guest.local"
+    nickname = f"게스트{guest_id[:6]}"
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=GUEST_TOKEN_HOURS)
+
+    conn = get_conn()
+    try:
+        with conn, conn.cursor() as cur:
+            ensure_user_profile_columns(conn)
+            ensure_guest_columns(conn)
+            cur.execute(
+                "DELETE FROM users "
+                "WHERE is_guest = TRUE AND guest_expires_at IS NOT NULL AND guest_expires_at < now()"
+            )
+            cur.execute(
+                """
+                INSERT INTO users (
+                    email, password_hash, nickname, fav_team_code,
+                    provider, provider_id, is_guest, guest_expires_at
+                )
+                VALUES (%s, NULL, %s, NULL, 'guest', %s, TRUE, %s)
+                RETURNING user_id, email, nickname, fav_team_code, gender,
+                          buddy_nickname, guest_expires_at
+                """,
+                (email, nickname, guest_id, expires_at),
+            )
+            user = cur.fetchone()
+        return {
+            "user": user,
+            "token": make_token(user["user_id"], user["email"], GUEST_TOKEN_HOURS),
+            "is_guest": True,
+        }
     finally:
         conn.close()
 
@@ -649,10 +706,13 @@ def change_password(body: ChangePasswordIn, user_id: int = Depends(current_user_
     conn = get_conn()
     try:
         with conn, conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE user_id = %s", (user_id,))
+            ensure_guest_columns(conn)
+            cur.execute("SELECT password_hash, is_guest FROM users WHERE user_id = %s", (user_id,))
             user = cur.fetchone()
             if not user:
                 raise HTTPException(status_code=404, detail="유저 없음")
+            if user["is_guest"] or not user["password_hash"]:
+                raise HTTPException(status_code=400, detail="게스트 및 소셜 계정은 비밀번호를 변경할 수 없습니다")
             if not verify_pw(body.current_password, user["password_hash"]):
                 raise HTTPException(status_code=401, detail="현재 비밀번호가 틀렸습니다")
 
