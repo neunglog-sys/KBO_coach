@@ -218,8 +218,9 @@ curl -X POST -H "X-Internal-Token: <INTERNAL_TOKEN>" http://127.0.0.1:8000/inter
 GitHub 화면에 예전 이름인 `Deploy to GCP`가 보이면 페이지를 새로고침한다. 실제 배포 대상은
 워크플로 파일의 이름과 실행 단계가 `Deploy to NCP`인지 열어서 확인하면 된다.
 
-서버 환경변수(`/opt/kbo/.env`)나 systemd 설정처럼 Git에 들어가지 않는 값을 바꿀 때만
-관리자 비밀번호로 서버에 접속해 수동 작업한다.
+서버 환경변수(`/opt/kbo/.env`)처럼 Git에 들어가지 않는 값을 바꿀 때만 관리자 비밀번호로
+서버에 접속해 수동 작업한다. `infra/ncp`의 systemd 서비스·타이머와 RAG 갱신 SQL은
+자동배포가 변경을 감지해 재설치하므로 최초 설치 이후에는 별도 SSH 작업이 필요 없다.
 
 ### 자동배포가 실패했을 때 서버에서 수동 적용
 
