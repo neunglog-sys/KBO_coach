@@ -31,6 +31,15 @@
   --stage-content-width: min(680px, 100%);
 }
 
+/* 모바일 웹의 Safari/Discord 인앱브라우저는 100dvh와 실제 가시 영역이 어긋날 수 있다.
+   App.tsx가 visualViewport를 실측해 주입한 값을 사용해 하단 채팅창을 브라우저 툴바 위에 고정한다. */
+.plat-web .stage-view {
+  inset: var(--app-viewport-top, 0px) 0 auto;
+  height: var(--app-viewport-height, 100dvh);
+  min-height: var(--app-viewport-height, 100dvh);
+  max-height: var(--app-viewport-height, 100dvh);
+}
+
 .stage-boot-cover {
   position: absolute;
   inset: 0;
