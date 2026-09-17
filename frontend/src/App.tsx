@@ -15,12 +15,14 @@ import { FpsOverlay } from "./components/FpsOverlay";
 import { AuthModal, type AuthModalMode } from "./components/AuthModal";
 import { GuestAccessBar } from "./components/GuestAccessBar";
 import { GuestNoticeModal } from "./components/GuestNoticeModal";
+import { GuestFeatureTour } from "./components/GuestFeatureTour";
 
 // 팀 선택 온보딩 강제 표시 (개발용 — 배포/발표 전 반드시 false!)
 const FORCE_SHOW_TEAM_ONBOARDING = false;
 
 const AUTH_SESSION_KEY = "baseballCoachAuth";
 const GUEST_NOTICE_ACK_KEY = "baseballCoachGuestNoticeAccepted";
+const GUEST_FEATURE_TOUR_ACK_KEY = "baseballCoachGuestFeatureTourAccepted";
 const MAIN_STAGE_ASSETS = ["/img/sky.png", "/img/background1.2.png"];
 const IS_PUBLIC_WEB = !Capacitor.isNativePlatform();
 
@@ -237,6 +239,12 @@ export function App() {
       && Boolean(authSession.favTeamCode)
       && sessionStorage.getItem(GUEST_NOTICE_ACK_KEY) !== "1",
   );
+  const [showGuestFeatureTour, setShowGuestFeatureTour] = useState(
+    authSession.isGuest
+      && Boolean(authSession.favTeamCode)
+      && sessionStorage.getItem(GUEST_NOTICE_ACK_KEY) === "1"
+      && sessionStorage.getItem(GUEST_FEATURE_TOUR_ACK_KEY) !== "1",
+  );
   const [showExitHint, setShowExitHint] = useState(false);
   const lastLoginBackPressRef = useRef(0);
   const exitHintTimerRef = useRef<number | null>(null);
@@ -247,6 +255,7 @@ export function App() {
     if (!IS_PUBLIC_WEB) return;
     setGuestBootstrapState("loading");
     sessionStorage.removeItem(GUEST_NOTICE_ACK_KEY);
+    sessionStorage.removeItem(GUEST_FEATURE_TOUR_ACK_KEY);
     try {
       const guestSession = await requestGuestSession();
       runRouteTransition(() => {
@@ -693,6 +702,7 @@ export function App() {
     localStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem("myTeamCode");
     sessionStorage.removeItem(GUEST_NOTICE_ACK_KEY);
+    sessionStorage.removeItem(GUEST_FEATURE_TOUR_ACK_KEY);
     clearTamagotchiLocalState();
     if (IS_PUBLIC_WEB) guestSessionPromise = null;
     runRouteTransition(() => {
@@ -703,6 +713,7 @@ export function App() {
       setIsGuest(false);
       setIsLoggedIn(false);
       setShowGuestNotice(false);
+      setShowGuestFeatureTour(false);
       setAuthModalMode(null);
       setLoginError("");
       setLoginNotice("");
@@ -742,6 +753,14 @@ export function App() {
   function confirmGuestNotice() {
     sessionStorage.setItem(GUEST_NOTICE_ACK_KEY, "1");
     setShowGuestNotice(false);
+    if (sessionStorage.getItem(GUEST_FEATURE_TOUR_ACK_KEY) !== "1") {
+      setShowGuestFeatureTour(true);
+    }
+  }
+
+  function closeGuestFeatureTour() {
+    sessionStorage.setItem(GUEST_FEATURE_TOUR_ACK_KEY, "1");
+    setShowGuestFeatureTour(false);
   }
 
   const needsTeamOnboarding = FORCE_SHOW_TEAM_ONBOARDING || Boolean(authToken && !favTeamCode);
@@ -784,6 +803,7 @@ export function App() {
           <MainViewV2
             authToken={authToken}
             isGuest={isGuest}
+            featureTourActive={showGuestFeatureTour}
             favTeamCode={favTeamCode}
             nickname={nickname}
             buddyNickname={buddyNickname}
@@ -842,6 +862,10 @@ export function App() {
 
       {isGuest && showGuestNotice && !needsTeamOnboarding ? (
         <GuestNoticeModal onConfirm={confirmGuestNotice} />
+      ) : null}
+
+      {isGuest && showGuestFeatureTour && !showGuestNotice && !needsTeamOnboarding ? (
+        <GuestFeatureTour onClose={closeGuestFeatureTour} />
       ) : null}
 
       {isGuest && authModalMode ? (
