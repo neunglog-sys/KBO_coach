@@ -11,9 +11,12 @@
       GEMINI_MODEL(기본 gemini-3.1-flash-lite), GEMINI_SEARCH_MODEL(기본 gemini-2.5-flash)
 """
 import json
+import logging
 import queue
 import re
 import threading
+import time
+import uuid
 from collections import OrderedDict
 
 from fastapi import APIRouter, Header, HTTPException
@@ -31,6 +34,8 @@ from personalization import record_answer, record_question
 import session_metrics
 
 router = APIRouter(tags=["chat"])
+# uvicorn.error의 INFO 핸들러를 상속해 systemd journal에 확실히 남긴다.
+_ops_logger = logging.getLogger("uvicorn.error.kbo_chat")
 
 # 응답 캐시(팀+질문) — 반복/공통 질문은 Gemini·임베딩 호출 없이 즉시 응답 → 지연 스파이크 회피.
 _CACHE_MAX = 500
@@ -121,11 +126,154 @@ def _cache_put(key, value):
             _cache.popitem(last=False)
 
 
-def _public_context(used: dict, *, cached: bool = False) -> dict:
-    context = {key: value for key, value in used.items() if key != "rag_context"}
+def _public_context(
+    used: dict,
+    *,
+    cached: bool = False,
+    cache_kind: str | None = None,
+) -> dict:
+    context = {
+        key: value
+        for key, value in used.items()
+        if key != "rag_context" and not key.startswith("_")
+    }
     if cached:
         context["cached"] = True
+        # 캐시 엔트리에 저장된 최초 생성 시간은 현재 요청 속도가 아니므로 노출하지 않는다.
+        context.pop("timing_ms", None)
+    context["cache"] = cache_kind or context.get("cache") or "none"
     return context
+
+
+def _new_request_id() -> str:
+    """운영 로그 상관관계용 ID. 사용자·질문 정보와 무관한 임의 값이다."""
+    return uuid.uuid4().hex[:12]
+
+
+def _elapsed_ms(started: float) -> int:
+    return max(0, round((time.perf_counter() - started) * 1000))
+
+
+def _failure_kind(exc: BaseException) -> str:
+    """공급자 예외를 비밀값/본문 없이 운영용 범주로만 분류한다."""
+    if isinstance(exc, llm.SearchTimeoutError):
+        return "timeout"
+    name = type(exc).__name__.lower()
+    message = str(exc).lower()
+    combined = f"{name} {message}"
+    if "timeout" in combined or "deadline" in combined:
+        return "timeout"
+    if "429" in combined or "quota" in combined or "resource_exhausted" in combined:
+        return "quota"
+    if any(token in combined for token in ("401", "403", "unauth", "permission", "api key")):
+        return "auth"
+    if any(token in combined for token in ("500", "502", "503", "504", "unavailable", "connection")):
+        return "provider_unavailable"
+    return "provider_error"
+
+
+def _ops_log(event: str, *, level: int = logging.INFO, **fields) -> None:
+    """journalctl에서 grep 가능한 구조화 로그. 질문·답변·키는 절대 받지 않는다."""
+    payload = {"event": event, **fields}
+    _ops_logger.log(
+        level,
+        "chat_ops %s",
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str),
+    )
+
+
+def _route_status(route: str) -> str:
+    return {
+        "search_timeout": "timeout",
+        "search_unavailable": "provider_error",
+        "search_no_result": "no_verified_result",
+        "llm_unavailable": "unavailable",
+        "voice_error": "provider_error",
+        "error": "internal_error",
+    }.get(route, "success")
+
+
+def _route_model(context: dict) -> str:
+    route = str(context.get("route") or "unknown")
+    if route == "google_search" or route.startswith("search_"):
+        return str(context.get("search_model") or llm.search_model_name())
+    if route == "llm_unavailable" or route == "error":
+        return "none"
+    return llm.model_name()
+
+
+def _log_request_result(
+    *,
+    request_id: str,
+    endpoint: str,
+    team_code: str | None,
+    started: float,
+    result: dict,
+) -> None:
+    context = result.get("context") if isinstance(result, dict) else {}
+    if not isinstance(context, dict):
+        context = {}
+    route = str(context.get("route") or "unknown")
+    sources = context.get("web_sources")
+    _ops_log(
+        "request_completed",
+        request_id=request_id,
+        endpoint=endpoint,
+        status=_route_status(route),
+        route=route,
+        model=_route_model(context),
+        duration_ms=_elapsed_ms(started),
+        timing_ms=context.get("timing_ms", {}),
+        cache=context.get("cache", "none"),
+        cached=bool(context.get("cached")),
+        sources_count=len(sources) if isinstance(sources, list) else 0,
+        tts_failures=int(context.get("tts_failures") or 0),
+        team_code=(team_code or "none")[:16],
+    )
+
+
+def _log_request_failure(
+    *,
+    request_id: str,
+    endpoint: str,
+    team_code: str | None,
+    started: float,
+    exc: BaseException,
+) -> None:
+    _ops_log(
+        "request_failed",
+        level=logging.ERROR,
+        request_id=request_id,
+        endpoint=endpoint,
+        status=_failure_kind(exc),
+        route="error",
+        model="unknown",
+        duration_ms=_elapsed_ms(started),
+        error_type=type(exc).__name__,
+        team_code=(team_code or "none")[:16],
+    )
+
+
+def _log_provider_failure(
+    *,
+    request_id: str,
+    stage: str,
+    model: str,
+    started: float,
+    exc: BaseException,
+    provider: str = "gemini",
+) -> None:
+    _ops_log(
+        "provider_failed",
+        level=logging.WARNING,
+        request_id=request_id,
+        stage=stage,
+        provider=provider,
+        model=model,
+        status=_failure_kind(exc),
+        duration_ms=_elapsed_ms(started),
+        error_type=type(exc).__name__,
+    )
 
 CHUNK_MIN_SCORE = 0.65   # 벡터 유사도(코사인) 이 미만이면 관련 없다고 보고 제외.
                          # 0.45는 너무 관대(무관 질문에도 청크 항상 부착)라 0.65로 상향
@@ -920,9 +1068,38 @@ def _search_user_prompt(user: str) -> str:
     """
 
 
-def _resolve_answer(body: ChatIn, status_callback=None) -> tuple[str, dict]:
+def _generate_default_answer(
+    system: str,
+    user: str,
+    used: dict,
+    *,
+    request_id: str,
+) -> str:
+    started = time.perf_counter()
+    try:
+        return llm.generate(system, user, temperature=0.85, max_tokens=250)
+    except Exception as exc:
+        _log_provider_failure(
+            request_id=request_id,
+            stage="default_generation",
+            model=llm.model_name(),
+            started=started,
+            exc=exc,
+        )
+        raise
+    finally:
+        used.setdefault("timing_ms", {})["model"] = _elapsed_ms(started)
+
+
+def _resolve_answer(
+    body: ChatIn,
+    status_callback=None,
+    request_id: str = "untracked",
+) -> tuple[str, dict]:
     """RAG 우선 → 검증된 검색 캐시 → Google Search 순서로 답변한다."""
+    rag_started = time.perf_counter()
     system, user, used = _prepare(body)
+    used.setdefault("timing_ms", {})["rag"] = _elapsed_ms(rag_started)
     needs_fresh = _requires_fresh_search(body.question)
     has_rag = _has_rag_evidence(used)
     rag_is_enough = has_rag and (
@@ -932,30 +1109,55 @@ def _resolve_answer(body: ChatIn, status_callback=None) -> tuple[str, dict]:
     # 기존 RAG가 질문을 직접 해결하지 못할 때만 검증된 웹 캐시와 검색으로 넘어간다.
     cached_web = None
     if not rag_is_enough:
+        cache_started = time.perf_counter()
         cached_web = web_knowledge.find(body.question, body.team_code)
+        used.setdefault("timing_ms", {})["web_cache_lookup"] = _elapsed_ms(cache_started)
     if cached_web:
         user = _add_cached_web_context(user, used, cached_web)
         _emit_status(status_callback, _STATUS_WRITING)
-        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+        answer = _generate_default_answer(
+            system, user, used, request_id=request_id
+        )
         used["route"] = "web_cache"
+        used["cache"] = "web"
         return answer, used
 
     # 최신성이 필요하지 않고 신뢰 가능한 RAG가 있으면 저렴한 기본 모델로 끝낸다.
     if rag_is_enough:
         _emit_status(status_callback, _STATUS_WRITING)
-        answer = llm.generate(system, user, temperature=0.85, max_tokens=250)
+        answer = _generate_default_answer(
+            system, user, used, request_id=request_id
+        )
         used["route"] = "rag"
         return answer, used
 
     _emit_status(status_callback, _STATUS_SEARCH)
+    search_started = time.perf_counter()
     try:
         grounded = llm.generate_grounded(system, _search_user_prompt(user), max_tokens=300)
-    except llm.SearchTimeoutError:
+    except llm.SearchTimeoutError as exc:
+        used.setdefault("timing_ms", {})["search"] = _elapsed_ms(search_started)
+        _log_provider_failure(
+            request_id=request_id,
+            stage="google_search",
+            model=llm.search_model_name(),
+            started=search_started,
+            exc=exc,
+        )
         used["route"] = "search_timeout"
         return _SEARCH_TIMEOUT_ANSWER, used
-    except Exception:
+    except Exception as exc:
+        used.setdefault("timing_ms", {})["search"] = _elapsed_ms(search_started)
+        _log_provider_failure(
+            request_id=request_id,
+            stage="google_search",
+            model=llm.search_model_name(),
+            started=search_started,
+            exc=exc,
+        )
         used["route"] = "search_unavailable"
         return _SEARCH_UNAVAILABLE_ANSWER, used
+    used.setdefault("timing_ms", {})["search"] = _elapsed_ms(search_started)
 
     answer = (grounded.get("text") or "").strip()
     sources = grounded.get("sources") or []
@@ -989,13 +1191,37 @@ def _resolve_answer(body: ChatIn, status_callback=None) -> tuple[str, dict]:
 @router.post("/chat")
 def chat(body: ChatIn, authorization: str | None = Header(default=None)):
     """완료율 계측 wrapper — 정상 반환 시에만 complete 기록(예외 발생 시 미완료로 남음)."""
+    request_id = _new_request_id()
+    started = time.perf_counter()
     session_metrics.record("chat", "start")
-    result = _chat_impl(body, authorization)
+    try:
+        result = _chat_impl(body, authorization, request_id=request_id)
+    except Exception as exc:
+        _log_request_failure(
+            request_id=request_id,
+            endpoint="chat",
+            team_code=body.team_code,
+            started=started,
+            exc=exc,
+        )
+        raise
     session_metrics.record("chat", "complete")
+    _log_request_result(
+        request_id=request_id,
+        endpoint="chat",
+        team_code=body.team_code,
+        started=started,
+        result=result,
+    )
     return result
 
 
-def _chat_impl(body: ChatIn, authorization: str | None, status_callback=None):
+def _chat_impl(
+    body: ChatIn,
+    authorization: str | None,
+    status_callback=None,
+    request_id: str = "untracked",
+):
     _emit_status(status_callback, _STATUS_RAG)
     _record_authenticated_question(authorization, body.question)
     # 개인기록·명시적 최신 질문은 사용자/시점별이라 기존 장기 응답 캐시를 쓰지 않음.
@@ -1016,7 +1242,9 @@ def _chat_impl(body: ChatIn, authorization: str | None, status_callback=None):
             )
             return {
                 "answer": hit["answer"],
-                "context": _public_context(hit["used"], cached=True),
+                "context": _public_context(
+                    hit["used"], cached=True, cache_kind="memory"
+                ),
             }
         p = pcache.get("chat", cache_key)   # 영속 캐시(배포 생존) 확인
         if p is not None and p[0]:
@@ -1030,14 +1258,20 @@ def _chat_impl(body: ChatIn, authorization: str | None, status_callback=None):
             )
             return {
                 "answer": p[0]["answer"],
-                "context": _public_context(p[0].get("used", {}), cached=True),
+                "context": _public_context(
+                    p[0].get("used", {}), cached=True, cache_kind="persistent"
+                ),
             }
 
     if not llm.llm_ready():
         return {"answer": "현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요.",
                 "context": {"route": "llm_unavailable"}}
     try:
-        answer, used = _resolve_answer(body, status_callback=status_callback)
+        answer, used = _resolve_answer(
+            body,
+            status_callback=status_callback,
+            request_id=request_id,
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {str(e)[:200]}")
     if not answer:
@@ -1057,6 +1291,8 @@ def _chat_impl(body: ChatIn, authorization: str | None, status_callback=None):
 @router.post("/chat/progress")
 def chat_progress(body: ChatIn, authorization: str | None = Header(default=None)):
     """RAG·검색·정리 진행 상태와 최종 답변을 SSE로 전달한다."""
+    request_id = _new_request_id()
+
     def gen():
         events: "queue.Queue" = queue.Queue()
         sentinel = object()
@@ -1065,16 +1301,36 @@ def chat_progress(body: ChatIn, authorization: str | None = Header(default=None)
             events.put({"type": "status", "message": message})
 
         def work() -> None:
+            started = time.perf_counter()
             try:
                 session_metrics.record("chat", "start")
-                result = _chat_impl(body, authorization, status_callback=status)
+                result = _chat_impl(
+                    body,
+                    authorization,
+                    status_callback=status,
+                    request_id=request_id,
+                )
                 session_metrics.record("chat", "complete")
+                _log_request_result(
+                    request_id=request_id,
+                    endpoint="chat_progress",
+                    team_code=body.team_code,
+                    started=started,
+                    result=result,
+                )
                 events.put({
                     "type": "answer",
                     "answer": result.get("answer", ""),
                     "context": result.get("context", {}),
                 })
-            except Exception:
+            except Exception as exc:
+                _log_request_failure(
+                    request_id=request_id,
+                    endpoint="chat_progress",
+                    team_code=body.team_code,
+                    started=started,
+                    exc=exc,
+                )
                 events.put({
                     "type": "answer",
                     "answer": _SEARCH_UNAVAILABLE_ANSWER,
@@ -1101,21 +1357,48 @@ def chat_progress(body: ChatIn, authorization: str | None = Header(default=None)
 @router.post("/chat/stream")
 def chat_stream(body: ChatIn, authorization: str | None = Header(default=None)):
     """호환용 text/plain 스트림. 라우팅은 /chat과 동일하게 RAG→검색 순서를 따른다."""
+    request_id = _new_request_id()
+    started = time.perf_counter()
     _record_authenticated_question(authorization, body.question)
     if not llm.llm_ready():
+        result = {
+            "answer": "현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요.",
+            "context": {"route": "llm_unavailable"},
+        }
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_stream",
+            team_code=body.team_code,
+            started=started,
+            result=result,
+        )
         return StreamingResponse(iter(["현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요."]),
                                  media_type="text/plain; charset=utf-8")
 
     def gen():
         session_metrics.record("chat_stream", "start")
         try:
-            answer, used = _resolve_answer(body)
+            answer, used = _resolve_answer(body, request_id=request_id)
             if answer:
                 yield answer
                 _record_authenticated_answer(
                     authorization, body.question, answer, used.get("rag_context")
                 )
-        except Exception:
+            _log_request_result(
+                request_id=request_id,
+                endpoint="chat_stream",
+                team_code=body.team_code,
+                started=started,
+                result={"answer": answer, "context": _public_context(used)},
+            )
+        except Exception as exc:
+            _log_request_failure(
+                request_id=request_id,
+                endpoint="chat_stream",
+                team_code=body.team_code,
+                started=started,
+                exc=exc,
+            )
             return   # 실패 시 스트림 종료 → 프론트가 빈 응답 감지하고 폴백
         session_metrics.record("chat_stream", "complete")   # 끝까지 소비됨 = 정상종료
 
@@ -1194,8 +1477,17 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
     """질문 → (Gemini 문장 스트림 ∥ 문장별 TTS) → SSE.
     각 이벤트: {text, audio(base64), mime, visemes, boundaries}. 마지막에 {done:true}.
     프론트는 받은 오디오를 순차 재생 + 텍스트/립싱크 표시."""
+    request_id = _new_request_id()
+    started = time.perf_counter()
     _record_authenticated_question(authorization, body.question)
     if not llm.llm_ready():
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_voice_stream",
+            team_code=body.team_code,
+            started=started,
+            result={"answer": "", "context": {"route": "llm_unavailable"}},
+        )
         return StreamingResponse(
             iter([f"data: {json.dumps({'error': 'LLM 미연결'}, ensure_ascii=False)}\n\n"]),
             media_type="text/event-stream")
@@ -1210,9 +1502,25 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
                     yield f"data: {json.dumps({**ev, 'cached': True}, ensure_ascii=False)}\n\n"
                 yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
                 session_metrics.record("voice_stream", "complete")
+                _log_request_result(
+                    request_id=request_id,
+                    endpoint="chat_voice_stream",
+                    team_code=body.team_code,
+                    started=started,
+                    result={
+                        "answer": "",
+                        "context": {
+                            "route": "voice_stream",
+                            "cache": "voice",
+                            "cached": True,
+                        },
+                    },
+                )
             return StreamingResponse(replay(), media_type="text/event-stream")
 
-    system, user, _ = _prepare(body)
+    rag_started = time.perf_counter()
+    system, user, used = _prepare(body)
+    used.setdefault("timing_ms", {})["rag"] = _elapsed_ms(rag_started)
 
     def gen():
         session_metrics.record("voice_stream", "start")
@@ -1223,6 +1531,7 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
 
         def produce():
             buf = ""
+            model_started = time.perf_counter()
             try:
                 for piece in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
                     buf += piece
@@ -1237,34 +1546,67 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
                 if tail:
                     q.put(tail)
             except Exception as e:
-                q.put(("__error__", str(e)[:160]))
+                _log_provider_failure(
+                    request_id=request_id,
+                    stage="voice_generation",
+                    model=llm.model_name(),
+                    started=model_started,
+                    exc=e,
+                )
+                q.put(("__error__", e))
             finally:
+                used.setdefault("timing_ms", {})["model"] = _elapsed_ms(model_started)
                 q.put(SENTINEL)
 
         threading.Thread(target=produce, daemon=True).start()
 
         events: list[dict] = []
         ok = True
+        tts_failures = 0
+        tts_duration_ms = 0
         while True:
             item = q.get()
             if item is SENTINEL:
                 break
             if isinstance(item, tuple) and item and item[0] == "__error__":
                 # 생성 단계 에러 → 에러 알리고 종료(프론트가 폴백)
-                yield f"data: {json.dumps({'error': item[1]}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'error': str(item[1])[:160]}, ensure_ascii=False)}\n\n"
                 ok = False
                 break
+            tts_started = time.perf_counter()
             try:
                 ev = _synth_event(item, body.team_code)
                 events.append(ev)
-            except Exception:
+            except Exception as exc:
                 # 한 문장 합성 실패는 치명적이지 않게 — 텍스트만 보내고 계속
+                tts_failures += 1
+                _log_provider_failure(
+                    request_id=request_id,
+                    stage="voice_tts",
+                    provider="tts",
+                    model="configured_tts",
+                    started=tts_started,
+                    exc=exc,
+                )
                 ev = {"text": item, "audio": "", "mime": "", "visemes": [], "boundaries": []}
+            finally:
+                tts_duration_ms += _elapsed_ms(tts_started)
             yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
 
         if cache_key is not None and events:
             _voice_cache_put(cache_key, events)
         yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+        used.setdefault("timing_ms", {})["tts"] = tts_duration_ms
+        used["route"] = "voice_stream" if ok else "voice_error"
+        used["cache"] = "none"
+        used["tts_failures"] = tts_failures
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_voice_stream",
+            team_code=body.team_code,
+            started=started,
+            result={"answer": "", "context": _public_context(used)},
+        )
         if ok:
             session_metrics.record("voice_stream", "complete")   # 정상 끝까지 = 완료
 
