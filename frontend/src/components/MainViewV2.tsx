@@ -1827,6 +1827,7 @@ export function MainViewV2({
       {showChat ? (
         <TeamChatView
           authToken={authToken}
+          favTeamCode={favTeamCode}
           requestClose={closingFullScreen === "chat"}
           onBack={() => finishFullScreenClose("chat")}
           onNavigate={switchToMenuTarget}

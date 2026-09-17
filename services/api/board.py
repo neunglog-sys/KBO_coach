@@ -67,7 +67,7 @@ def get_messages(team_code: str, after: int = 0, uid: int = Depends(current_user
         with conn.cursor() as cur:
             if after > 0:  # 폴링: 마지막 본 id 이후만
                 cur.execute(
-                    """SELECT message_id, nickname, content, created_at, user_id
+                    """SELECT message_id, team_code, nickname, content, created_at, user_id
                        FROM board_messages
                        WHERE team_code = %s AND message_id > %s
                        ORDER BY message_id ASC LIMIT 100""",
@@ -75,7 +75,7 @@ def get_messages(team_code: str, after: int = 0, uid: int = Depends(current_user
                 rows = cur.fetchall()
             else:          # 초기 로드: 최근 50개 → 오래된 순으로 뒤집어 반환
                 cur.execute(
-                    """SELECT message_id, nickname, content, created_at, user_id
+                    """SELECT message_id, team_code, nickname, content, created_at, user_id
                        FROM board_messages
                        WHERE team_code = %s
                        ORDER BY message_id DESC LIMIT 50""",
@@ -98,7 +98,7 @@ def post_message(team_code: str, body: MessageIn, uid: int = Depends(current_use
             cur.execute(
                 """INSERT INTO board_messages (team_code, user_id, nickname, content)
                    VALUES (%s, %s, %s, %s)
-                   RETURNING message_id, nickname, content, created_at""",
+                   RETURNING message_id, team_code, nickname, content, created_at""",
                 (code, uid, make_nickname(uid), body.content))
             row = cur.fetchone()
         row["is_mine"] = True
