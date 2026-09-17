@@ -85,6 +85,7 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.1-flash-lite
 GEMINI_SEARCH_MODEL=gemini-2.5-flash
 GEMINI_SEARCH_TIMEOUT_S=12
+GEMINI_SEARCH_THINKING_BUDGET=0
 ELEVENLABS_KEY=
 INTERNAL_TOKEN=
 PORT=8000
@@ -101,6 +102,7 @@ NAVER_REDIRECT_URI=https://<도메인>/auth/naver/callback
 - `GOOGLE_GENAI_USE_VERTEXAI=false` **필수**. true면 GCP(결제 끊김)로 Gemini를 부르다 실패한다.
 - 기본 RAG 답변은 `GEMINI_MODEL`, 최신 정보가 필요한 질문만 `GEMINI_SEARCH_MODEL`과 Google Search를 사용한다.
 - `GEMINI_SEARCH_TIMEOUT_S`를 넘기면 자동 재검색하지 않고 사용자에게 같은 질문을 다시 보내 달라고 안내한다.
+- Gemini 2.5 Flash 검색은 `GEMINI_SEARCH_THINKING_BUDGET=0`으로 내부 사고가 짧은 출력 한도를 소진하지 않게 한다.
 - `INTERNAL_TOKEN`은 새로 만들면 된다: `openssl rand -hex 24` 출력값을 넣고 따로 적어둔다(7번에서 사용).
 - `PORT=8000`은 경기 종료 감지 후 API가 자기 자신의 결과 크롤 엔드포인트를 호출할 때 필요하다.
 - `KAKAO_CLIENT_SECRET`은 비워둬도 된다. 현재 카카오 앱이 클라이언트 시크릿 미사용 설정인 것을 확인했다(2026-09-14).
@@ -238,6 +240,47 @@ journalctl -u kbo-auto-deploy.service -n 50 --no-pager
 
 환경변수만 수정했다면 자동배포 대신 `/opt/kbo/.env`를 저장하고
 `systemctl restart kbo-api`를 실행한다.
+
+## 9. LLM 운영 로그 확인
+
+LLM 운영 로그는 웹·앱 화면이나 공개 API에 노출하지 않고 NCP 서버의 systemd journal에만
+남긴다. 서버 SSH 접근 권한과 `sudo` 권한이 있는 관리자만 확인할 수 있다. 질문 원문,
+답변 원문, 사용자 토큰, Gemini API 키는 기록하지 않는다.
+
+실시간 확인:
+
+```bash
+sudo journalctl -u kbo-api -f -o cat | grep chat_ops
+```
+
+최근 30분 확인:
+
+```bash
+sudo journalctl -u kbo-api --since "30 minutes ago" -o cat | grep chat_ops
+```
+
+주요 필드:
+
+- `route`: `rag`, `google_search`, `web_cache`, `search_timeout`, `search_unavailable`
+- `model`: 실제 선택된 기본 모델 또는 검색 모델
+- `duration_ms`: API 요청 전체 응답시간
+- `timing_ms.rag`: RAG 자료 준비시간
+- `timing_ms.model`: 기본 모델 생성시간
+- `timing_ms.search`: Google Search 포함 검색 모델 시간
+- `cache`: `none`, `memory`, `persistent`, `web`
+- `status`: `success`, `timeout`, `quota`, `auth`, `provider_unavailable`, `provider_error`
+- `sources_count`: 검색 답변에 연결된 검증 출처 개수
+- `request_id`: 같은 요청의 공급자 오류와 최종 결과를 연결하는 임의 ID
+
+예시:
+
+```text
+chat_ops {"event":"request_completed","request_id":"a1b2c3d4e5f6","endpoint":"chat_progress","status":"success","route":"google_search","model":"gemini-2.5-flash","duration_ms":4231,"timing_ms":{"rag":84,"search":4012},"cache":"none","cached":false,"sources_count":3,"team_code":"HH"}
+```
+
+`provider_failed` 이벤트가 함께 나오면 Gemini 호출 단계의 실패다. `status=timeout`은 시간
+초과, `quota`는 할당량 소진, `auth`는 키·권한 문제, `provider_unavailable`은 Gemini 서버나
+연결 장애를 뜻한다.
 
 ---
 

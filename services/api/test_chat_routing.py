@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
+import os
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -20,6 +22,65 @@ def _prepared(*, has_rag: bool):
 
 
 class ChatRoutingTest(unittest.TestCase):
+    def test_provider_failures_are_classified_for_operations(self):
+        cases = [
+            (TimeoutError("deadline exceeded"), "timeout"),
+            (RuntimeError("429 RESOURCE_EXHAUSTED"), "quota"),
+            (RuntimeError("401 invalid API key"), "auth"),
+            (RuntimeError("503 service unavailable"), "provider_unavailable"),
+            (RuntimeError("unexpected response"), "provider_error"),
+        ]
+        for exc, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(chat._failure_kind(exc), expected)
+
+    def test_search_call_disables_25_flash_thinking_by_default(self):
+        captured = {}
+
+        class Models:
+            def generate_content(self, **kwargs):
+                captured.update(kwargs)
+                return SimpleNamespace()
+
+        backend = {"id": "test"}
+        client = SimpleNamespace(models=Models())
+        with (
+            patch.dict(os.environ, {}, clear=False),
+            patch.object(chat.llm, "_client_for", return_value=client),
+        ):
+            os.environ.pop("GEMINI_SEARCH_THINKING_BUDGET", None)
+            chat.llm._grounded_call(backend, "system", "question", 300)
+
+        config = captured["config"]
+        self.assertEqual(config.thinking_config.thinking_budget, 0)
+
+    def test_operations_log_records_route_model_and_latency_without_question(self):
+        started = time.perf_counter() - 0.01
+        result = {
+            "answer": "민감할 수 있는 답변",
+            "context": {
+                "route": "google_search",
+                "search_model": "gemini-2.5-flash",
+                "timing_ms": {"rag": 3, "search": 7},
+                "web_sources": [{"title": "공식", "url": "https://example.com"}],
+                "cache": "none",
+            },
+        }
+        with self.assertLogs(chat._ops_logger, level="INFO") as logs:
+            chat._log_request_result(
+                request_id="test123",
+                endpoint="chat_progress",
+                team_code="HH",
+                started=started,
+                result=result,
+            )
+
+        line = logs.output[0]
+        self.assertIn('"route":"google_search"', line)
+        self.assertIn('"model":"gemini-2.5-flash"', line)
+        self.assertIn('"sources_count":1', line)
+        self.assertNotIn(result["answer"], line)
+
     def test_only_supported_grounding_chunks_become_sources(self):
         response = SimpleNamespace(candidates=[SimpleNamespace(
             grounding_metadata=SimpleNamespace(

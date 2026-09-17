@@ -16,6 +16,7 @@
   GEMINI_MODEL=gemini-3.1-flash-lite
   GEMINI_SEARCH_MODEL=gemini-2.5-flash
   GEMINI_SEARCH_TIMEOUT_S=12
+  GEMINI_SEARCH_THINKING_BUDGET=0
 """
 import os
 import threading
@@ -193,11 +194,16 @@ def _grounding_sources(response) -> list[dict]:
 
 
 def _grounded_call(b: dict, system: str | None, user: str, max_tokens: int):
+    # Gemini 2.5 Flash는 기본이 동적 사고(-1)라 짧은 검색 답변의 출력 토큰을
+    # 내부 사고가 먼저 소진해 MAX_TOKENS + 빈 텍스트로 끝날 수 있다.
+    # 검색은 이미 Google 근거가 핵심이므로 기본 0(사고 비활성화)으로 빠르게 응답한다.
+    thinking_budget = int(os.environ.get("GEMINI_SEARCH_THINKING_BUDGET", "0"))
     config = types.GenerateContentConfig(
         system_instruction=system,
         temperature=0.2,
         max_output_tokens=max_tokens,
         tools=[types.Tool(google_search=types.GoogleSearch())],
+        thinking_config=types.ThinkingConfig(thinking_budget=thinking_budget),
     )
     return _client_for(b).models.generate_content(
         model=search_model_name(), contents=user, config=config)
