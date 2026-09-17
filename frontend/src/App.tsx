@@ -388,6 +388,43 @@ export function App() {
     document.documentElement.classList.add(`plat-${Capacitor.getPlatform()}`);
   }, []);
 
+  // iPhone Safari·인앱 브라우저는 주소창/하단 툴바가 차지하는 영역을 100dvh에
+  // 포함해 보고하는 경우가 있다. 실제로 보이는 visual viewport를 CSS 변수로
+  // 전달해 메인 화면과 하단 채팅 시트가 브라우저 UI 뒤로 내려가지 않게 한다.
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) return;
+
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+    let frame = 0;
+
+    const syncViewport = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const visibleHeight = Math.round(viewport?.height ?? window.innerHeight);
+        const visibleTop = Math.max(0, Math.round(viewport?.offsetTop ?? 0));
+        root.style.setProperty("--app-viewport-height", `${visibleHeight}px`);
+        root.style.setProperty("--app-viewport-top", `${visibleTop}px`);
+      });
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+    viewport?.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+      viewport?.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+      root.style.removeProperty("--app-viewport-height");
+      root.style.removeProperty("--app-viewport-top");
+    };
+  }, []);
+
   useEffect(() => {
     if (
       isLoggedIn ||
