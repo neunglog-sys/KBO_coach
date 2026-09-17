@@ -134,11 +134,20 @@ def _put_sync(kind: str, k: str, payload, audio) -> None:
         pass   # 저장 실패는 무시(다음 기회에)
 
 
+_persona_hash_cache: dict[str, str] = {}
+
+
 def persona_hash(team_code: str | None) -> str:
     """팀 페르소나 내용 해시(12자) — 챗 캐시 키에 포함해 페르소나 수정 시 캐시 자연 무효화.
-    실패/팀없음이면 '' (캐시는 동작하되 버전 구분만 없어짐)."""
+    실패/팀없음이면 '' (캐시는 동작하되 버전 구분만 없어짐).
+
+    값은 프로세스 안에 캐시한다. 페르소나를 고치면 RAG 갱신 타이머가 kbo-api를 재시작시켜
+    캐시가 비워지므로, 매 질문마다 DB를 치지 않아도 옛 해시가 남지 않는다(요청당 약 0.2초 절약)."""
     if not team_code or not _available():
         return ""
+    hit = _persona_hash_cache.get(team_code)
+    if hit is not None:
+        return hit
     try:
         conn = _conn()
         try:
@@ -148,7 +157,9 @@ def persona_hash(team_code: str | None) -> str:
                                coalesce(speaking_features,'') || coalesce(response_style,'')) AS h
                     FROM team_personas WHERE team_code = %s""", (team_code,))
                 row = cur.fetchone()
-            return (row["h"][:12] if row and row.get("h") else "")
+            value = (row["h"][:12] if row and row.get("h") else "")
+            _persona_hash_cache[team_code] = value
+            return value
         finally:
             conn.close()
     except Exception:

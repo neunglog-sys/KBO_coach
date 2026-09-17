@@ -12,12 +12,14 @@
 """
 import json
 import logging
+import os
 import queue
 import re
 import threading
 import time
 import uuid
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -869,6 +871,9 @@ def _schedule_games(question: str, team_code: str | None) -> list:
 
 def _retrieve(cur, question: str, team_code: str | None):
     """참고자료 수집: 용어·규칙(키워드 매칭) + 구단 문화(knowledge_chunks 벡터검색) + 구단 기본팩트(teams)."""
+    # 질문 임베딩(약 0.4초)은 아래 키워드·몽고 조회와 겹쳐 돌린다. 예전엔 조회가 다 끝난 뒤
+    # 순서대로 호출해서 그 시간이 그대로 더해졌다.
+    embed_future = _EMBED_POOL.submit(embed_text, question, "RETRIEVAL_QUERY")
     cur.execute("SELECT term, definition FROM glossary "
                 "WHERE %s ILIKE '%%' || term || '%%' ORDER BY length(term) DESC LIMIT 5", (question,))
     terms = cur.fetchall()
@@ -904,7 +909,7 @@ def _retrieve(cur, question: str, team_code: str | None):
     # knowledge_chunks 벡터 유사도 검색 (질문 임베딩 → 코사인 거리 정렬)
     chunks = []
     try:
-        qvec = to_pgvector(embed_text(question, task_type="RETRIEVAL_QUERY"))
+        qvec = to_pgvector(embed_future.result(timeout=EMBED_WAIT_S))
         if team_code:   # 페르소나 팀 + 공통(team_code NULL) 청크로 한정
             cur.execute("""SELECT title, content, 1 - (embedding <=> %s::vector) AS score
                            FROM knowledge_chunks
@@ -1442,6 +1447,10 @@ def chat_warmup():
 
 # ── 음성 스트리밍 파이프라인: Gemini 문장 단위 생성 → 끝난 문장부터 TTS → SSE로 흘림 ──
 # 첫 음성이 "첫 문장 생성+합성"만에 시작(≈2~3s) → 전체(질문→음성) 대기 6.5s 체감 제거.
+# 임베딩을 조회와 겹쳐 돌리기 위한 전용 풀. 요청당 1건이라 작게 잡는다.
+_EMBED_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="embed")
+EMBED_WAIT_S = float(os.environ.get("EMBED_WAIT_S", "6"))
+
 _SENT_RE = re.compile(r"(?<=[.!?…。!?])\s+")   # 문장 끝(.?!…) 뒤 공백 기준 분리
 
 _VOICE_CACHE_MAX = 200

@@ -10,7 +10,16 @@ kind: 'chat'(텍스트 통응답) / 'chat_stream'(텍스트 스트림) / 'voice_
 """
 from __future__ import annotations
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 from db_pg import get_conn
+
+# 기록은 계측용이라 응답을 기다리게 할 이유가 없다. 별도 스레드로 보낸다.
+# (요청마다 start·complete 2회 × 연결·DDL·INSERT로 약 0.4초가 응답 시간에 붙던 것을 뺀다)
+_ex = ThreadPoolExecutor(max_workers=2, thread_name_prefix="metrics")
+_ready = False
+_ready_lock = threading.Lock()
 
 
 def ensure_table(cur) -> None:
@@ -28,11 +37,23 @@ def ensure_table(cur) -> None:
 
 
 def record(kind: str, phase: str, user_key: str | None = None) -> None:
+    """비동기 기록 — 실패해도 무시한다(계측이 응답을 막지 않게)."""
+    try:
+        _ex.submit(_record_sync, kind, phase, user_key)
+    except Exception:
+        pass
+
+
+def _record_sync(kind: str, phase: str, user_key: str | None = None) -> None:
+    global _ready
     try:
         conn = get_conn()
         try:
             with conn.cursor() as cur:
-                ensure_table(cur)
+                if not _ready:          # 테이블 생성 구문은 프로세스당 한 번만
+                    with _ready_lock:
+                        ensure_table(cur)
+                        _ready = True
                 cur.execute(
                     "INSERT INTO session_events (kind, phase, user_key) VALUES (%s, %s, %s)",
                     (kind, phase, user_key),

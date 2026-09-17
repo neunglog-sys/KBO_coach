@@ -109,9 +109,20 @@ def llm_ready() -> bool:
     return bool(_backends())
 
 
-def _config(system, temperature, max_tokens):
-    return types.GenerateContentConfig(system_instruction=system, temperature=temperature,
-                                       max_output_tokens=max_tokens)
+def thinking_budget() -> int:
+    """기본 답변 모델의 사고 예산. 0이면 사고 없이 바로 답한다(기본값).
+
+    실측(gemini-3.1-flash-lite, 같은 질문 3회 중앙값): 기본 3.1초 → 사고 0 설정 시 1.8초.
+    RAG 자료를 붙여 짧게 답하는 용도라 사고를 켤 이득이 없어 기본을 0으로 둔다."""
+    return int(os.environ.get("GEMINI_THINKING_BUDGET", "0"))
+
+
+def _config(system, temperature, max_tokens, thinking: bool = True):
+    kwargs = dict(system_instruction=system, temperature=temperature,
+                  max_output_tokens=max_tokens)
+    if thinking:
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=thinking_budget())
+    return types.GenerateContentConfig(**kwargs)
 
 
 def generate(
@@ -125,9 +136,16 @@ def generate(
     errs = []
     for b in _backends():
         try:
-            r = _client_for(b).models.generate_content(
-                model=model or model_name(), contents=user,
-                config=_config(system, temperature, max_tokens))
+            try:
+                r = _client_for(b).models.generate_content(
+                    model=model or model_name(), contents=user,
+                    config=_config(system, temperature, max_tokens))
+            except Exception as e:                     # 사고 설정 미지원 모델 대비
+                if "thinking" not in str(e).lower():
+                    raise
+                r = _client_for(b).models.generate_content(
+                    model=model or model_name(), contents=user,
+                    config=_config(system, temperature, max_tokens, thinking=False))
             txt = (r.text or "").strip()
             if txt:
                 return txt
