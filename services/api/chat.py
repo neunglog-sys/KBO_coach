@@ -81,7 +81,7 @@ def _record_authenticated_answer(
 
 
 # 시스템 프롬프트(규칙) 버전 — 프롬프트를 바꾸면 이 값을 올린다 → 캐시 키가 달라져 옛 답이 자동 무효화.
-_PROMPT_VERSION = "p3-20260917-grounded-search"
+_PROMPT_VERSION = "p4-20260917-rumor-guard"
 
 _STATUS_RAG = "관련 자료를 확인하고 있어요…"
 _STATUS_SEARCH = "최신 정보를 찾고 있어요…"
@@ -103,6 +103,28 @@ _NO_VERIFIED_RESULT_ANSWER = (
 _FRESH_INFO_RE = re.compile(
     r"최신|오늘|지금|현재|방금|뉴스|소식|이적|트레이드|부상|복귀|엔트리|"
     r"대표팀|국가대표|아시안게임|올림픽|WBC|프리미어\s*12|확정|발표|선발됐|뽑혔|합류",
+    re.IGNORECASE,
+)
+
+# 인사·계약은 우리 크롤 자료에 아예 없는 영역이라 저장 자료로는 확인이 안 된다.
+# ("한화 감독 바뀐다던데?"가 응원 문화 청크를 근거로 RAG 답변되던 문제)
+_PERSONNEL_RE = re.compile(
+    r"감독|코치|사령탑|선임|사임|경질|자진\s*사퇴|은퇴|방출|웨이버|영입|계약|재계약|"
+    r"FA|자유계약|사인|입단|이닝이터|콜업|말소|등록|퓨처스\s*행",
+    re.IGNORECASE,
+)
+
+# 구단 이름·별칭 (소문 확인형이 야구 이야기인지 판별용)
+_TEAM_NAME_RE = re.compile(
+    r"LG|엘지|트윈스|두산|베어스|KT|위즈|SSG|쓱|랜더스|키움|히어로즈|"
+    r"KIA|기아|타이거즈|삼성|라이온즈|롯데|자이언츠|한화|이글스|NC|엔씨|다이노스",
+    re.IGNORECASE,
+)
+
+# 소문 확인형 질문 — 사실 여부를 물으므로 근거 없이 단정하면 안 된다.
+_RUMOR_RE = re.compile(
+    r"(는데|한대|된대|대요|더라|카더라|찌라시|루머|소문)\s*[\?？]?$|"
+    r"사실\s*(이야|인가|이야\?|임|이니)|진짜\s*(야|인가|임)|맞\s*(아|나|는지|습니까|아요)",
     re.IGNORECASE,
 )
 
@@ -347,6 +369,10 @@ def _build_system_prompt(persona: dict | None) -> str:
         "- 확인되지 않은 사실을 사실처럼 단정하지 않는다.\n"
         "- 최신 경기 결과, 선수 기록, 순위, 부상 정보는 데이터 없이 추측하지 않는다.\n"
         "- 루머를 사실처럼 전달하지 않는다.\n"
+        # 감독 선임·이적·은퇴 같은 인사 소식은 크롤 자료에 없는 영역이다. 근거 없이 사실무근이라고
+        # 부정하면, 실제로 일어난 일을 물었을 때 틀린 답을 자신 있게 하게 된다.
+        "- 감독 선임·계약·이적·은퇴처럼 [참고자료]에 근거가 없는 소식은 사실이 아니라고 부정하지도, "
+        "사실이라고 인정하지도 않는다. 확인된 자료가 없다고 말하고 공식 발표를 확인하라고 안내한다.\n"
         "- 선수, 감독, 관계자의 사생활을 추측하거나 해석하지 않는다.\n"
         "- 출처가 없는 기록이나 통계를 사실처럼 제시하지 않는다.\n"
         "- 불확실한 정보를 확실한 정보처럼 표현하지 않는다.\n"
@@ -1011,11 +1037,25 @@ def _prepare(body: ChatIn):
 
 
 def _requires_fresh_search(question: str) -> bool:
-    return bool(_FRESH_INFO_RE.search(question or ""))
+    """저장 자료만으로 답하면 위험한 질문인지. 시점 표현뿐 아니라 인사·계약, 소문 확인형도 포함한다."""
+    q = question or ""
+    if _FRESH_INFO_RE.search(q) or _PERSONNEL_RE.search(q):
+        return True
+    # 소문 확인형은 인물·구단 이야기일 때만 최신으로 본다(규칙 질문의 "맞아?"까지 검색으로 보내지 않게).
+    return bool(_RUMOR_RE.search(q) and (_PERSONNEL_RE.search(q) or _TEAM_NAME_RE.search(q)))
 
 
-def _has_rag_evidence(used: dict) -> bool:
-    return any(bool(used.get(key)) for key in ("terms", "rules", "culture", "facts", "personal"))
+def _has_rag_evidence(used: dict, question: str | None = None) -> bool:
+    """RAG 자료가 질문의 근거가 되는지.
+
+    인사·계약이나 소문 확인형 질문에는 구단 문화 청크가 흔히 딸려 오는데(한화 감독 질문에
+    한화 응원단장 문서가 붙는 식) 답의 근거가 못 된다. 그런 질문에서는 문화 청크를 근거로
+    치지 않아서, 검증된 웹 검색으로 넘어가게 한다."""
+    keys = ["terms", "rules", "culture", "facts", "personal"]
+    q = question or ""
+    if q and (_PERSONNEL_RE.search(q) or _RUMOR_RE.search(q)):
+        keys.remove("culture")
+    return any(bool(used.get(key)) for key in keys)
 
 
 def _rag_covers_fresh_question(question: str, used: dict) -> bool:
@@ -1106,7 +1146,7 @@ def _resolve_answer(
     system, user, used = _prepare(body)
     used.setdefault("timing_ms", {})["rag"] = _elapsed_ms(rag_started)
     needs_fresh = _requires_fresh_search(body.question)
-    has_rag = _has_rag_evidence(used)
+    has_rag = _has_rag_evidence(used, body.question)
     rag_is_enough = has_rag and (
         not needs_fresh or _rag_covers_fresh_question(body.question, used)
     )
