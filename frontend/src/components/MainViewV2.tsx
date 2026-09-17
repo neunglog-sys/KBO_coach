@@ -79,6 +79,7 @@ const TEAM_SEND_COLOR: Record<string, string> = {
 interface MainViewV2Props {
   authToken: string;
   isGuest?: boolean;
+  featureTourActive?: boolean;
   favTeamCode?: string;
   nickname?: string;
   buddyNickname?: string;
@@ -209,6 +210,7 @@ function VoiceWaveIcon() {
 export function MainViewV2({
   authToken,
   isGuest = false,
+  featureTourActive = false,
   favTeamCode,
   nickname,
   buddyNickname,
@@ -365,6 +367,13 @@ export function MainViewV2({
   const chatHeightRef = useRef(chatHeight);
   const navHiddenRef = useRef(navHidden);
   const [chatAtNavLimit, setChatAtNavLimit] = useState(false);
+
+  useEffect(() => {
+    if (!featureTourActive) return;
+    setNavHidden(false);
+    setChatCollapsed(false);
+    setChatAtNavLimit(false);
+  }, [featureTourActive]);
 
   const supportsSTT =
     Capacitor.isNativePlatform() ||   // 앱은 네이티브 음성인식 플러그인 사용 (iOS 웹뷰는 Web Speech API 미지원)
