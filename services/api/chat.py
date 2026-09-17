@@ -188,6 +188,7 @@ def _route_status(route: str) -> str:
         "search_unavailable": "provider_error",
         "search_no_result": "no_verified_result",
         "llm_unavailable": "unavailable",
+        "voice_error": "provider_error",
         "error": "internal_error",
     }.get(route, "success")
 
@@ -226,6 +227,7 @@ def _log_request_result(
         cache=context.get("cache", "none"),
         cached=bool(context.get("cached")),
         sources_count=len(sources) if isinstance(sources, list) else 0,
+        tts_failures=int(context.get("tts_failures") or 0),
         team_code=(team_code or "none")[:16],
     )
 
@@ -259,13 +261,14 @@ def _log_provider_failure(
     model: str,
     started: float,
     exc: BaseException,
+    provider: str = "gemini",
 ) -> None:
     _ops_log(
         "provider_failed",
         level=logging.WARNING,
         request_id=request_id,
         stage=stage,
-        provider="gemini",
+        provider=provider,
         model=model,
         status=_failure_kind(exc),
         duration_ms=_elapsed_ms(started),
@@ -1354,21 +1357,48 @@ def chat_progress(body: ChatIn, authorization: str | None = Header(default=None)
 @router.post("/chat/stream")
 def chat_stream(body: ChatIn, authorization: str | None = Header(default=None)):
     """호환용 text/plain 스트림. 라우팅은 /chat과 동일하게 RAG→검색 순서를 따른다."""
+    request_id = _new_request_id()
+    started = time.perf_counter()
     _record_authenticated_question(authorization, body.question)
     if not llm.llm_ready():
+        result = {
+            "answer": "현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요.",
+            "context": {"route": "llm_unavailable"},
+        }
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_stream",
+            team_code=body.team_code,
+            started=started,
+            result=result,
+        )
         return StreamingResponse(iter(["현재 답변 모델에 연결할 수 없어요. 잠시 후 다시 질문해 주세요."]),
                                  media_type="text/plain; charset=utf-8")
 
     def gen():
         session_metrics.record("chat_stream", "start")
         try:
-            answer, used = _resolve_answer(body)
+            answer, used = _resolve_answer(body, request_id=request_id)
             if answer:
                 yield answer
                 _record_authenticated_answer(
                     authorization, body.question, answer, used.get("rag_context")
                 )
-        except Exception:
+            _log_request_result(
+                request_id=request_id,
+                endpoint="chat_stream",
+                team_code=body.team_code,
+                started=started,
+                result={"answer": answer, "context": _public_context(used)},
+            )
+        except Exception as exc:
+            _log_request_failure(
+                request_id=request_id,
+                endpoint="chat_stream",
+                team_code=body.team_code,
+                started=started,
+                exc=exc,
+            )
             return   # 실패 시 스트림 종료 → 프론트가 빈 응답 감지하고 폴백
         session_metrics.record("chat_stream", "complete")   # 끝까지 소비됨 = 정상종료
 
@@ -1447,8 +1477,17 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
     """질문 → (Gemini 문장 스트림 ∥ 문장별 TTS) → SSE.
     각 이벤트: {text, audio(base64), mime, visemes, boundaries}. 마지막에 {done:true}.
     프론트는 받은 오디오를 순차 재생 + 텍스트/립싱크 표시."""
+    request_id = _new_request_id()
+    started = time.perf_counter()
     _record_authenticated_question(authorization, body.question)
     if not llm.llm_ready():
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_voice_stream",
+            team_code=body.team_code,
+            started=started,
+            result={"answer": "", "context": {"route": "llm_unavailable"}},
+        )
         return StreamingResponse(
             iter([f"data: {json.dumps({'error': 'LLM 미연결'}, ensure_ascii=False)}\n\n"]),
             media_type="text/event-stream")
@@ -1463,9 +1502,25 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
                     yield f"data: {json.dumps({**ev, 'cached': True}, ensure_ascii=False)}\n\n"
                 yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
                 session_metrics.record("voice_stream", "complete")
+                _log_request_result(
+                    request_id=request_id,
+                    endpoint="chat_voice_stream",
+                    team_code=body.team_code,
+                    started=started,
+                    result={
+                        "answer": "",
+                        "context": {
+                            "route": "voice_stream",
+                            "cache": "voice",
+                            "cached": True,
+                        },
+                    },
+                )
             return StreamingResponse(replay(), media_type="text/event-stream")
 
-    system, user, _ = _prepare(body)
+    rag_started = time.perf_counter()
+    system, user, used = _prepare(body)
+    used.setdefault("timing_ms", {})["rag"] = _elapsed_ms(rag_started)
 
     def gen():
         session_metrics.record("voice_stream", "start")
@@ -1476,6 +1531,7 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
 
         def produce():
             buf = ""
+            model_started = time.perf_counter()
             try:
                 for piece in llm.generate_stream(system, user, temperature=0.85, max_tokens=250):
                     buf += piece
@@ -1490,34 +1546,67 @@ def chat_voice_stream(body: ChatIn, authorization: str | None = Header(default=N
                 if tail:
                     q.put(tail)
             except Exception as e:
-                q.put(("__error__", str(e)[:160]))
+                _log_provider_failure(
+                    request_id=request_id,
+                    stage="voice_generation",
+                    model=llm.model_name(),
+                    started=model_started,
+                    exc=e,
+                )
+                q.put(("__error__", e))
             finally:
+                used.setdefault("timing_ms", {})["model"] = _elapsed_ms(model_started)
                 q.put(SENTINEL)
 
         threading.Thread(target=produce, daemon=True).start()
 
         events: list[dict] = []
         ok = True
+        tts_failures = 0
+        tts_duration_ms = 0
         while True:
             item = q.get()
             if item is SENTINEL:
                 break
             if isinstance(item, tuple) and item and item[0] == "__error__":
                 # 생성 단계 에러 → 에러 알리고 종료(프론트가 폴백)
-                yield f"data: {json.dumps({'error': item[1]}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'error': str(item[1])[:160]}, ensure_ascii=False)}\n\n"
                 ok = False
                 break
+            tts_started = time.perf_counter()
             try:
                 ev = _synth_event(item, body.team_code)
                 events.append(ev)
-            except Exception:
+            except Exception as exc:
                 # 한 문장 합성 실패는 치명적이지 않게 — 텍스트만 보내고 계속
+                tts_failures += 1
+                _log_provider_failure(
+                    request_id=request_id,
+                    stage="voice_tts",
+                    provider="tts",
+                    model="configured_tts",
+                    started=tts_started,
+                    exc=exc,
+                )
                 ev = {"text": item, "audio": "", "mime": "", "visemes": [], "boundaries": []}
+            finally:
+                tts_duration_ms += _elapsed_ms(tts_started)
             yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
 
         if cache_key is not None and events:
             _voice_cache_put(cache_key, events)
         yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+        used.setdefault("timing_ms", {})["tts"] = tts_duration_ms
+        used["route"] = "voice_stream" if ok else "voice_error"
+        used["cache"] = "none"
+        used["tts_failures"] = tts_failures
+        _log_request_result(
+            request_id=request_id,
+            endpoint="chat_voice_stream",
+            team_code=body.team_code,
+            started=started,
+            result={"answer": "", "context": _public_context(used)},
+        )
         if ok:
             session_metrics.record("voice_stream", "complete")   # 정상 끝까지 = 완료
 

@@ -261,15 +261,17 @@ sudo journalctl -u kbo-api --since "30 minutes ago" -o cat | grep chat_ops
 
 주요 필드:
 
-- `route`: `rag`, `google_search`, `web_cache`, `search_timeout`, `search_unavailable`
+- `route`: `rag`, `google_search`, `web_cache`, `voice_stream`, `voice_error`, `search_timeout`, `search_unavailable`
 - `model`: 실제 선택된 기본 모델 또는 검색 모델
 - `duration_ms`: API 요청 전체 응답시간
 - `timing_ms.rag`: RAG 자료 준비시간
 - `timing_ms.model`: 기본 모델 생성시간
 - `timing_ms.search`: Google Search 포함 검색 모델 시간
+- `timing_ms.tts`: 음성 답변 합성 누적시간
 - `cache`: `none`, `memory`, `persistent`, `web`
 - `status`: `success`, `timeout`, `quota`, `auth`, `provider_unavailable`, `provider_error`
 - `sources_count`: 검색 답변에 연결된 검증 출처 개수
+- `tts_failures`: 음성 답변 중 합성에 실패해 텍스트만 보낸 문장 수
 - `request_id`: 같은 요청의 공급자 오류와 최종 결과를 연결하는 임의 ID
 
 예시:
