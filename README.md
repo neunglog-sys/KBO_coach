@@ -139,7 +139,6 @@
 
   **`frontend/.env`** (프론트 빌드 변수)
   ```
-  VITE_KAKAO_MAP_KEY=...    # 카카오맵(구장정보)
   VITE_GOOGLE_CLIENT_ID=... # 구글 로그인
   ```
 

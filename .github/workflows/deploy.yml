@@ -37,7 +37,6 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_BASE: https://baseball-coach.duckdns.org
-          VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: |
           test -n "$VITE_API_BASE"
