@@ -69,7 +69,7 @@ const STADIUM_IMAGES: Record<string, string> = {
   NC: "/img/stadium_guide/창원nc파크.png",
 };
 
-// 구단별 홈구장 좌표 — Kakao Maps 마커 표시용.
+// 구단별 홈구장 좌표 — 지도 마커 표시용.
 export const STADIUM_COORDS: Record<string, { lat: number; lng: number }> = {
   LG: { lat: 37.5121, lng: 127.0719 }, // 잠실야구장
   OB: { lat: 37.5121, lng: 127.0719 }, // 잠실야구장

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { getTargetWeights, type MouthShape } from "../lipSync";
 
@@ -188,7 +189,7 @@ const SKIN_TEXTURE_MATS: Record<"marking" | "logo", string> = {
   logo: "M_logo",
 };
 
-const MODEL_URL = "/model/3d/260615_opt.glb";
+const MODEL_URL = "/model/3d/260615_meshopt.glb";
 const FRONT_ROTATION_DEG = 0; // 모델 정면(+Z) 기준 회전 보정.
 const MOUTH_INTERVAL_MS = 200; // (구형 모델용) 입 여닫는 주기
 const MOTION_NAME = "hi"; // 인사(손 흔들기) 클립 — 인사 시 1회 재생
@@ -312,6 +313,10 @@ export default function Character3D({ isSpeaking, greetSignal, runSignal, throwS
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath("/draco/");
     loader.setDRACOLoader(dracoLoader);
+    // Meshopt 압축 모델 디코딩용(EXT_meshopt_compression). Draco는 입모양(morph target)을
+    // 압축하지 못해서 모델이 54MB였다 → meshopt로 다시 압축해 7.4MB.
+    // 디코더는 three 번들에 포함되어 있어 외부 다운로드가 없다.
+    loader.setMeshoptDecoder(MeshoptDecoder);
     loader.load(
       MODEL_URL,
       (gltf) => {

@@ -33,6 +33,7 @@
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^4.3.4",
     "firebase": "^12.14.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "^6.5.10",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.4.0",
+    "@types/leaflet": "^1.9.22",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@types/three": "^0.160.0",

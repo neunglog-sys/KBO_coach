@@ -5,7 +5,7 @@ name: Android Build (Release APK/AAB)
 # - 서명: GitHub Secrets의 keystore(base64)로 서명 → 서명된 APK/AAB 아티팩트 업로드
 # - 필요한 Secrets: ANDROID_KEYSTORE_BASE64 · ANDROID_KEYSTORE_PASSWORD
 #                  · ANDROID_KEY_ALIAS · ANDROID_KEY_PASSWORD
-#                  (+ 기존 VITE_GOOGLE_CLIENT_ID · VITE_KAKAO_MAP_KEY)
+#                  (+ 기존 VITE_GOOGLE_CLIENT_ID)
 on:
   workflow_dispatch:
   push:
@@ -33,7 +33,6 @@ jobs:
           # 배포 백엔드의 절대 주소를 반드시 빌드 시점에 주입해야 한다.
           VITE_API_BASE: https://baseball-coach.duckdns.org
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_KAKAO_MAP_KEY: ${{ secrets.VITE_KAKAO_MAP_KEY }}
         run: |
           test -n "$VITE_API_BASE"
           test -n "$VITE_GOOGLE_CLIENT_ID"
