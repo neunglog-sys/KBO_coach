@@ -7,6 +7,7 @@ import "./TeamChatView.css";
 
 interface TeamChatViewProps {
   authToken: string;
+  favTeamCode?: string;
   onBack: () => void;
   onNavigate?: (target: TopMenuTarget) => void;
   requestClose?: boolean;
@@ -14,6 +15,7 @@ interface TeamChatViewProps {
 
 interface BoardMessage {
   message_id: number;
+  team_code: string;
   nickname: string;
   content: string;
   created_at: string;
@@ -161,8 +163,8 @@ function dateLabel(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}`;
 }
 
-export function TeamChatView({ authToken, onBack, onNavigate, requestClose = false }: TeamChatViewProps) {
-  const [team, setTeam] = useState<string | null>(() => localStorage.getItem(MYTEAM_KEY));
+export function TeamChatView({ authToken, favTeamCode, onBack, onNavigate, requestClose = false }: TeamChatViewProps) {
+  const [team, setTeam] = useState<string | null>(() => favTeamCode || localStorage.getItem(MYTEAM_KEY));
   const [messages, setMessages] = useState<BoardMessage[]>([]);
   const [notice, setNotice] = useState("");
   const [input, setInput] = useState("");
@@ -252,23 +254,14 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
     };
   }, [switchOpen, notice, team]);
 
+  // App의 최신 응원팀을 방 선택의 단일 기준으로 사용한다. 이전 localStorage 값을 먼저
+  // 렌더링한 뒤 /auth/me 응답으로 교체하면 구단 변경 직후 이전 방에 전송될 수 있다.
   useEffect(() => {
-    if (!authToken) return;
-    (async () => {
-      try {
-        const r = await fetch(apiUrl("/auth/me"), { headers: { Authorization: `Bearer ${authToken}` } });
-        if (!r.ok) return;
-        const d = await r.json();
-        const code = d.fav_team_code || d.user?.fav_team_code;
-        if (code) {
-          setTeam(code);
-          localStorage.setItem(MYTEAM_KEY, code);
-        }
-      } catch {
-        /* 무시 */
-      }
-    })();
-  }, [authToken]);
+    const code = favTeamCode?.toUpperCase();
+    if (!code || !teamByCode(code)) return;
+    setTeam((current) => (current === code ? current : code));
+    localStorage.setItem(MYTEAM_KEY, code);
+  }, [favTeamCode]);
 
   useEffect(() => {
     if (!team) return;
@@ -289,7 +282,10 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
         const r = await fetch(apiUrl(url), { headers: { Authorization: `Bearer ${authToken}` } });
         if (!r.ok || !alive) return;
         const d = await r.json();
-        const fresh: BoardMessage[] = Array.isArray(d.messages) ? d.messages : [];
+        if (String(d.team_code || "").toUpperCase() !== team) return;
+        const fresh: BoardMessage[] = Array.isArray(d.messages)
+          ? d.messages.filter((message: BoardMessage) => message.team_code === team)
+          : [];
         if (fresh.length) {
           lastIdRef.current = fresh[fresh.length - 1].message_id;
           // send()가 낙관적으로 먼저 추가한 내 메시지가 폴링에 다시 딸려와 중복되는 것 방지
@@ -331,6 +327,7 @@ export function TeamChatView({ authToken, onBack, onNavigate, requestClose = fal
 
       if (r.ok) {
         const msg: BoardMessage = await r.json();
+        if (msg.team_code !== team) return;
         lastIdRef.current = Math.max(lastIdRef.current, msg.message_id);
         // 폴링이 먼저 이 메시지를 반영했을 수 있으니 중복 추가 방지
         setMessages((prev) =>
